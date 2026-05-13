@@ -1,7 +1,7 @@
 package com.tcveinminer;
 
 import com.tcveinminer.config.ModConfig;
-import com.tcveinminer.gui.screens.MainMenuScreen;
+import com.tcveinminer.gui.screens.RadialMenuScreen;
 import com.tcveinminer.hud.SessionStats;
 import com.tcveinminer.hud.VeinMinerHud;
 import com.tcveinminer.logic.BlockHighlighter;
@@ -27,23 +27,23 @@ public class TCVeinMinerClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         KEY_TOGGLE = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-            "key.tc_veinminer.toggle",
-            InputUtil.Type.KEYSYM,
-            GLFW.GLFW_KEY_V,
-            "key.categories.tc_veinminer"
+                "key.tc_veinminer.toggle",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_V,
+                "key.categories.tc_veinminer"
         ));
         KEY_MENU = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-            "key.tc_veinminer.menu",
-            InputUtil.Type.KEYSYM,
-            GLFW.GLFW_KEY_G,
-            "key.categories.tc_veinminer"
+                "key.tc_veinminer.menu",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_G,
+                "key.categories.tc_veinminer"
         ));
 
         HudRenderCallback.EVENT.register(new VeinMinerHud());
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (KEY_MENU.wasPressed()) {
-                client.setScreen(new MainMenuScreen(client.currentScreen));
+                client.setScreen(new RadialMenuScreen(client.currentScreen));
             }
 
             if (client.currentScreen == null && client.getWindow() != null) {

@@ -17,45 +17,53 @@ public class ModConfig {
     }
 
     public static void load() {
-        if (!Files.exists(PATH)) {
-            INSTANCE = new ModConfig();
-            save();
-            return;
-        }
+        if (!Files.exists(PATH)) { INSTANCE = new ModConfig(); save(); return; }
         try (Reader r = Files.newBufferedReader(PATH)) {
             ModConfig c = GSON.fromJson(r, ModConfig.class);
             INSTANCE = c != null ? c : new ModConfig();
-        } catch (Exception e) {
-            INSTANCE = new ModConfig();
-        }
+        } catch (Exception e) { INSTANCE = new ModConfig(); }
     }
 
     public static void save() {
-        try (Writer w = Files.newBufferedWriter(PATH)) {
-            GSON.toJson(INSTANCE, w);
-        } catch (Exception ignored) {}
+        try (Writer w = Files.newBufferedWriter(PATH)) { GSON.toJson(INSTANCE, w); }
+        catch (Exception ignored) {}
     }
 
-    // Định nghĩa các chế độ hình dạng đào
     public enum MiningShape {
-        SAME_BLOCK,
-        SAME_TAG,
-        ALL
+        FACE        ("Standard (Face)",        "⬛", true),
+        EDGES       ("Standard V2 (Edges)",    "🔷", true),
+        CORNERS     ("Standard V3 (Corners)",  "💎", true),
+        TALL_1x2    ("1×2 (Tall)",             "🧱", false),
+        STAIR_UP    ("Stair Up",               "⬆", false),
+        STAIR_DOWN  ("Stair Down",             "⬇", false),
+        AREA_3x3    ("3×3 Area",               "🟦", false);
+
+        public final String label;
+        public final String icon;
+        public final boolean enabledByDefault;
+
+        MiningShape(String label, String icon, boolean enabledByDefault) {
+            this.label = label;
+            this.icon = icon;
+            this.enabledByDefault = enabledByDefault;
+        }
     }
 
     // Cài đặt chung
-    public boolean enabled            = true;
-    public int     maxBlocks          = 64;
-    public boolean requireSneak       = false;
-    public boolean requireCorrectTool = true;
-    public boolean consumeDurability  = true;
-    public boolean diagonalMining     = false;
-    public int     cooldownTicks      = 0;
+    public boolean enabled             = true;
+    public int     maxBlocks           = 64;
+    public boolean requireSneak        = false;
+    public boolean requireCorrectTool  = true;
+    public boolean consumeDurability   = true;
+    public boolean diagonalMining      = false;
+    public int     cooldownTicks       = 0;
+    public boolean showHud             = true;
 
-    // Đã sửa: Chuyển từ String sang MiningShape Enum
-    public MiningShape miningShape    = MiningShape.SAME_BLOCK;
+    // Shape hiện tại đang dùng
+    public MiningShape miningShape = MiningShape.FACE;
 
-    public boolean showHud            = true;
+    // Các shape người dùng đã bật (hiện trong radial menu)
+    public Set<String> enabledShapes = new LinkedHashSet<>(List.of("FACE", "EDGES", "CORNERS"));
 
     // Danh sách block và công cụ
     public Set<String> blacklistedBlocks = new HashSet<>();
