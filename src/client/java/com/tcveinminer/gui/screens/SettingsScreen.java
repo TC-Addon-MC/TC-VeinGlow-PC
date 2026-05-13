@@ -2,11 +2,11 @@ package com.tcveinminer.gui.screens;
 
 import com.tcveinminer.config.ConfigManager;
 import com.tcveinminer.config.ModConfig;
+import com.tcveinminer.gui.CustomButton;
 import com.tcveinminer.util.DrawHelper;
 import com.tcveinminer.util.ThemeColors;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.SliderWidget;
 import net.minecraft.text.Text;
 
@@ -69,36 +69,37 @@ public class SettingsScreen extends Screen {
 
         // Shape cycle button
         final int shapeRowY = rowY;
-        addDrawableChild(ButtonWidget.builder(Text.literal(shapeLabel()), btn -> {
+        addDrawableChild(new CustomButton(x + 160, shapeRowY, 130, 16,
+                Text.literal(shapeLabel()), btn -> {
             miningShape = switch (miningShape) {
                 case SAME_BLOCK -> ModConfig.MiningShape.SAME_TAG;
                 case SAME_TAG   -> ModConfig.MiningShape.ALL;
                 case ALL        -> ModConfig.MiningShape.SAME_BLOCK;
             };
             btn.setMessage(Text.literal(shapeLabel()));
-        }).dimensions(x + 160, shapeRowY, 130, 16).build());
+        }));
         rowY += rowStep;
 
         // Save / Cancel
-        addDrawableChild(ButtonWidget.builder(Text.literal("LƯU & QUAY LẠI"), btn -> {
+        addDrawableChild(new CustomButton(x + 10, y + H - 28, 140, 18,
+                Text.literal("LƯU & QUAY LẠI"), btn -> {
             save();
             client.setScreen(parent);
-        }).dimensions(x + 10, y + H - 28, 140, 18).build());
+        }));
 
-        addDrawableChild(ButtonWidget.builder(Text.literal("HỦY"), btn -> {
-            client.setScreen(parent);
-        }).dimensions(x + W - 150, y + H - 28, 140, 18).build());
+        addDrawableChild(new CustomButton(x + W - 150, y + H - 28, 140, 18,
+                Text.literal("HỦY"), btn -> client.setScreen(parent)));
     }
 
     private interface BoolGet { boolean get(); }
     private interface BoolSet { void set(boolean v); }
 
     private void addToggle(String label, int rowY, BoolGet get, BoolSet set) {
-        // Label is drawn in render(); we just add the button
-        addDrawableChild(ButtonWidget.builder(Text.literal(get.get() ? "BẬT" : "TẮT"), btn -> {
+        addDrawableChild(new CustomButton(x + 160, rowY, 60, 16,
+                Text.literal(get.get() ? "BẬT" : "TẮT"), btn -> {
             set.set(!get.get());
             btn.setMessage(Text.literal(get.get() ? "BẬT" : "TẮT"));
-        }).dimensions(x + 160, rowY, 60, 16).build());
+        }));
     }
 
     private String shapeLabel() {

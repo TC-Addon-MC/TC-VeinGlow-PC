@@ -1,7 +1,7 @@
 package com.tcveinminer;
 
 import com.tcveinminer.config.ModConfig;
-import com.tcveinminer.gui.MainMenuScreen;
+import com.tcveinminer.gui.screens.MainMenuScreen;
 import com.tcveinminer.hud.SessionStats;
 import com.tcveinminer.hud.VeinMinerHud;
 import com.tcveinminer.logic.BlockHighlighter;

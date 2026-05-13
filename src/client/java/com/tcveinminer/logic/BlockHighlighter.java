@@ -29,31 +29,26 @@ public class BlockHighlighter {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.world == null || client.player == null) return true;
 
-        // Lấy block player đang nhìn vào
         HitResult hit = client.crosshairTarget;
         if (hit == null || hit.getType() != HitResult.Type.BLOCK) return true;
 
         BlockPos targetPos = ((BlockHitResult) hit).getBlockPos();
         BlockState targetState = client.world.getBlockState(targetPos);
 
-        // Chạy thuật toán tìm block (dùng chung logic với server)
         List<BlockPos> blocksToMine = VeinMinerLogic.bfs(client.world, targetPos, targetState, ConfigManager.get());
-        if (blocksToMine.isEmpty() || blocksToMine.size() == 1) return true;
+        if (blocksToMine.isEmpty()) return true;
 
         MatrixStack matrices = context.matrixStack();
         VertexConsumer vertexConsumer = context.consumers().getBuffer(RenderLayer.getLines());
         Vec3d cameraPos = context.camera().getPos();
 
-        // Màu viền (R, G, B, Alpha) -> Đỏ mờ
         float r = 1.0f, g = 0.2f, b = 0.2f, a = 0.8f;
 
+        // Vẽ outline cho TẤT CẢ block trong vein, kể cả block đang nhìn
         for (BlockPos pos : blocksToMine) {
-            if (pos.equals(targetPos)) continue; // Block đang nhìn đã có outline mặc định
-
             matrices.push();
             matrices.translate(pos.getX() - cameraPos.x, pos.getY() - cameraPos.y, pos.getZ() - cameraPos.z);
 
-            // Vẽ hộp viền bám theo hình dáng block
             Box box = client.world.getBlockState(pos).getOutlineShape(client.world, pos).getBoundingBox();
 
             net.minecraft.client.render.WorldRenderer.drawBox(
@@ -66,6 +61,7 @@ public class BlockHighlighter {
             matrices.pop();
         }
 
-        return true;
+        // Return false để suppress outline mặc định của Minecraft (tránh merge)
+        return false;
     }
 }

@@ -1,11 +1,11 @@
 package com.tcveinminer.gui.screens;
 
 import com.tcveinminer.config.ConfigManager;
+import com.tcveinminer.gui.CustomButton;
 import com.tcveinminer.util.DrawHelper;
 import com.tcveinminer.util.ThemeColors;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.registry.Registries;
 import net.minecraft.text.Text;
@@ -51,26 +51,26 @@ public class BlockListScreen extends Screen {
         searchField.setPlaceholder(Text.literal("Tìm kiếm..."));
         addDrawableChild(searchField);
 
-        // Add block button
-        addDrawableChild(ButtonWidget.builder(Text.literal("+ THÊM BLOCK"), btn -> {
+        addDrawableChild(new CustomButton(x + 10, y + H - 60, 110, 16,
+                Text.literal("+ THÊM BLOCK"), btn -> {
             showAddPopup = true;
             if (addField != null) addField.setText("");
             addError = null;
-        }).dimensions(x + 10, y + H - 60, 110, 16).build());
+        }));
 
-        // Clear all button (danger)
-        addDrawableChild(ButtonWidget.builder(Text.literal("XÓA TẤT CẢ"), btn -> {
+        addDrawableChild(new CustomButton(x + 130, y + H - 60, 80, 16,
+                Text.literal("XÓA TẤT CẢ"), btn -> {
             blocks.clear();
             scrollOffset = 0;
-        }).dimensions(x + 130, y + H - 60, 80, 16).build());
+        }));
 
-        // Save button
-        addDrawableChild(ButtonWidget.builder(Text.literal("LƯU & QUAY LẠI"), btn -> {
+        addDrawableChild(new CustomButton(x + W / 2 - 70, y + H - 36, 140, 18,
+                Text.literal("LƯU & QUAY LẠI"), btn -> {
             ConfigManager.get().blacklistedBlocks.clear();
             ConfigManager.get().blacklistedBlocks.addAll(blocks);
             ConfigManager.save();
             client.setScreen(parent);
-        }).dimensions(x + W / 2 - 70, y + H - 36, 140, 18).build());
+        }));
 
         // Popup add field
         addField = new TextFieldWidget(textRenderer, x + W/2 - 100, y + H/2 - 10, 200, 20,

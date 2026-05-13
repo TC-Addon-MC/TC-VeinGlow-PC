@@ -1,11 +1,11 @@
 package com.tcveinminer.gui.screens;
 
 import com.tcveinminer.config.ConfigManager;
+import com.tcveinminer.gui.CustomButton;
 import com.tcveinminer.util.DrawHelper;
 import com.tcveinminer.util.ThemeColors;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 
 import java.util.*;
@@ -56,18 +56,19 @@ public class ToolConfigScreen extends Screen {
             int cy = startY + row * (CARD_H + 8);
 
             // Invisible button covering card area
-            addDrawableChild(ButtonWidget.builder(Text.empty(), btn -> {
+            addDrawableChild(new CustomButton(cx, cy, CARD_W, CARD_H, Text.empty(), btn -> {
                 toolState.merge(toolKey, false, (old, v) -> !old);
-            }).dimensions(cx, cy, CARD_W, CARD_H).build());
+            }));
         }
 
         // Save
-        addDrawableChild(ButtonWidget.builder(Text.literal("LƯU & QUAY LẠI"), btn -> {
+        addDrawableChild(new CustomButton(x + W / 2 - 80, y + H - 34, 160, 18,
+                Text.literal("LƯU & QUAY LẠI"), btn -> {
             ConfigManager.get().enabledTools.clear();
             ConfigManager.get().enabledTools.putAll(toolState);
             ConfigManager.save();
             client.setScreen(parent);
-        }).dimensions(x + W / 2 - 80, y + H - 34, 160, 18).build());
+        }));
     }
 
     @Override

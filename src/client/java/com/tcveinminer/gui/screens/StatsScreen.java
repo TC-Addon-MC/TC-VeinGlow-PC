@@ -1,11 +1,11 @@
 package com.tcveinminer.gui.screens;
 
+import com.tcveinminer.gui.CustomButton;
 import com.tcveinminer.util.DrawHelper;
 import com.tcveinminer.util.SessionStats;
 import com.tcveinminer.util.ThemeColors;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 
 public class StatsScreen extends Screen {
@@ -26,15 +26,11 @@ public class StatsScreen extends Screen {
         x = (width - W) / 2;
         y = (height - H) / 2;
 
-        // Reset button
-        addDrawableChild(ButtonWidget.builder(Text.literal("RESET STATS"), btn -> {
-            SessionStats.reset();
-        }).dimensions(x + 20, y + H - 36, 100, 18).build());
+        addDrawableChild(new CustomButton(x + 20, y + H - 36, 100, 18,
+                Text.literal("RESET STATS"), btn -> SessionStats.reset()));
 
-        // Back button
-        addDrawableChild(ButtonWidget.builder(Text.literal("QUAY LẠI"), btn -> {
-            client.setScreen(parent);
-        }).dimensions(x + W - 120, y + H - 36, 100, 18).build());
+        addDrawableChild(new CustomButton(x + W - 120, y + H - 36, 100, 18,
+                Text.literal("QUAY LẠI"), btn -> client.setScreen(parent)));
     }
 
     @Override
