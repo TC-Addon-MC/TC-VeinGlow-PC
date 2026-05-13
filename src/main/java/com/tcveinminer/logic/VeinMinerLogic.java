@@ -52,7 +52,11 @@ public final class VeinMinerLogic {
     public static void onBreak(PlayerEntity player, World world, BlockPos pos, BlockState state) {
         if (!(world instanceof ServerWorld sw)) return;
         ModConfig c = ConfigManager.get();
+
+        // 1. Kiểm tra Master Enable
         if (!c.enabled) return;
+
+        // 2. Kiểm tra xem người chơi có đang đè phím đào hay không (Packet gửi lên)
         if (!TCVeinMinerMod.playersHoldingV.contains(player.getUuid())) return;
         if (c.requireCorrectTool && !toolOk(player, c)) return;
 

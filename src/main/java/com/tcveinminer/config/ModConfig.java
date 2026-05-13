@@ -50,7 +50,7 @@ public class ModConfig {
     }
 
     // Cài đặt chung
-    public boolean enabled             = true;
+    public boolean enabled = true;
     public int     maxBlocks           = 64;
     public boolean requireSneak        = false;
     public boolean requireCorrectTool  = true;

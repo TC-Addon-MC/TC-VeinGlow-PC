@@ -1,5 +1,6 @@
 package com.tcveinminer.hud;
 
+import com.tcveinminer.TCVeinMinerClient;
 import com.tcveinminer.config.ModConfig;
 import com.tcveinminer.gui.Draw;
 import com.tcveinminer.gui.TC;
@@ -14,16 +15,18 @@ public class VeinMinerHud implements HudRenderCallback {
     @Override
     public void onHudRender(DrawContext ctx, RenderTickCounter tc) {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (!ModConfig.get().showHud) return;
-        if (mc.options.hudHidden || mc.currentScreen != null) return;
+        if (!ModConfig.get().enabled) return; // Nếu mod bị tắt hoàn toàn thì không hiện HUD
 
-        boolean on  = ModConfig.get().enabled;
-        String  txt = "⛏ VeinMiner: " + (on ? "BẬT" : "TẮT");
-        int     pw  = mc.textRenderer.getWidth(txt) + 14;
+        // Hiển thị trạng thái dựa trên việc người chơi có ĐANG ĐÈ PHÍM hay không
+        boolean isMiningActive = TCVeinMinerClient.holdKeyDown;
+        String status = isMiningActive ? "SẴN SÀNG ĐÀO" : "CHỜ (ĐÈ PHÍM)";
 
-        Draw.pill(ctx, 6, 6, pw, 14, on);
-        ctx.drawTextWithShadow(mc.textRenderer, txt, 13, 9, on ? TC.ON_TEXT : TC.OFF_TEXT);
+        String txt = "⛏ VeinMiner: " + status;
+        int pw = mc.textRenderer.getWidth(txt) + 14;
 
+        // Hiển thị màu khác nhau để dễ nhận biết
+        Draw.pill(ctx, 6, 6, pw, 14, isMiningActive);
+        ctx.drawTextWithShadow(mc.textRenderer, txt, 13, 9, isMiningActive ? TC.ON_TEXT : TC.TXT_LABEL);
         // Mining progress (set bởi VeinMinerLogic qua HudNotifier)
         if (System.currentTimeMillis() < HudNotifier.notifyAt) {
             String msg = String.format("Đang đào... %d/%d", HudNotifier.lastMined, HudNotifier.lastMax);
