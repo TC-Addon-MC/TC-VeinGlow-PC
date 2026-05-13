@@ -1,7 +1,7 @@
 package com.tcveinminer.gui.screens;
 
-import com.tcveinminer.config.ConfigManager;
-import com.tcveinminer.config.ModConfig;
+import com.tcveinminer.config.*;
+import com.tcveinminer.gui.radial.*;
 import com.tcveinminer.util.ThemeColors;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -14,13 +14,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class RadialMenuScreen extends Screen {
+
     private final Screen parent;
+
     private static final float OUTER_R = 90f;
     private static final float INNER_R = 28f;
     private static final float CENTER_R = 24f;
     private static final int SEGMENTS = 64;
 
-    private int cx, cy, hoveredSlice = -1;
+    private int cx, cy;
+    private int hoveredSlice = -1;
+
     private List<ModConfig.MiningShape> activeShapes;
 
     public RadialMenuScreen(Screen parent) {
@@ -32,98 +36,133 @@ public class RadialMenuScreen extends Screen {
     protected void init() {
         cx = width / 2;
         cy = height / 2;
+
         activeShapes = new ArrayList<>();
         ModConfig cfg = ConfigManager.get();
-        for (ModConfig.MiningShape shape : ModConfig.MiningShape.values()) {
-            if (cfg.enabledShapes.contains(shape.name())) activeShapes.add(shape);
+
+        for (ModConfig.MiningShape s : ModConfig.MiningShape.values()) {
+            if (cfg.enabledShapes.contains(s.name())) activeShapes.add(s);
         }
+
         if (activeShapes.isEmpty()) activeShapes.add(ModConfig.MiningShape.FACE);
     }
 
     @Override
-    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        hoveredSlice = getHoveredSlice(mouseX, mouseY);
+    public void render(DrawContext ctx, int mx, int my, float delta) {
+
+        hoveredSlice = RadialMath.getHoveredIndex(
+                mx, my, cx, cy,
+                CENTER_R, OUTER_R,
+                activeShapes.size()
+        );
+
         int n = activeShapes.size();
-        float angleStep = 360f / n;
-        Matrix4f matrix = ctx.getMatrices().peek().getPositionMatrix();
+        float step = RadialMath.angleStep(n);
 
-        VertexConsumer buffer = ctx.getVertexConsumers().getBuffer(RenderLayer.getGuiOverlay());
+        Matrix4f mat = ctx.getMatrices().peek().getPositionMatrix();
+        VertexConsumer buf = ctx.getVertexConsumers().getBuffer(RenderLayer.getGuiOverlay());
 
-        // 1. Vẽ các nút xung quanh
         for (int i = 0; i < n; i++) {
-            boolean isActive = ConfigManager.get().miningShape == activeShapes.get(i);
-            int color = isActive ? 0xCC1B4332 : (hoveredSlice == i ? 0xCC2A2A5A : 0xAA1A1A3A);
 
-            drawRadialSegment(matrix, buffer, cx, cy, INNER_R, OUTER_R,
-                    -90f + i * angleStep, -90f + (i + 1) * angleStep, color);
+            boolean active = ConfigManager.get().miningShape == activeShapes.get(i);
+
+            int color =
+                    active ? 0xCC1B4332 :
+                            hoveredSlice == i ? 0xCC2A2A5A :
+                                    0xAA1A1A3A;
+
+            RadialRenderer.drawSegment(
+                    mat, buf,
+                    cx, cy,
+                    INNER_R, OUTER_R,
+                    -90f + i * step,
+                    -90f + (i + 1) * step,
+                    SEGMENTS,
+                    color
+            );
         }
 
-        // 2. Vẽ nút tròn giữa (bán kính trong = 0, góc 0 -> 360)
-        int centerColor = hoveredSlice == -2 ? 0xCC2A2A52 : 0xCC12122A;
-        drawRadialSegment(matrix, buffer, cx, cy, 0f, CENTER_R, 0f, 360f, centerColor);
+        // center
+        RadialRenderer.drawSegment(
+                mat, buf,
+                cx, cy,
+                0f, CENTER_R,
+                0f, 360f,
+                SEGMENTS,
+                hoveredSlice == -2 ? 0xCC2A2A52 : 0xCC12122A
+        );
 
         ctx.draw();
 
-        // 3. Vẽ Text và Icon
-        renderLabels(ctx, n, angleStep);
+        renderLabels(ctx, n, step);
     }
 
-    // Hàm vẽ chung cho mọi hình (tròn, quạt, vành khuyên)
-    private void drawRadialSegment(Matrix4f mat, VertexConsumer buf, int x, int y, float inR, float outR, float start, float end, int color) {
-        float sRad = (float) Math.toRadians(start);
-        float eRad = (float) Math.toRadians(end);
-        float step = (eRad - sRad) / SEGMENTS;
-        int a = (color >> 24) & 0xFF, r = (color >> 16) & 0xFF, g = (color >> 8) & 0xFF, b = color & 0xFF;
-
-        for (int i = 0; i < SEGMENTS; i++) {
-            float a1 = sRad + i * step, a2 = sRad + (i + 1) * step;
-            float c1 = (float) Math.cos(a1), s1 = (float) Math.sin(a1);
-            float c2 = (float) Math.cos(a2), s2 = (float) Math.sin(a2);
-
-            buf.vertex(mat, x + c1 * inR,  y + s1 * inR,  0.01f).color(r, g, b, a);
-            buf.vertex(mat, x + c1 * outR, y + s1 * outR, 0.01f).color(r, g, b, a);
-            buf.vertex(mat, x + c2 * outR, y + s2 * outR, 0.01f).color(r, g, b, a);
-            buf.vertex(mat, x + c2 * inR,  y + s2 * inR,  0.01f).color(r, g, b, a);
-        }
-    }
-
-    private void renderLabels(DrawContext ctx, int n, float angleStep) {
+    private void renderLabels(DrawContext ctx, int n, float step) {
         for (int i = 0; i < n; i++) {
+
             ModConfig.MiningShape shape = activeShapes.get(i);
-            float midAngle = (float)Math.toRadians(-90f + i * angleStep + angleStep / 2f);
-            int lx = cx + (int)(Math.cos(midAngle) * (INNER_R + OUTER_R) / 2f);
-            int ly = cy + (int)(Math.sin(midAngle) * (INNER_R + OUTER_R) / 2f);
-            boolean isActive = ConfigManager.get().miningShape == shape;
 
-            ctx.drawTextWithShadow(textRenderer, shape.icon, lx - textRenderer.getWidth(shape.icon) / 2, ly - 10, isActive ? ThemeColors.TOGGLE_ON_TEXT : ThemeColors.BTN_TEXT);
-            String label = textRenderer.getWidth(shape.label) > 50 ? shape.label.substring(0, 5) + ".." : shape.label;
-            ctx.drawTextWithShadow(textRenderer, label, lx - textRenderer.getWidth(label) / 2, ly + 1, isActive ? ThemeColors.TOGGLE_ON_TEXT : ThemeColors.TEXT_LABEL);
+            float mid = RadialMath.midAngle(i, step);
+            int[] pos = RadialMath.centerPoint(cx, cy, (INNER_R + OUTER_R) / 2f, mid);
+
+            boolean active = ConfigManager.get().miningShape == shape;
+
+            ctx.drawTextWithShadow(textRenderer,
+                    shape.icon,
+                    pos[0] - textRenderer.getWidth(shape.icon) / 2,
+                    pos[1] - 10,
+                    active ? ThemeColors.TOGGLE_ON_TEXT : ThemeColors.BTN_TEXT
+            );
+
+            String label = shape.label.length() > 5
+                    ? shape.label.substring(0, 5) + ".."
+                    : shape.label;
+
+            ctx.drawTextWithShadow(textRenderer,
+                    label,
+                    pos[0] - textRenderer.getWidth(label) / 2,
+                    pos[1] + 1,
+                    active ? ThemeColors.TOGGLE_ON_TEXT : ThemeColors.TEXT_LABEL
+            );
         }
-        ctx.drawTextWithShadow(textRenderer, "⚙", cx - textRenderer.getWidth("⚙") / 2, cy - 9, ThemeColors.BTN_TEXT);
-        ctx.drawTextWithShadow(textRenderer, "Settings", cx - textRenderer.getWidth("Settings") / 2, cy + 1, ThemeColors.TEXT_LABEL);
-    }
 
-    private int getHoveredSlice(int mx, int my) {
-        float dx = mx - cx, dy = my - cy, dist = (float)Math.sqrt(dx * dx + dy * dy);
-        if (dist < CENTER_R) return -2;
-        if (dist > OUTER_R) return -1;
-        float angle = (float)Math.toDegrees(Math.atan2(dy, dx)) + 90f;
-        if (angle < 0) angle += 360f;
-        return (int)(angle / (360f / activeShapes.size())) % activeShapes.size();
+        ctx.drawTextWithShadow(textRenderer, "⚙",
+                cx - textRenderer.getWidth("⚙") / 2,
+                cy - 9,
+                ThemeColors.BTN_TEXT);
+
+        ctx.drawTextWithShadow(textRenderer, "Settings",
+                cx - textRenderer.getWidth("Settings") / 2,
+                cy + 1,
+                ThemeColors.TEXT_LABEL);
     }
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
-        int hovered = getHoveredSlice((int)mx, (int)my);
-        if (hovered == -2) { client.setScreen(new SettingsScreen(this)); return true; }
+
+        int hovered = RadialMath.getHoveredIndex(
+                (int) mx, (int) my,
+                cx, cy,
+                CENTER_R, OUTER_R,
+                activeShapes.size()
+        );
+
+        if (hovered == -2) {
+            client.setScreen(new SettingsScreen(this));
+            return true;
+        }
+
         if (hovered >= 0) {
             ConfigManager.get().miningShape = activeShapes.get(hovered);
             ConfigManager.save();
         }
+
         client.setScreen(parent);
         return true;
     }
 
     @Override
-    public boolean shouldPause() { return false; }
+    public boolean shouldPause() {
+        return false;
+    }
 }
