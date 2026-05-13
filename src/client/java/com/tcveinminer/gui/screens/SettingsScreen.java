@@ -140,7 +140,7 @@ public class SettingsScreen extends Screen {
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        renderBackground(ctx, mouseX, mouseY, delta);
+
         DrawHelper.drawPanel(ctx, x, y, W, H);
         DrawHelper.drawHeader(ctx, x, y, W, HEADER_H);
         ctx.drawTextWithShadow(textRenderer, "⚙ Cài Đặt", x + 12, y + 8, ThemeColors.TEXT_TITLE);
@@ -201,4 +201,8 @@ public class SettingsScreen extends Screen {
 
     @Override
     public boolean shouldPause() { return false; }
+    @Override
+    public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {
+        // Không làm gì để giữ nền game rõ nét
+    }
 }

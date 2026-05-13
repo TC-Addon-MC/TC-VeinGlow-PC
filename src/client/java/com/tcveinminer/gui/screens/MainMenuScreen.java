@@ -57,7 +57,7 @@ public class MainMenuScreen extends Screen {
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        renderBackground(ctx, mouseX, mouseY, delta);
+ 
 
         DrawHelper.drawPanel(ctx, x, y, W, H);
         DrawHelper.drawHeader(ctx, x, y, W, HEADER_H);
