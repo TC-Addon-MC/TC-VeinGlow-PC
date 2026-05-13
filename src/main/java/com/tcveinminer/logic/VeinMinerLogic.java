@@ -96,6 +96,7 @@ public final class VeinMinerLogic {
     }
 
     public static List<BlockPos> bfs(World w, BlockPos origin, BlockState target, ModConfig c) {
+        if (c == null || c.miningShape == null) return new ArrayList<>();
         return switch (c.miningShape) {
             case FACE       -> bfsGeneric(w, origin, target, c, D6);
             case EDGES      -> bfsGeneric(w, origin, target, c, D18);

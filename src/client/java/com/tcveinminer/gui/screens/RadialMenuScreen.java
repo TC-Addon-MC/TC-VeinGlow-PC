@@ -5,7 +5,10 @@ import com.tcveinminer.config.ModConfig;
 import com.tcveinminer.util.ThemeColors;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.text.Text;
+import org.joml.Matrix4f;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,12 +17,12 @@ public class RadialMenuScreen extends Screen {
 
     private final Screen parent;
 
-    // Kích thước
-    private static final int OUTER_R = 90;  // bán kính ngoài slice
-    private static final int INNER_R = 28;  // bán kính trong (lỗ giữa)
-    private static final int CENTER_R = 24; // nút tâm Settings
+    // Kích thước hằng số
+    private static final float OUTER_R = 90f;
+    private static final float INNER_R = 28f;
+    private static final float CENTER_R = 24f;
 
-    // Màu slice
+    // Hệ màu
     private static final int COLOR_SLICE_NORMAL  = 0xAA1A1A3A;
     private static final int COLOR_SLICE_HOVER   = 0xCC2A2A5A;
     private static final int COLOR_SLICE_ACTIVE  = 0xCC1B4332;
@@ -28,10 +31,8 @@ public class RadialMenuScreen extends Screen {
     private static final int COLOR_BORDER        = 0xFF4A3F7A;
     private static final int COLOR_BORDER_ACTIVE = 0xFF52B788;
 
-    private int cx, cy; // tâm màn hình
-    private int hoveredSlice = -1; // index slice đang hover (-1 = không có, -2 = tâm)
-
-    // Danh sách shape hiện đang bật
+    private int cx, cy;
+    private int hoveredSlice = -1;
     private List<ModConfig.MiningShape> activeShapes;
 
     public RadialMenuScreen(Screen parent) {
@@ -48,28 +49,30 @@ public class RadialMenuScreen extends Screen {
 
     private void rebuildShapes() {
         activeShapes = new ArrayList<>();
-        for (ModConfig.MiningShape shape : ModConfig.MiningShape.values()) {
-            if (ConfigManager.get().enabledShapes.contains(shape.name())) {
-                activeShapes.add(shape);
+        ModConfig cfg = ConfigManager.get();
+        if (cfg != null && cfg.enabledShapes != null) {
+            for (ModConfig.MiningShape shape : ModConfig.MiningShape.values()) {
+                if (cfg.enabledShapes.contains(shape.name())) {
+                    activeShapes.add(shape);
+                }
             }
         }
-        // Luôn có ít nhất FACE
-        if (activeShapes.isEmpty()) {
-            activeShapes.add(ModConfig.MiningShape.FACE);
-        }
+        if (activeShapes.isEmpty()) activeShapes.add(ModConfig.MiningShape.FACE);
+    }
+
+    /**
+     * CẢI TIẾN 7: Tập trung logic đóng màn hình
+     */
+    private void closeMenu() {
+        client.setScreen(parent);
     }
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        // KHÔNG gọi renderBackground → nền trong suốt hoàn toàn
-
-        // Tính slice đang hover
         hoveredSlice = getHoveredSlice(mouseX, mouseY);
-
         int n = activeShapes.size();
         float angleStep = 360f / n;
 
-        // Vẽ từng slice
         for (int i = 0; i < n; i++) {
             ModConfig.MiningShape shape = activeShapes.get(i);
             boolean isHovered = hoveredSlice == i;
@@ -79,86 +82,135 @@ public class RadialMenuScreen extends Screen {
             float endAngle   = startAngle + angleStep;
 
             int bg = isActive ? COLOR_SLICE_ACTIVE : (isHovered ? COLOR_SLICE_HOVER : COLOR_SLICE_NORMAL);
-            int border = isActive ? COLOR_BORDER_ACTIVE : COLOR_BORDER;
 
-            drawSlice(ctx, cx, cy, INNER_R, OUTER_R, startAngle, endAngle, bg, border);
+            // Vẽ mảnh menu
+            drawSliceEfficient(ctx, cx, cy, INNER_R, OUTER_R, startAngle, endAngle, bg);
 
-            // Label: icon + tên ở giữa slice
+            // Tính toán vị trí Text/Icon
             float midAngle = (float) Math.toRadians(startAngle + angleStep / 2f);
-            int labelR = (INNER_R + OUTER_R) / 2;
+            float labelR = (INNER_R + OUTER_R) / 2f;
             int lx = cx + (int)(Math.cos(midAngle) * labelR);
             int ly = cy + (int)(Math.sin(midAngle) * labelR);
 
-            // Icon
-            String icon = shape.icon;
-            ctx.drawTextWithShadow(textRenderer, icon,
-                lx - textRenderer.getWidth(icon) / 2,
-                ly - 10,
-                isActive ? ThemeColors.TOGGLE_ON_TEXT : ThemeColors.BTN_TEXT);
+            ctx.drawTextWithShadow(textRenderer, shape.icon, lx - textRenderer.getWidth(shape.icon) / 2, ly - 10,
+                    isActive ? ThemeColors.TOGGLE_ON_TEXT : ThemeColors.BTN_TEXT);
 
-            // Tên (cắt ngắn nếu quá dài)
             String name = shortenLabel(shape.label);
-            ctx.drawTextWithShadow(textRenderer, name,
-                lx - textRenderer.getWidth(name) / 2,
-                ly + 1,
-                isActive ? ThemeColors.TOGGLE_ON_TEXT : ThemeColors.TEXT_LABEL);
+            ctx.drawTextWithShadow(textRenderer, name, lx - textRenderer.getWidth(name) / 2, ly + 1,
+                    isActive ? ThemeColors.TOGGLE_ON_TEXT : ThemeColors.TEXT_LABEL);
         }
 
-        // Vẽ nút tâm (Settings)
+        // Nút Settings ở tâm
         boolean centerHovered = hoveredSlice == -2;
-        drawCircle(ctx, cx, cy, CENTER_R,
-            centerHovered ? COLOR_CENTER_HOVER : COLOR_CENTER_NORMAL, COLOR_BORDER);
+        drawCircleEfficient(ctx, cx, cy, CENTER_R, centerHovered ? COLOR_CENTER_HOVER : COLOR_CENTER_NORMAL);
 
-        String gear = "⚙";
-        ctx.drawTextWithShadow(textRenderer, gear,
-            cx - textRenderer.getWidth(gear) / 2, cy - 9,
-            ThemeColors.BTN_TEXT);
-        String settingsLabel = "Settings";
-        ctx.drawTextWithShadow(textRenderer, settingsLabel,
-            cx - textRenderer.getWidth(settingsLabel) / 2, cy + 1,
-            ThemeColors.TEXT_LABEL);
+        ctx.drawTextWithShadow(textRenderer, "⚙", cx - textRenderer.getWidth("⚙") / 2, cy - 9, ThemeColors.BTN_TEXT);
+        ctx.drawTextWithShadow(textRenderer, "Settings", cx - textRenderer.getWidth("Settings") / 2, cy + 1, ThemeColors.TEXT_LABEL);
 
-        // Tooltip: tên đầy đủ của slice đang hover
         if (hoveredSlice >= 0 && hoveredSlice < n) {
-            String fullName = activeShapes.get(hoveredSlice).label;
-            int tw = textRenderer.getWidth(fullName) + 8;
-            ctx.fill(mouseX + 6, mouseY - 14, mouseX + 6 + tw, mouseY, 0xCC000000);
-            ctx.drawTextWithShadow(textRenderer, fullName, mouseX + 10, mouseY - 11, 0xFFFFFFFF);
+            ctx.drawTooltip(textRenderer, Text.literal(activeShapes.get(hoveredSlice).label), mouseX, mouseY);
         }
+    }
 
-        // Không gọi super.render() karena tidak ada widget standard
+    private void drawSliceEfficient(DrawContext ctx, int x, int y, float innerR, float outerR, float startDeg, float endDeg, int color) {
+        Matrix4f matrix = ctx.getMatrices().peek().getPositionMatrix();
+        VertexConsumer buffer = ctx.getVertexConsumers().getBuffer(RenderLayer.getGui());
+
+        float startRad = (float) Math.toRadians(startDeg);
+        float endRad = (float) Math.toRadians(endDeg);
+
+        // CẢI TIẾN 6: Adaptive segments dựa trên độ dài cung tròn
+        int segments = Math.max(6, (int)((outerR * Math.abs(endRad - startRad)) / 8f));
+        float step = (endRad - startRad) / segments;
+
+        for (int i = 0; i < segments; i++) {
+            float a1 = startRad + i * step;
+            float a2 = startRad + (i + 1) * step;
+
+            // Sửa lỗi: Bỏ .next(), thứ tự POSITION -> COLOR
+            drawQuad(matrix, buffer,
+                    x + (float)Math.cos(a1) * innerR, y + (float)Math.sin(a1) * innerR,
+                    x + (float)Math.cos(a1) * outerR, y + (float)Math.sin(a1) * outerR,
+                    x + (float)Math.cos(a2) * outerR, y + (float)Math.sin(a2) * outerR,
+                    x + (float)Math.cos(a2) * innerR, y + (float)Math.sin(a2) * innerR, color);
+        }
+    }
+
+    private void drawCircleEfficient(DrawContext ctx, int x, int y, float r, int color) {
+        Matrix4f matrix = ctx.getMatrices().peek().getPositionMatrix();
+        VertexConsumer buffer = ctx.getVertexConsumers().getBuffer(RenderLayer.getGui());
+        int segments = 32;
+        float step = (float) (Math.PI * 2 / segments);
+
+        for (int i = 0; i < segments; i++) {
+            float a1 = i * step;
+            float a2 = (i + 1) * step;
+            drawQuad(matrix, buffer, (float)x, (float)y, x + (float)Math.cos(a1) * r, y + (float)Math.sin(a1) * r,
+                    x + (float)Math.cos(a2) * r, y + (float)Math.sin(a2) * r, (float)x, (float)y, color);
+        }
+    }
+
+    private void drawQuad(Matrix4f matrix, VertexConsumer buffer, float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4, int color) {
+        int a = (color >> 24) & 0xFF;
+        int r = (color >> 16) & 0xFF;
+        int g = (color >> 8) & 0xFF;
+        int b = color & 0xFF;
+
+        // POSITION_COLOR format: vertex(matrix, x, y, z).color(r, g, b, a)
+        buffer.vertex(matrix, x1, y1, 0).color(r, g, b, a);
+        buffer.vertex(matrix, x2, y2, 0).color(r, g, b, a);
+        buffer.vertex(matrix, x3, y3, 0).color(r, g, b, a);
+        buffer.vertex(matrix, x4, y4, 0).color(r, g, b, a);
+    }
+
+    /**
+     * CẢI TIẾN 9: Truncate văn bản bằng "..." thay vì cắt mất nghĩa
+     */
+    private String shortenLabel(String label) {
+        int maxWidth = 55;
+        if (textRenderer.getWidth(label) <= maxWidth) return label;
+
+        String truncated = label;
+        while (textRenderer.getWidth(truncated + "...") > maxWidth && truncated.length() > 0) {
+            truncated = truncated.substring(0, truncated.length() - 1);
+        }
+        return truncated.isEmpty() ? "" : truncated.trim() + "...";
+    }
+
+    private int getHoveredSlice(int mx, int my) {
+        float dx = mx - cx;
+        float dy = my - cy;
+        float dist = (float) Math.sqrt(dx * dx + dy * dy);
+        if (dist < CENTER_R) return -2;
+        if (dist > OUTER_R)  return -1;
+
+        float angle = (float) Math.toDegrees(Math.atan2(dy, dx)) + 90f;
+        if (angle < 0) angle += 360f;
+        return (int)(angle / (360f / activeShapes.size())) % activeShapes.size();
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button != 0) return false;
-
         int hovered = getHoveredSlice((int) mouseX, (int) mouseY);
-
         if (hovered == -2) {
-            // Click tâm → mở Settings screen
             client.setScreen(new SettingsScreen(this));
             return true;
         }
-
         if (hovered >= 0 && hovered < activeShapes.size()) {
-            // Click slice → đổi mining shape
             ConfigManager.get().miningShape = activeShapes.get(hovered);
             ConfigManager.save();
-            client.setScreen(parent); // đóng menu sau khi chọn
+            closeMenu();
             return true;
         }
-
-        // Click ngoài vòng tròn → đóng menu
-        client.setScreen(parent);
+        closeMenu();
         return true;
     }
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        // ESC hoặc G đóng menu
-        if (keyCode == 256 || keyCode == 71) { // 71 = G
-            client.setScreen(parent);
+        if (keyCode == 256 || keyCode == 71) {
+            closeMenu();
             return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
@@ -166,109 +218,4 @@ public class RadialMenuScreen extends Screen {
 
     @Override
     public boolean shouldPause() { return false; }
-
-    // ── Helpers ───────────────────────────────────────────────────────
-
-    /**
-     * Trả về index slice đang hover, -2 nếu hover tâm, -1 nếu ngoài.
-     */
-    private int getHoveredSlice(int mx, int my) {
-        float dx = mx - cx;
-        float dy = my - cy;
-        float dist = (float) Math.sqrt(dx * dx + dy * dy);
-
-        if (dist < CENTER_R) return -2; // tâm
-        if (dist > OUTER_R)  return -1; // ngoài
-
-        // Góc từ trên xuống (−90° ở đỉnh)
-        float angle = (float) Math.toDegrees(Math.atan2(dy, dx)) + 90f;
-        if (angle < 0) angle += 360f;
-
-        int n = activeShapes.size();
-        float angleStep = 360f / n;
-        return (int)(angle / angleStep) % n;
-    }
-
-    /**
-     * Vẽ hình tròn đặc (approx bằng fill hình vuông + clip tròn bằng pixel check).
-     * Dùng cách vẽ pixel-by-pixel cho tròn nhỏ.
-     */
-    private void drawCircle(DrawContext ctx, int x, int y, int r, int fillColor, int borderColor) {
-        // Fill
-        for (int px = -r; px <= r; px++) {
-            for (int py = -r; py <= r; py++) {
-                if (px * px + py * py <= r * r) {
-                    ctx.fill(x + px, y + py, x + px + 1, y + py + 1, fillColor);
-                }
-            }
-        }
-        // Border
-        for (int px = -r; px <= r; px++) {
-            for (int py = -r; py <= r; py++) {
-                int d2 = px * px + py * py;
-                if (d2 <= r * r && d2 >= (r - 1) * (r - 1)) {
-                    ctx.fill(x + px, y + py, x + px + 1, y + py + 1, borderColor);
-                }
-            }
-        }
-    }
-
-    /**
-     * Vẽ slice hình quạt từ innerR đến outerR, góc từ startDeg đến endDeg.
-     */
-    private void drawSlice(DrawContext ctx, int x, int y,
-                            int innerR, int outerR,
-                            float startDeg, float endDeg,
-                            int fillColor, int borderColor) {
-        // Vẽ pixel-by-pixel trong bounding box
-        for (int px = -outerR; px <= outerR; px++) {
-            for (int py = -outerR; py <= outerR; py++) {
-                float d2 = px * px + py * py;
-                if (d2 < innerR * innerR || d2 > (float) outerR * outerR) continue;
-
-                // Tính góc (0° ở trên, tăng theo chiều kim đồng hồ)
-                float ang = (float) Math.toDegrees(Math.atan2(py, px)) + 90f;
-                if (ang < 0) ang += 360f;
-
-                // Normalize start/end về [0, 360)
-                float s = ((startDeg % 360f) + 360f) % 360f;
-                float e = ((endDeg   % 360f) + 360f) % 360f;
-
-                boolean inSlice;
-                if (s < e) inSlice = ang >= s && ang < e;
-                else       inSlice = ang >= s || ang < e; // wrap around 0
-
-                if (!inSlice) continue;
-
-                // Pixel nằm trong slice → vẽ fill
-                ctx.fill(x + px, y + py, x + px + 1, y + py + 1, fillColor);
-
-                // Border: cạnh ngoài, trong, hoặc cạnh bên (góc gần startDeg/endDeg)
-                boolean isBorder = d2 >= (outerR - 1f) * (outerR - 1f)
-                    || d2 <= (innerR + 1f) * (innerR + 1f);
-
-                // Cạnh bên (theo góc)
-                if (!isBorder) {
-                    float delta = 360f / activeShapes.size();
-                    float distToStart = Math.abs(ang - s);
-                    if (distToStart > 180f) distToStart = 360f - distToStart;
-                    float distToEnd = Math.abs(ang - e);
-                    if (distToEnd > 180f) distToEnd = 360f - distToEnd;
-                    // ≈ 1 pixel tại góc bên
-                    float angBorder = 1.5f / ((float) Math.sqrt(d2));
-                    if (distToStart < angBorder || distToEnd < angBorder) isBorder = true;
-                }
-
-                if (isBorder) ctx.fill(x + px, y + py, x + px + 1, y + py + 1, borderColor);
-            }
-        }
-    }
-
-    private String shortenLabel(String label) {
-        if (textRenderer.getWidth(label) <= 55) return label;
-        // Cắt lấy từ đầu
-        int n = activeShapes.size();
-        String[] words = label.split(" ");
-        return words[0]; // chỉ lấy từ đầu tiên nếu quá dài
-    }
 }
