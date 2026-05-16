@@ -61,7 +61,8 @@ public class TCVeinMinerClient implements ClientModInitializer {
             // 3. Gửi Packet đồng bộ lên Server (chỉ gửi khi trạng thái thay đổi)
             if (holdKeyDown != lastHoldState && client.getNetworkHandler() != null) {
                 lastHoldState = holdKeyDown;
-                ClientPlayNetworking.send(new HoldKeyPayload(holdKeyDown));
+                com.tcveinminer.config.ModConfig cfg = com.tcveinminer.config.ConfigManager.get();
+                ClientPlayNetworking.send(new HoldKeyPayload(holdKeyDown, cfg.miningShape.name(), cfg.maxBlocks));
             }
         });
 

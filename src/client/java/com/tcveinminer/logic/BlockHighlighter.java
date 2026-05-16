@@ -44,7 +44,7 @@ public class BlockHighlighter {
             false, false,
             RenderLayer.MultiPhaseParameters.builder()
                     .program(RenderPhase.LINES_PROGRAM)
-                    .lineWidth(new RenderPhase.LineWidth(OptionalDouble.of(1.0)))
+                    .lineWidth(new RenderPhase.LineWidth(OptionalDouble.of(3.0)))
                     .layering(RenderPhase.VIEW_OFFSET_Z_LAYERING)
                     .transparency(RenderPhase.TRANSLUCENT_TRANSPARENCY)
                     .target(RenderPhase.ITEM_ENTITY_TARGET)
@@ -116,10 +116,13 @@ public class BlockHighlighter {
 
         for (EdgeData ed : edgeCount.values()) {
             if (ed.count != 1) continue;
-            solid.vertex(mat, ed.ax, ed.ay, ed.az).color(1f, 0.2f, 0.2f, 0.8f).normal(ed.nx, ed.ny, ed.nz);
-            solid.vertex(mat, ed.bx, ed.by, ed.bz).color(1f, 0.2f, 0.2f, 0.8f).normal(ed.nx, ed.ny, ed.nz);
-            xray.vertex(mat, ed.ax, ed.ay, ed.az).color(1f, 0.2f, 0.2f, 0.25f).normal(ed.nx, ed.ny, ed.nz);
-            xray.vertex(mat, ed.bx, ed.by, ed.bz).color(1f, 0.2f, 0.2f, 0.25f).normal(ed.nx, ed.ny, ed.nz);
+            // Đường vẽ trực tiếp nhìn thấy (Solid) - Sử dụng màu sắc sáng hơn
+            solid.vertex(mat, ed.ax, ed.ay, ed.az).color(0f, 1f, 1f, 1f).normal(ed.nx, ed.ny, ed.nz);
+            solid.vertex(mat, ed.bx, ed.by, ed.bz).color(0f, 1f, 1f, 1f).normal(ed.nx, ed.ny, ed.nz);
+
+            // Đường vẽ xuyên tường (X-ray) - Tăng alpha lên 0.6f để nhìn rõ khối bị che khuất
+            xray.vertex(mat, ed.ax, ed.ay, ed.az).color(0f, 1f, 1f, 0.6f).normal(ed.nx, ed.ny, ed.nz);
+            xray.vertex(mat, ed.bx, ed.by, ed.bz).color(0f, 1f, 1f, 0.6f).normal(ed.nx, ed.ny, ed.nz);
         }
         matrices.pop();
     }

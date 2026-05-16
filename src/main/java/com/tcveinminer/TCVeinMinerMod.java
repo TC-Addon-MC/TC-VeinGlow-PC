@@ -28,8 +28,12 @@ public class TCVeinMinerMod implements ModInitializer {
 
         ServerPlayNetworking.registerGlobalReceiver(HoldKeyPayload.ID, (payload, context) -> {
             UUID uuid = context.player().getUuid();
-            if (payload.isHolding()) playersHoldingV.add(uuid);
-            else playersHoldingV.remove(uuid);
+            if (payload.isHolding()) {
+                playersHoldingV.add(uuid);
+                MiningEngine.forPlayer(uuid).updatePlayerConfig(payload.shapeId(), payload.maxBlocks());
+            } else {
+                playersHoldingV.remove(uuid);
+            }
         });
 
         // Break event: trigger engine scan + queue build

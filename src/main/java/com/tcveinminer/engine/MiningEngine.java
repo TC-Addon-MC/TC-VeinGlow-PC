@@ -54,7 +54,13 @@ public final class MiningEngine {
 
     private int brokenCount = 0;
     private int targetCount = 0;
+    private String playerShape = "FACE";
+    private int playerMaxBlocks = 64;
 
+    public void updatePlayerConfig(String shapeId, int maxBlocks) {
+        this.playerShape = shapeId;
+        this.playerMaxBlocks = maxBlocks;
+    }
     private MiningEngine() {}
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -86,10 +92,10 @@ public final class MiningEngine {
         }
 
         // SCANNING
-        stateMachine.transition(State.SCANNING);
-        MiningStrategy strategy = StrategyRegistry.get(c.miningShape.name());
-        List<BlockPos> found = strategy.collectBlocks(world, origin, originState, c.maxBlocks - 1);
 
+        stateMachine.transition(State.SCANNING);
+        MiningStrategy strategy = StrategyRegistry.get(this.playerShape);
+        List<BlockPos> found = strategy.collectBlocks(world, origin, originState, this.playerMaxBlocks - 1);
         if (found.isEmpty()) {
             stateMachine.force(State.IDLE);
             return;
