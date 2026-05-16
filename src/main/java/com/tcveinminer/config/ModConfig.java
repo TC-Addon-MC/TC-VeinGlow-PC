@@ -32,13 +32,15 @@ public class ModConfig {
     }
 
     // Cài đặt chung
+    // Cài đặt chung
     public boolean enabled            = true;
     public int     maxBlocks          = 64;
     public boolean requireCorrectTool = true;
     public boolean consumeDurability  = true;
     public int     cooldownTicks      = 0;
     public boolean showHud            = true;
-
+    public boolean requireSneak       = false; // Thêm dòng này
+    public boolean diagonalMining     = false; // Thêm dòng này
     /** Số block tối đa execute mỗi server tick (tick slicing). */
     public int tickSliceSize = 4;
 

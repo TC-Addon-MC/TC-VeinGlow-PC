@@ -8,6 +8,7 @@ import net.minecraft.registry.Registries;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import java.util.*;
+import com.tcveinminer.config.ConfigManager;
 
 public class BlockListScreen extends BaseScreen {
 
@@ -21,7 +22,7 @@ public class BlockListScreen extends BaseScreen {
 
     public BlockListScreen(Screen parent) {
         super(parent, "Block List", 300, 260);
-        blocks.addAll(ModConfig.get().blacklistedBlocks);
+        blocks.addAll(ConfigManager.get().blacklistedBlocks); // Sửa ở đây
     }
 
     @Override
@@ -40,9 +41,9 @@ public class BlockListScreen extends BaseScreen {
         }).dimensions(x+84, y+LIST_Y+LIST_H+6, 90, 15).build());
 
         addDrawableChild(ButtonWidget.builder(Text.literal("LƯU & QUAY LẠI"), b -> {
-            ModConfig.get().blacklistedBlocks.clear();
-            ModConfig.get().blacklistedBlocks.addAll(blocks);
-            ModConfig.save();
+            ConfigManager.get().blacklistedBlocks.clear(); // Sửa ở đây
+            ConfigManager.get().blacklistedBlocks.addAll(blocks); // Sửa ở đây
+            ConfigManager.save(); // Sửa ở đây
             client.setScreen(parent);
         }).dimensions(x+W/2-70, y+H-26, 140, 18).build());
 

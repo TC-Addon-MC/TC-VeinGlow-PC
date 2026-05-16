@@ -1,6 +1,7 @@
 package com.tcveinminer.hud;
 
 import com.tcveinminer.TCVeinMinerClient;
+import com.tcveinminer.config.ConfigManager;
 import com.tcveinminer.config.ModConfig;
 import com.tcveinminer.gui.Draw;
 import com.tcveinminer.gui.TC;
@@ -15,7 +16,7 @@ public class VeinMinerHud implements HudRenderCallback {
     @Override
     public void onHudRender(DrawContext ctx, RenderTickCounter tc) {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (!ModConfig.get().enabled) return; // Nếu mod bị tắt hoàn toàn thì không hiện HUD
+        if (!ConfigManager.get().enabled) return;  // Nếu mod bị tắt hoàn toàn thì không hiện HUD
 
         // Hiển thị trạng thái dựa trên việc người chơi có ĐANG ĐÈ PHÍM hay không
         boolean isMiningActive = TCVeinMinerClient.holdKeyDown;

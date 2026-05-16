@@ -1,5 +1,6 @@
 package com.tcveinminer.gui;
 
+import com.tcveinminer.config.ConfigManager;
 import com.tcveinminer.config.ModConfig;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -19,7 +20,7 @@ public class ToolConfigScreen extends BaseScreen {
 
     public ToolConfigScreen(Screen parent) {
         super(parent, "Tool Config", 300, 220);
-        ModConfig.get().enabledTools.forEach(state::put);
+        ConfigManager.get().enabledTools.forEach(state::put); // Sửa ở đây
     }
 
     @Override
@@ -33,9 +34,9 @@ public class ToolConfigScreen extends BaseScreen {
                 .dimensions(cx, cy, CW, CH).build());
         }
         addDrawableChild(ButtonWidget.builder(Text.literal("LƯU & QUAY LẠI"), b -> {
-            ModConfig.get().enabledTools.clear();
-            ModConfig.get().enabledTools.putAll(state);
-            ModConfig.save();
+            ConfigManager.get().enabledTools.clear(); // Sửa ở đây
+            ConfigManager.get().enabledTools.putAll(state); // Sửa ở đây
+            ConfigManager.save(); // Sửa ở đây
             client.setScreen(parent);
         }).dimensions(x+W/2-70, y+H-26, 140, 18).build());
     }
