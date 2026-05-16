@@ -1,6 +1,6 @@
 package com.tcveinminer.gui;
 
-import com.tcveinminer.hud.SessionStats;
+import com.tcveinminer.util.SessionStats;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
@@ -23,11 +23,11 @@ public class StatsScreen extends BaseScreen {
         ctx.fill(x+8, y+HEADER_H+6, x+W-8, y+HEADER_H+7, 0xFF2A2A4A);
 
         int ry = y+HEADER_H+14, step = 20;
-        row(ctx, ry,        "🪨 Tổng block đã đào:",        n(SessionStats.totalBlocks));
-        row(ctx, ry+step,   "⛏  Lần vein mine kích hoạt:",  n(SessionStats.activations));
-        row(ctx, ry+step*2, "💎 Block hiếm nhất đào được:",  SessionStats.rarestBlock);
-        row(ctx, ry+step*3, "⏱  Thời gian bật mod:",        SessionStats.uptime());
-        row(ctx, ry+step*4, "🔋 Durability đã tiêu tốn:",    n(SessionStats.durabilityUsed));
+        row(ctx, ry,        "🪨 Tổng block đã đào:",        n(SessionStats.getTotalBlocks()));
+        row(ctx, ry+step,   "⛏  Lần vein mine kích hoạt:",  n(SessionStats.getActivations()));
+        row(ctx, ry+step*2, "💎 Block hiếm nhất đào được:",  SessionStats.getRarestBlock());
+        row(ctx, ry+step*3, "⏱  Thời gian bật mod:",        SessionStats.getUptimeFormatted());
+        row(ctx, ry+step*4, "🔋 Durability đã tiêu tốn:",    n(SessionStats.getDurabilityUsed()));
     }
 
     private void row(DrawContext ctx, int ry, String l, String v) {
