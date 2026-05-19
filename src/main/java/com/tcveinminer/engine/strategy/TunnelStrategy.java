@@ -1,16 +1,17 @@
 package com.tcveinminer.engine.strategy;
 
+import com.tcveinminer.engine.traversal.OrientationContext;
+import com.tcveinminer.engine.traversal.Traversal;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
-import java.util.*;
+import java.util.List;
 
 /**
- * TunnelStrategy (1×2 Tunnel): đào thẳng về phía trước theo hướng player.
- * Mỗi bước: block tại chân + block phía trên (1 rộng × 2 cao).
- * BFS theo trục Z (depth) hoặc X, giữ nguyên Y.
- * Chỉ match cùng loại block — không đào bừa.
+ * TunnelStrategy: 1×2 (wide × tall) tunnel extending in the player's forward direction.
+ * Uses OrientationContext so the tunnel aligns with where the player is facing —
+ * not hardcoded to Z axis.
  */
 public final class TunnelStrategy implements MiningStrategy {
     public static final String ID = "TUNNEL_1x2";
@@ -19,47 +20,36 @@ public final class TunnelStrategy implements MiningStrategy {
     @Override public String getLabel() { return "Tunnel 1×2"; }
     @Override public String getIcon()  { return "🚇"; }
 
-    // 4 hướng ngang (không Y)
-    private static final int[][] HORIZ = {{1,0,0},{-1,0,0},{0,0,1},{0,0,-1}};
-
     @Override
-    public List<BlockPos> collectBlocks(World world, BlockPos origin, BlockState target, int maxBlocks) {
-        List<BlockPos> result = new ArrayList<>();
-        Set<BlockPos> visited = new HashSet<>();
-        Deque<BlockPos> queue = new ArrayDeque<>();
+    public List<BlockPos> collectBlocks(World world, BlockPos origin, BlockState target,
+                                         int maxBlocks, OrientationContext ctx) {
+        // depth = how many blocks we can fit in the 1×2 cross-section
+        int depth = Math.max(1, maxBlocks / 2);
+        // halfW=0 halfH=0: 1 wide, 2 tall (0 to +1 in up axis)
+        // Build manually so we can have asymmetric height (feet+head)
+        int[][] offsets = buildTunnel1x2(ctx, depth, maxBlocks);
+        return Traversal.collectBox(world, origin, offsets, maxBlocks, Traversal.notAir());
+    }
 
-        visited.add(origin);
-        queue.add(origin);
-
-        while (!queue.isEmpty() && result.size() < maxBlocks) {
-            BlockPos cur = queue.poll();
-
-            for (int[] d : HORIZ) {
-                // Block chân
-                BlockPos foot = cur.add(d[0], 0, d[2]);
-                if (visited.add(foot) && world.getBlockState(foot).getBlock() == target.getBlock()) {
-                    result.add(foot);
-                    queue.add(foot);
-                    if (result.size() >= maxBlocks) return result;
-                }
-
-                // Block đầu (trên chân 1)
-                BlockPos head = cur.add(d[0], 1, d[2]);
-                if (visited.add(head) && world.getBlockState(head).getBlock() == target.getBlock()) {
-                    result.add(head);
-                    if (result.size() >= maxBlocks) return result;
-                }
-            }
-
-            // Thêm block trên origin vào tunnel
-            BlockPos above = cur.up();
-            if (visited.add(above) && world.getBlockState(above).getBlock() == target.getBlock()) {
-                result.add(above);
-                queue.add(above);
-                if (result.size() >= maxBlocks) return result;
-            }
+    private static int[][] buildTunnel1x2(OrientationContext ctx, int depth, int maxBlocks) {
+        // 2 blocks per depth layer (feet + head height)
+        int capacity = Math.min(depth * 2, maxBlocks);
+        int[][] offsets = new int[capacity][3];
+        int idx = 0;
+        for (int f = 1; f <= depth && idx < capacity; f++) {
+            // Foot level
+            BlockPos foot = ctx.offset(BlockPos.ORIGIN, f, 0, 0);
+            offsets[idx++] = new int[]{foot.getX(), foot.getY(), foot.getZ()};
+            if (idx >= capacity) break;
+            // Head level (+1 up)
+            BlockPos head = ctx.offset(BlockPos.ORIGIN, f, 0, 1);
+            offsets[idx++] = new int[]{head.getX(), head.getY(), head.getZ()};
         }
-
-        return result;
+        if (idx < capacity) {
+            int[][] trimmed = new int[idx][3];
+            System.arraycopy(offsets, 0, trimmed, 0, idx);
+            return trimmed;
+        }
+        return offsets;
     }
 }

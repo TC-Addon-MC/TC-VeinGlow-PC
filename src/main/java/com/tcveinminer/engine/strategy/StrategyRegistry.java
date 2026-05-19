@@ -2,10 +2,6 @@ package com.tcveinminer.engine.strategy;
 
 import java.util.*;
 
-/**
- * Registry tập trung cho tất cả MiningStrategy.
- * Thêm mode mới = gọi register(), không cần sửa logic nào khác.
- */
 public final class StrategyRegistry {
 
     private static final Map<String, MiningStrategy> REGISTRY = new LinkedHashMap<>();
@@ -23,11 +19,10 @@ public final class StrategyRegistry {
         register(new TreeCapitatorStrategy());
     }
 
-    public static void register(MiningStrategy strategy) {
-        REGISTRY.put(strategy.getId(), strategy);
+    public static void register(MiningStrategy s) {
+        REGISTRY.put(s.getId(), s);
     }
 
-    /** Lấy strategy theo ID. Fallback về FaceStrategy nếu không tìm thấy. */
     public static MiningStrategy get(String id) {
         return REGISTRY.getOrDefault(id, REGISTRY.get(FaceStrategy.ID));
     }

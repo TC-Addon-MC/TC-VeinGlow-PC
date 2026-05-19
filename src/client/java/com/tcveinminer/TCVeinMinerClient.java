@@ -22,6 +22,7 @@ public class TCVeinMinerClient implements ClientModInitializer {
     /** True khi player đang giữ phím đào. */
     public static boolean holdKeyDown = false;
     private static boolean lastHoldState = false;
+    private static String lastShapeId = "";
 
     @Override
     public void onInitializeClient() {
@@ -63,12 +64,15 @@ public class TCVeinMinerClient implements ClientModInitializer {
                 holdKeyDown = false;
             }
 
-            // Gửi packet khi trạng thái thay đổi
-            if (holdKeyDown != lastHoldState && client.getNetworkHandler() != null) {
+            // Gửi packet khi trạng thái thay đổi (hold state hoặc shape)
+            var cfg = ConfigManager.get();
+            String currentShapeId = cfg.miningShape.strategyId;
+            if ((holdKeyDown != lastHoldState || !currentShapeId.equals(lastShapeId))
+                    && client.getNetworkHandler() != null) {
                 lastHoldState = holdKeyDown;
-                var cfg = ConfigManager.get();
+                lastShapeId   = currentShapeId;
                 ClientPlayNetworking.send(
-                    new HoldKeyPayload(holdKeyDown, cfg.miningShape.strategyId, cfg.maxBlocks)
+                        new HoldKeyPayload(holdKeyDown, currentShapeId, cfg.maxBlocks)
                 );
             }
         });

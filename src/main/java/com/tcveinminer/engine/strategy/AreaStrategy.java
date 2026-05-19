@@ -1,15 +1,17 @@
 package com.tcveinminer.engine.strategy;
 
+import com.tcveinminer.engine.traversal.OrientationContext;
+import com.tcveinminer.engine.traversal.Traversal;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
-import java.util.*;
+import java.util.List;
 
 /**
- * AreaStrategy (3×3): đào 3×3 vuông góc với hướng Y (đào ngang).
- * Không match block type — đào tất cả block không phải air trong vùng 3×3.
- * Dùng cho tunnel/strip mining.
+ * AreaStrategy: 3×3 oriented relative to the hit face.
+ * When mining a wall → 3×3 grid perpendicular to that wall.
+ * When mining a floor/ceiling → 3×3 horizontal grid.
  */
 public final class AreaStrategy implements MiningStrategy {
     public static final String ID = "AREA_3x3";
@@ -19,21 +21,9 @@ public final class AreaStrategy implements MiningStrategy {
     @Override public String getIcon()  { return "🟦"; }
 
     @Override
-    public List<BlockPos> collectBlocks(World world, BlockPos origin, BlockState target, int maxBlocks) {
-        List<BlockPos> result = new ArrayList<>();
-        // 3×3 trên mặt phẳng XZ (ngang), mở rộng ±1 theo X, Y, Z
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dy = -1; dy <= 1; dy++) {
-                for (int dz = -1; dz <= 1; dz++) {
-                    if (dx == 0 && dy == 0 && dz == 0) continue;
-                    BlockPos nb = origin.add(dx, dy, dz);
-                    if (!world.getBlockState(nb).isAir()) {
-                        result.add(nb);
-                        if (result.size() >= maxBlocks) return result;
-                    }
-                }
-            }
-        }
-        return result;
+    public List<BlockPos> collectBlocks(World world, BlockPos origin, BlockState target,
+                                         int maxBlocks, OrientationContext ctx) {
+        int[][] offsets = Traversal.buildPlaneOffsets(ctx, 1); // halfSide=1 → 3×3
+        return Traversal.collectBox(world, origin, offsets, maxBlocks, Traversal.notAir());
     }
 }

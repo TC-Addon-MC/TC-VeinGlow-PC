@@ -4,24 +4,30 @@ import com.tcveinminer.TCVeinMinerClient;
 import com.tcveinminer.config.ConfigManager;
 import com.tcveinminer.engine.strategy.MiningStrategy;
 import com.tcveinminer.engine.strategy.StrategyRegistry;
+import com.tcveinminer.engine.traversal.OrientationContext;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.*;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 
 import java.util.*;
 
 /**
- * BlockHighlighter: render outline blocks sẽ bị đào.
- * Preview được throttle: chỉ re-scan khi target block thay đổi.
+ * BlockHighlighter: renders outlines for blocks that will be mined.
+ *
+ * FIXED cache key: now includes yaw bucket + pitch bucket + hitFace so that
+ * rotating the camera invalidates the cache and re-scans with correct orientation.
+ * Previously the key was only (targetPos, strategyId) — rotating caused stale previews.
  */
 public class BlockHighlighter {
 
@@ -42,16 +48,25 @@ public class BlockHighlighter {
                     .build(false)
     );
 
-    // Throttle: cache kết quả preview
-    private static BlockPos lastTarget = null;
-    private static String lastStrategyId = null;
-    private static Set<BlockPos> cachedHighlight = Collections.emptySet();
+    // ── Cache ─────────────────────────────────────────────────────────────────
+
+    /** Buckets for yaw/pitch so small jitter does not thrash cache. */
+    private static final float YAW_BUCKET   = 5.0f;
+    private static final float PITCH_BUCKET = 5.0f;
+
+    private static BlockPos       lastTarget     = null;
+    private static String         lastStrategyId = null;
+    private static Direction      lastHitFace    = null;
+    private static int            lastYawBucket  = Integer.MIN_VALUE;
+    private static int            lastPitchBucket= Integer.MIN_VALUE;
+    private static Set<BlockPos>  cachedHighlight = Collections.emptySet();
 
     public static void register() {
         WorldRenderEvents.BLOCK_OUTLINE.register(BlockHighlighter::onDrawOutline);
     }
 
-    private static boolean onDrawOutline(WorldRenderContext context, WorldRenderContext.BlockOutlineContext outlineContext) {
+    private static boolean onDrawOutline(WorldRenderContext context,
+                                         WorldRenderContext.BlockOutlineContext outlineCtx) {
         if (!TCVeinMinerClient.holdKeyDown) return true;
 
         MinecraftClient client = MinecraftClient.getInstance();
@@ -67,20 +82,38 @@ public class BlockHighlighter {
     private static Set<BlockPos> resolveHighlightSet(MinecraftClient client) {
         HitResult hit = client.crosshairTarget;
         if (hit == null || hit.getType() != HitResult.Type.BLOCK) {
-            lastTarget = null;
+            invalidateCache();
             return Collections.emptySet();
         }
 
-        BlockPos targetPos = ((BlockHitResult) hit).getBlockPos();
-        String strategyId = ConfigManager.get().miningShape.strategyId;
+        BlockHitResult bhr = (BlockHitResult) hit;
+        BlockPos targetPos  = bhr.getBlockPos();
+        String strategyId   = ConfigManager.get().miningShape.strategyId;
 
-        // Cache: chỉ re-scan khi target hoặc strategy thay đổi
-        if (targetPos.equals(lastTarget) && strategyId.equals(lastStrategyId)) {
+        PlayerEntity player = client.player;
+        float pitch = player.getPitch();
+        // Use same face approximation as server so highlight matches what will be mined
+        Direction hitFace = pitch > 60f  ? Direction.UP
+                : pitch < -60f ? Direction.DOWN
+                : OrientationContext.facingFromYaw(player.getYaw());
+
+        int yawBucket   = (int)(player.getYaw()   / YAW_BUCKET);
+        int pitchBucket = (int)(player.getPitch()  / PITCH_BUCKET);
+
+        // [FIXED] Cache key now includes hitFace + yaw bucket + pitch bucket
+        if (targetPos.equals(lastTarget)
+                && strategyId.equals(lastStrategyId)
+                && hitFace == lastHitFace
+                && yawBucket   == lastYawBucket
+                && pitchBucket == lastPitchBucket) {
             return cachedHighlight;
         }
 
-        lastTarget = targetPos;
-        lastStrategyId = strategyId;
+        lastTarget      = targetPos;
+        lastStrategyId  = strategyId;
+        lastHitFace     = hitFace;
+        lastYawBucket   = yawBucket;
+        lastPitchBucket = pitchBucket;
 
         BlockState targetState = client.world.getBlockState(targetPos);
         if (targetState.isAir()) {
@@ -88,10 +121,17 @@ public class BlockHighlighter {
             return cachedHighlight;
         }
 
+        // Build full orientation context for the strategy
+        OrientationContext ctx = OrientationContext.of(
+                hitFace,
+                OrientationContext.facingFromYaw(player.getYaw())
+        );
+
         MiningStrategy strategy = StrategyRegistry.get(strategyId);
         List<BlockPos> preview = strategy.collectBlocks(
                 client.world, targetPos, targetState,
-                ConfigManager.get().maxBlocks - 1
+                ConfigManager.get().maxBlocks - 1,
+                ctx
         );
 
         cachedHighlight = new HashSet<>(preview);
@@ -99,12 +139,23 @@ public class BlockHighlighter {
         return cachedHighlight;
     }
 
+    private static void invalidateCache() {
+        lastTarget      = null;
+        lastStrategyId  = null;
+        lastHitFace     = null;
+        lastYawBucket   = Integer.MIN_VALUE;
+        lastPitchBucket = Integer.MIN_VALUE;
+        cachedHighlight = Collections.emptySet();
+    }
+
+    // ── Rendering ─────────────────────────────────────────────────────────────
+
     private static void drawOutlines(WorldRenderContext context, MinecraftClient client,
                                      Set<BlockPos> blockSet) {
         Map<Long, EdgeData> edgeCount = new HashMap<>();
         for (BlockPos pos : blockSet) {
             var shape = client.world.getBlockState(pos).getOutlineShape(client.world, pos);
-            if (shape.isEmpty()) continue; // skip blocks with no outline (air, barrier, etc.)
+            if (shape.isEmpty()) continue;
             Box box = shape.getBoundingBox();
             addAllEdges(edgeCount, pos, box);
         }
@@ -122,8 +173,8 @@ public class BlockHighlighter {
             if (ed.count != 1) continue;
             solid.vertex(mat, ed.ax, ed.ay, ed.az).color(0f, 1f, 1f, 1f).normal(ed.nx, ed.ny, ed.nz);
             solid.vertex(mat, ed.bx, ed.by, ed.bz).color(0f, 1f, 1f, 1f).normal(ed.nx, ed.ny, ed.nz);
-            xray.vertex(mat, ed.ax, ed.ay, ed.az).color(0f, 1f, 1f, 0.4f).normal(ed.nx, ed.ny, ed.nz);
-            xray.vertex(mat, ed.bx, ed.by, ed.bz).color(0f, 1f, 1f, 0.4f).normal(ed.nx, ed.ny, ed.nz);
+            xray.vertex(mat, ed.ax, ed.ay, ed.az).color(0f, 1f, 1f, 0.35f).normal(ed.nx, ed.ny, ed.nz);
+            xray.vertex(mat, ed.bx, ed.by, ed.bz).color(0f, 1f, 1f, 0.35f).normal(ed.nx, ed.ny, ed.nz);
         }
         matrices.pop();
     }
@@ -160,7 +211,7 @@ public class BlockHighlighter {
             float mx=(ax+bx)/2f, my=(ay+by)/2f, mz=(az+bz)/2f;
             float nx=mx-cx, ny=my-cy, nz=mz-cz;
             float len=(float)Math.sqrt(nx*nx+ny*ny+nz*nz);
-            if (len>0){nx/=len;ny/=len;nz/=len;}
+            if(len>0){nx/=len;ny/=len;nz/=len;}
             map.put(key, new EdgeData(ax,ay,az,bx,by,bz,nx,ny,nz));
         } else {
             ed.count++;
@@ -178,8 +229,10 @@ public class BlockHighlighter {
 
     private static class EdgeData {
         float ax,ay,az,bx,by,bz,nx,ny,nz; int count=1;
-        EdgeData(float ax,float ay,float az,float bx,float by,float bz,float nx,float ny,float nz){
-            this.ax=ax;this.ay=ay;this.az=az;this.bx=bx;this.by=by;this.bz=bz;
+        EdgeData(float ax,float ay,float az,float bx,float by,float bz,
+                 float nx,float ny,float nz){
+            this.ax=ax;this.ay=ay;this.az=az;
+            this.bx=bx;this.by=by;this.bz=bz;
             this.nx=nx;this.ny=ny;this.nz=nz;
         }
     }

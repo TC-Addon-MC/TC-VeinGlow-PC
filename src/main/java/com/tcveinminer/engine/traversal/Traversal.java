@@ -8,33 +8,34 @@ import java.util.*;
 import java.util.function.BiPredicate;
 
 /**
- * Shared traversal engines: BFS và DFS với adjacency tùy chọn.
- * Tất cả strategy đều gọi vào đây thay vì tự implement loop.
+ * Unified traversal engine. All strategies call here.
  *
- * Adjacency tiers:
- *   FACE    (D6)  — 6 mặt tiếp xúc
- *   EDGES   (D18) — 6 mặt + 12 cạnh ngang/dọc
- *   CORNERS (D26) — 26 hướng gồm cả góc
+ * DFS is iterative (stack-based). No recursion. No StackOverflowError possible.
+ *
+ * Hard limits on node count and iterations prevent server freeze.
  */
 public final class Traversal {
 
+    /** Maximum nodes visited across any traversal (anti-freeze guard). */
+    private static final int MAX_VISITED = 32_768;
+
     // 6-face adjacency
     public static final int[][] D6 = {
-            {1,0,0},{-1,0,0},{0,1,0},{0,-1,0},{0,0,1},{0,0,-1}
+        {1,0,0},{-1,0,0},{0,1,0},{0,-1,0},{0,0,1},{0,0,-1}
     };
 
-    // 18-adjacency: face + edges (không góc chéo 3D)
+    // 18-adjacency: face + edge (no 3D corner)
     public static final int[][] D18;
     static {
-        Set<String> seen = new HashSet<>();
         List<int[]> d = new ArrayList<>();
-        for (int[] f : D6) { d.add(f); seen.add(key(f)); }
+        Set<Long> seen = new HashSet<>();
+        for (int[] f : D6) { d.add(f); seen.add(dirKey(f)); }
         for (int dx = -1; dx <= 1; dx++)
             for (int dy = -1; dy <= 1; dy++)
                 for (int dz = -1; dz <= 1; dz++) {
                     if (Math.abs(dx) + Math.abs(dy) + Math.abs(dz) == 2) {
                         int[] v = {dx, dy, dz};
-                        if (seen.add(key(v))) d.add(v);
+                        if (seen.add(dirKey(v))) d.add(v);
                     }
                 }
         D18 = d.toArray(new int[0][]);
@@ -52,25 +53,29 @@ public final class Traversal {
         D26 = d.toArray(new int[0][]);
     }
 
-    private static String key(int[] v) { return v[0] + "," + v[1] + "," + v[2]; }
+    private static long dirKey(int[] v) {
+        return ((long)(v[0]+2)*25L + (v[1]+2)*5L + (v[2]+2));
+    }
 
     /**
-     * BFS từ origin với adjacency tùy chọn.
-     * Dùng visited Set để tránh loop vô hạn.
-     * origin không được include trong kết quả.
+     * Iterative BFS from origin.
+     * origin is NOT included in results.
      */
     public static List<BlockPos> bfs(World world, BlockPos origin, int maxBlocks,
                                      int[][] adjacency, BiPredicate<BlockPos, BlockState> matcher) {
-        List<BlockPos> result = new ArrayList<>();
+        List<BlockPos> result = new ArrayList<>(Math.min(maxBlocks, 256));
         Set<BlockPos> visited = new HashSet<>();
         Deque<BlockPos> queue = new ArrayDeque<>();
 
         visited.add(origin);
         queue.add(origin);
+        int iterations = 0;
 
-        while (!queue.isEmpty() && result.size() < maxBlocks) {
+        while (!queue.isEmpty() && result.size() < maxBlocks && iterations < MAX_VISITED) {
             BlockPos cur = queue.poll();
+            iterations++;
             for (int[] d : adjacency) {
+                if (result.size() >= maxBlocks) break;
                 BlockPos nb = cur.add(d[0], d[1], d[2]);
                 if (!visited.add(nb)) continue;
                 BlockState nbState = world.getBlockState(nb);
@@ -84,37 +89,102 @@ public final class Traversal {
     }
 
     /**
-     * DFS từ origin với recursion depth limit.
-     * Cho kết quả khác BFS về thứ tự — dùng cho strategies cần depth-first path.
+     * Iterative DFS from origin. Uses explicit stack — no recursion.
+     * origin is NOT included in results.
      */
     public static List<BlockPos> dfs(World world, BlockPos origin, int maxBlocks,
                                      int[][] adjacency, BiPredicate<BlockPos, BlockState> matcher) {
-        List<BlockPos> result = new ArrayList<>();
+        List<BlockPos> result = new ArrayList<>(Math.min(maxBlocks, 256));
         Set<BlockPos> visited = new HashSet<>();
+        Deque<BlockPos> stack = new ArrayDeque<>();
+
         visited.add(origin);
-        dfsRecurse(world, origin, maxBlocks, adjacency, matcher, visited, result, 0);
+        stack.push(origin);
+        int iterations = 0;
+
+        while (!stack.isEmpty() && result.size() < maxBlocks && iterations < MAX_VISITED) {
+            BlockPos cur = stack.pop();
+            iterations++;
+            for (int[] d : adjacency) {
+                if (result.size() >= maxBlocks) break;
+                BlockPos nb = cur.add(d[0], d[1], d[2]);
+                if (!visited.add(nb)) continue;
+                BlockState nbState = world.getBlockState(nb);
+                if (matcher.test(nb, nbState)) {
+                    result.add(nb);
+                    stack.push(nb);
+                }
+            }
+        }
         return result;
     }
 
-    private static void dfsRecurse(World world, BlockPos cur, int maxBlocks,
-                                   int[][] adjacency, BiPredicate<BlockPos, BlockState> matcher,
-                                   Set<BlockPos> visited, List<BlockPos> result, int depth) {
-        if (result.size() >= maxBlocks || depth > 512) return; // hard recursion cap
-        for (int[] d : adjacency) {
-            BlockPos nb = cur.add(d[0], d[1], d[2]);
-            if (!visited.add(nb)) continue;
-            BlockState nbState = world.getBlockState(nb);
-            if (matcher.test(nb, nbState)) {
-                result.add(nb);
-                dfsRecurse(world, nb, maxBlocks, adjacency, matcher, visited, result, depth + 1);
-                if (result.size() >= maxBlocks) return;
-            }
+    /**
+     * Collect blocks within a bounded box (oriented plane or 3D region).
+     * All offsets are in world space. No traversal — flat iteration.
+     * Used by AreaStrategy and shape-mining modes.
+     */
+    public static List<BlockPos> collectBox(World world, BlockPos origin,
+                                            int[][] worldOffsets, int maxBlocks,
+                                            BiPredicate<BlockPos, BlockState> matcher) {
+        List<BlockPos> result = new ArrayList<>();
+        for (int[] off : worldOffsets) {
+            if (result.size() >= maxBlocks) break;
+            BlockPos nb = origin.add(off[0], off[1], off[2]);
+            BlockState state = world.getBlockState(nb);
+            if (matcher.test(nb, state)) result.add(nb);
         }
+        return result;
     }
 
-    /** Match theo block type (same block, bất kể state) */
+    // ── Matchers ─────────────────────────────────────────────────────────────
+
+    /** Match same block type regardless of state. */
     public static BiPredicate<BlockPos, BlockState> sameBlock(BlockState target) {
         return (pos, state) -> state.getBlock() == target.getBlock();
+    }
+
+    /** Match any non-air block. */
+    public static BiPredicate<BlockPos, BlockState> notAir() {
+        return (pos, state) -> !state.isAir();
+    }
+
+    // ── Oriented box builders ─────────────────────────────────────────────────
+
+    /**
+     * Build a flat 2D grid of offsets in the hit-face plane.
+     * halfSide=1 → 3×3, halfSide=2 → 5×5
+     */
+    public static int[][] buildPlaneOffsets(OrientationContext ctx, int halfSide) {
+        int side = halfSide * 2 + 1;
+        int[][] offsets = new int[side * side - 1][3];
+        int idx = 0;
+        for (int s = -halfSide; s <= halfSide; s++) {
+            for (int u = -halfSide; u <= halfSide; u++) {
+                if (s == 0 && u == 0) continue;
+                BlockPos off = ctx.planeOffset(BlockPos.ORIGIN, s, u);
+                offsets[idx++] = new int[]{off.getX(), off.getY(), off.getZ()};
+            }
+        }
+        return offsets;
+    }
+
+    /**
+     * Build a tunnel of given width×height × depth.
+     * Center-aligned in the plane, extending along forward axis.
+     */
+    public static int[][] buildTunnelOffsets(OrientationContext ctx,
+                                             int halfW, int halfH, int depth) {
+        List<int[]> offsets = new ArrayList<>();
+        for (int f = 1; f <= depth; f++) {
+            for (int s = -halfW; s <= halfW; s++) {
+                for (int u = -halfH; u <= halfH; u++) {
+                    BlockPos off = ctx.offset(BlockPos.ORIGIN, f, s, u);
+                    offsets.add(new int[]{off.getX(), off.getY(), off.getZ()});
+                }
+            }
+        }
+        return offsets.toArray(new int[0][]);
     }
 
     private Traversal() {}

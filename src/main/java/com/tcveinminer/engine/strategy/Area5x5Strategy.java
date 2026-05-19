@@ -1,15 +1,13 @@
 package com.tcveinminer.engine.strategy;
 
+import com.tcveinminer.engine.traversal.OrientationContext;
+import com.tcveinminer.engine.traversal.Traversal;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
-import java.util.*;
+import java.util.List;
 
-/**
- * Area5x5Strategy: đào 5×5 block xung quanh origin.
- * Không match block type — đào tất cả block không phải air.
- */
 public final class Area5x5Strategy implements MiningStrategy {
     public static final String ID = "AREA_5x5";
 
@@ -18,20 +16,9 @@ public final class Area5x5Strategy implements MiningStrategy {
     @Override public String getIcon()  { return "🔵"; }
 
     @Override
-    public List<BlockPos> collectBlocks(World world, BlockPos origin, BlockState target, int maxBlocks) {
-        List<BlockPos> result = new ArrayList<>();
-        for (int dx = -2; dx <= 2; dx++) {
-            for (int dy = -2; dy <= 2; dy++) {
-                for (int dz = -2; dz <= 2; dz++) {
-                    if (dx == 0 && dy == 0 && dz == 0) continue;
-                    BlockPos nb = origin.add(dx, dy, dz);
-                    if (!world.getBlockState(nb).isAir()) {
-                        result.add(nb);
-                        if (result.size() >= maxBlocks) return result;
-                    }
-                }
-            }
-        }
-        return result;
+    public List<BlockPos> collectBlocks(World world, BlockPos origin, BlockState target,
+                                         int maxBlocks, OrientationContext ctx) {
+        int[][] offsets = Traversal.buildPlaneOffsets(ctx, 2); // halfSide=2 → 5×5
+        return Traversal.collectBox(world, origin, offsets, maxBlocks, Traversal.notAir());
     }
 }
