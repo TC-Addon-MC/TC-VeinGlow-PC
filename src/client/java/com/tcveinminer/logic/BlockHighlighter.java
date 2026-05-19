@@ -103,7 +103,9 @@ public class BlockHighlighter {
                                      Set<BlockPos> blockSet) {
         Map<Long, EdgeData> edgeCount = new HashMap<>();
         for (BlockPos pos : blockSet) {
-            Box box = client.world.getBlockState(pos).getOutlineShape(client.world, pos).getBoundingBox();
+            var shape = client.world.getBlockState(pos).getOutlineShape(client.world, pos);
+            if (shape.isEmpty()) continue; // skip blocks with no outline (air, barrier, etc.)
+            Box box = shape.getBoundingBox();
             addAllEdges(edgeCount, pos, box);
         }
 
@@ -146,7 +148,7 @@ public class BlockHighlighter {
     }
 
     private static void addEdge(Map<Long, EdgeData> map, BlockPos pos, Box box,
-                                 int ax2, int ay2, int az2, int bx2, int by2, int bz2) {
+                                int ax2, int ay2, int az2, int bx2, int by2, int bz2) {
         long key = edgeKey(ax2,ay2,az2,bx2,by2,bz2);
         EdgeData ed = map.get(key);
         if (ed == null) {
