@@ -1,14 +1,16 @@
 {
   "schemaVersion": 1,
   "id": "tc_veinminer",
-  "version": "1.0.0",
-  "name": "TC-VeinMiner",
+  "version": "${version}",
+  "name": "TC-VeinGlow",
   "description": "Vein mining mod with custom GUI",
+  "authors": ["ToanCao"],
   "license": "MIT",
   "environment": "*",
   "entrypoints": {
     "main":   ["com.tcveinminer.TCVeinMinerMod"],
-    "client": ["com.tcveinminer.TCVeinMinerClient"]
+    "client": ["com.tcveinminer.TCVeinMinerClient"],
+    "modmenu": ["com.tcveinminer.ModMenuIntegration"]
   },
   "mixins": [],
   "depends": {

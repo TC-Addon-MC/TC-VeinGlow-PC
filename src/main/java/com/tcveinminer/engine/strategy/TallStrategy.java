@@ -7,12 +7,10 @@ import net.minecraft.world.World;
 import java.util.*;
 
 /**
- * TallStrategy (1x2 Tall): BFS ngang + kết hợp block trên/dưới thành cặp đứng.
- * Hành vi: đào theo cột 2 block cao — phù hợp tunnel khi player đứng thẳng.
- * Khác vein modes: spread ngang rồi pair theo Y, sort bottom-up để tránh block bị chặn.
+ * TallStrategy (1×2 Tall): BFS ngang + pair block trên/dưới thành cặp đứng.
+ * Sort bottom-up để không tự chặn.
  */
 public final class TallStrategy implements MiningStrategy {
-
     public static final String ID = "TALL_1x2";
 
     @Override public String getId()    { return ID; }
@@ -21,7 +19,6 @@ public final class TallStrategy implements MiningStrategy {
 
     @Override
     public List<BlockPos> collectBlocks(World world, BlockPos origin, BlockState target, int maxBlocks) {
-        BlockState targetBlock = target;
         List<BlockPos> result = new ArrayList<>();
         Set<BlockPos> visited = new HashSet<>();
         Deque<BlockPos> queue = new ArrayDeque<>();
@@ -32,7 +29,6 @@ public final class TallStrategy implements MiningStrategy {
         while (!queue.isEmpty() && result.size() < maxBlocks) {
             BlockPos cur = queue.poll();
 
-            // Spread theo 4 hướng ngang (không Y)
             for (int[] d : new int[][]{{1,0,0},{-1,0,0},{0,0,1},{0,0,-1}}) {
                 BlockPos nb = cur.add(d[0], 0, d[2]);
                 if (!visited.add(nb)) continue;
@@ -41,7 +37,7 @@ public final class TallStrategy implements MiningStrategy {
                 queue.add(nb);
                 if (result.size() >= maxBlocks) break;
 
-                // Pair: thêm block bên trên/dưới nếu cùng loại
+                // Pair: block bên trên
                 BlockPos above = nb.up();
                 if (visited.add(above) && world.getBlockState(above).getBlock() == target.getBlock()) {
                     result.add(above);
@@ -50,7 +46,6 @@ public final class TallStrategy implements MiningStrategy {
             }
         }
 
-        // Sort bottom-up: đào từ dưới lên để không bị tự chặn
         result.sort(Comparator.comparingInt(BlockPos::getY));
         return result;
     }

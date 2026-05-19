@@ -7,24 +7,22 @@ import net.minecraft.world.World;
 import java.util.*;
 
 /**
- * AreaStrategy (3×3): đào 3×3 vuông góc với hướng Y (đào ngang).
- * Không match block type — đào tất cả block không phải air trong vùng 3×3.
- * Dùng cho tunnel/strip mining.
+ * Area5x5Strategy: đào 5×5 block xung quanh origin.
+ * Không match block type — đào tất cả block không phải air.
  */
-public final class AreaStrategy implements MiningStrategy {
-    public static final String ID = "AREA_3x3";
+public final class Area5x5Strategy implements MiningStrategy {
+    public static final String ID = "AREA_5x5";
 
     @Override public String getId()    { return ID; }
-    @Override public String getLabel() { return "3×3 Area"; }
-    @Override public String getIcon()  { return "🟦"; }
+    @Override public String getLabel() { return "5×5 Area"; }
+    @Override public String getIcon()  { return "🔵"; }
 
     @Override
     public List<BlockPos> collectBlocks(World world, BlockPos origin, BlockState target, int maxBlocks) {
         List<BlockPos> result = new ArrayList<>();
-        // 3×3 trên mặt phẳng XZ (ngang), mở rộng ±1 theo X, Y, Z
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dy = -1; dy <= 1; dy++) {
-                for (int dz = -1; dz <= 1; dz++) {
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dy = -2; dy <= 2; dy++) {
+                for (int dz = -2; dz <= 2; dz++) {
                     if (dx == 0 && dy == 0 && dz == 0) continue;
                     BlockPos nb = origin.add(dx, dy, dz);
                     if (!world.getBlockState(nb).isAir()) {
