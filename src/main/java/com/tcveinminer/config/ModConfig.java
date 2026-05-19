@@ -1,26 +1,28 @@
 package com.tcveinminer.config;
 
-import com.tcveinminer.engine.strategy.*;
-
 import java.util.*;
 
 public class ModConfig {
 
     /**
      * MiningShape enum — ánh xạ đến strategy ID trong StrategyRegistry.
-     * strategyId phải khớp chính xác với Strategy.getId().
+     * strategyId phải khớp chính xác với MiningStrategy.getId().
+     *
+     * [ĐÃ CẬP NHẬT]: dùng string literal thay vì import class cũ.
+     * Thêm mode mới → chỉ cần thêm một dòng ở đây + đăng ký trong StrategyRegistry.
      */
     public enum MiningShape {
-        FACE        (FaceStrategy.ID,             "Standard (Face)",        "⬛"),
-        EDGES       (EdgeStrategy.ID,             "Standard V2 (Edges)",    "🔷"),
-        CORNERS     (CornerStrategy.ID,           "Standard V3 (Corners)",  "💎"),
-        TALL_1x2    (TallStrategy.ID,             "1×2 (Tall)",             "🧱"),
-        TUNNEL_1x2  (TunnelStrategy.ID,           "Tunnel 1×2",             "🚇"),
-        STAIR_UP    (StairStrategy.ID_UP,         "Stair Up",               "⬆"),
-        STAIR_DOWN  (StairStrategy.ID_DOWN,       "Stair Down",             "⬇"),
-        AREA_3x3    (AreaStrategy.ID,             "3×3 Area",               "🟦"),
-        AREA_5x5    (Area5x5Strategy.ID,          "5×5 Area",               "🔵"),
-        TREE_CAP    (TreeCapitatorStrategy.ID,    "TreeCapitator",          "🌳");
+        FACE        ("FACE",        "Standard (Face)",        "⬛"),
+        EDGES       ("EDGES",       "Standard V2 (Edges)",    "🔷"),
+        CORNERS     ("CORNERS",     "Standard V3 (Corners)",  "💎"),
+        TALL_1x2    ("TALL_1x2",    "1×2 (Tall)",             "🧱"),
+        TUNNEL_1x2  ("TUNNEL_1x2",  "Tunnel 1×2",             "🚇"),
+        TUNNEL_3x3  ("TUNNEL_3x3",  "Tunnel 3×3",             "🚇"),
+        STAIR_UP    ("STAIR_UP",    "Stair Up",               "⬆"),
+        STAIR_DOWN  ("STAIR_DOWN",  "Stair Down",             "⬇"),
+        AREA_3x3    ("AREA_3x3",    "3×3 Area",               "🟦"),
+        AREA_5x5    ("AREA_5x5",    "5×5 Area",               "🔵"),
+        TREE_CAP    ("TREE_CAP",    "TreeCapitator",           "🌳");
 
         public final String strategyId;
         public final String label;
@@ -47,7 +49,7 @@ public class ModConfig {
     // Shape hiện tại
     public MiningShape miningShape = MiningShape.FACE;
 
-    // Shapes bật trong radial menu (default: 3 vein modes + tunnel + tree)
+    // Shapes bật trong radial menu
     public Set<String> enabledShapes = new LinkedHashSet<>(
         List.of("FACE", "EDGES", "CORNERS", "TUNNEL_1x2", "AREA_3x3", "TREE_CAP")
     );
@@ -62,4 +64,9 @@ public class ModConfig {
             "hand",    false,
             "hoe",     false
     ));
+
+    // Convenience: lấy strategyId từ miningShape hiện tại
+    public String getStrategyId() {
+        return miningShape.strategyId;
+    }
 }

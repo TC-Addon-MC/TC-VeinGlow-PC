@@ -9,17 +9,25 @@ import net.minecraft.world.World;
 import java.util.*;
 
 /**
- * StairStrategy: stair diagonal +1 up or -1 down per step, oriented to player facing.
+ * Quản lý chế độ cầu thang (Stair).
+ *
+ * Mỗi bước: BFS lan 6 mặt + thêm bước đi forward+dy theo hướng người chơi.
+ *   dy = +1 → cầu thang đi lên
+ *   dy = -1 → cầu thang đi xuống
+ *
+ * Tạo instance:
+ *   new StairModeManager(+1)  → STAIR_UP
+ *   new StairModeManager(-1)  → STAIR_DOWN
  */
-public final class StairStrategy implements MiningStrategy {
+public final class StairModeManager implements MiningStrategy {
 
     public static final String ID_UP   = "STAIR_UP";
     public static final String ID_DOWN = "STAIR_DOWN";
 
-    private final int dy;
+    private final int    dy; // +1 = lên, -1 = xuống
     private final String id;
 
-    public StairStrategy(int dy) {
+    public StairModeManager(int dy) {
         this.dy = dy;
         this.id = dy > 0 ? ID_UP : ID_DOWN;
     }
@@ -30,10 +38,10 @@ public final class StairStrategy implements MiningStrategy {
 
     @Override
     public List<BlockPos> collectBlocks(World world, BlockPos origin, BlockState target,
-                                         int maxBlocks, OrientationContext ctx) {
-        List<BlockPos> result = new ArrayList<>();
-        Set<BlockPos> visited = new HashSet<>();
-        Deque<BlockPos> queue = new ArrayDeque<>();
+                                        int maxBlocks, OrientationContext ctx) {
+        List<BlockPos>  result  = new ArrayList<>();
+        Set<BlockPos>   visited = new HashSet<>();
+        Deque<BlockPos> queue   = new ArrayDeque<>();
 
         visited.add(origin);
         queue.add(origin);
@@ -41,31 +49,33 @@ public final class StairStrategy implements MiningStrategy {
         while (!queue.isEmpty() && result.size() < maxBlocks) {
             BlockPos cur = queue.poll();
 
-            // Face-adjacent same-block spread
+            // Lan 6 mặt: block cùng loại
             for (int[] d : Traversal.D6) {
+                if (result.size() >= maxBlocks) break;
                 BlockPos nb = cur.add(d[0], d[1], d[2]);
                 if (!visited.add(nb)) continue;
                 if (world.getBlockState(nb).getBlock() != target.getBlock()) continue;
                 result.add(nb);
                 queue.add(nb);
-                if (result.size() >= maxBlocks) break;
             }
 
-            // Stair step: forward 1 + dy vertical (uses orientation forward axis)
+            // Bước cầu thang: tiến 1 bước forward + dy bước dọc
             BlockPos step = cur.add(
                 ctx.forward.getX() + ctx.up.getX() * dy,
                 ctx.forward.getY() + ctx.up.getY() * dy,
                 ctx.forward.getZ() + ctx.up.getZ() * dy
             );
-            if (visited.add(step) && world.getBlockState(step).getBlock() == target.getBlock()) {
+            if (visited.add(step)
+                    && world.getBlockState(step).getBlock() == target.getBlock()) {
                 result.add(step);
                 queue.add(step);
             }
         }
 
+        // Sắp xếp theo Y để đào từ thấp lên (hoặc từ cao xuống)
         result.sort(dy > 0
-            ? Comparator.comparingInt(BlockPos::getY)
-            : Comparator.comparingInt((BlockPos p) -> p.getY()).reversed());
+                ? Comparator.comparingInt(BlockPos::getY)
+                : Comparator.comparingInt((BlockPos p) -> p.getY()).reversed());
         return result;
     }
 }
