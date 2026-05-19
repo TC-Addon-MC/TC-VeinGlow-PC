@@ -4,7 +4,6 @@ import com.tcveinminer.engine.traversal.OrientationContext;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
-
 import java.util.*;
 
 public final class TallStrategy implements MiningStrategy {
@@ -17,7 +16,7 @@ public final class TallStrategy implements MiningStrategy {
 
     @Override
     public List<BlockPos> collectBlocks(World world, BlockPos origin, BlockState target,
-                                         int maxBlocks, OrientationContext ctx) {
+                                        int maxBlocks, OrientationContext ctx) {
         List<BlockPos> result = new ArrayList<>();
         Set<BlockPos> visited = new HashSet<>();
         Deque<BlockPos> queue = new ArrayDeque<>();
@@ -25,19 +24,27 @@ public final class TallStrategy implements MiningStrategy {
         visited.add(origin);
         queue.add(origin);
 
+        // [ĐÃ SỬA]: Bổ sung ngay block nằm trên đỉnh của block gốc (origin)
+        BlockPos originAbove = origin.up();
+        if (world.getBlockState(originAbove).getBlock() == target.getBlock()) {
+            visited.add(originAbove);
+            result.add(originAbove);
+            queue.add(originAbove);
+        }
+
         while (!queue.isEmpty() && result.size() < maxBlocks) {
             BlockPos cur = queue.poll();
             for (int[] d : HORIZ) {
                 BlockPos nb = cur.add(d[0], 0, d[2]);
                 if (!visited.add(nb)) continue;
                 if (world.getBlockState(nb).getBlock() != target.getBlock()) continue;
+
                 result.add(nb);
                 queue.add(nb);
                 if (result.size() >= maxBlocks) break;
 
                 BlockPos above = nb.up();
-                if (visited.add(above) &&
-                    world.getBlockState(above).getBlock() == target.getBlock()) {
+                if (visited.add(above) && world.getBlockState(above).getBlock() == target.getBlock()) {
                     result.add(above);
                     queue.add(above);
                 }

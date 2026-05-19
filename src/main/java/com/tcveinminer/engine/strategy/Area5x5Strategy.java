@@ -5,7 +5,6 @@ import com.tcveinminer.engine.traversal.Traversal;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
-
 import java.util.List;
 
 public final class Area5x5Strategy implements MiningStrategy {
@@ -17,8 +16,9 @@ public final class Area5x5Strategy implements MiningStrategy {
 
     @Override
     public List<BlockPos> collectBlocks(World world, BlockPos origin, BlockState target,
-                                         int maxBlocks, OrientationContext ctx) {
-        int[][] offsets = Traversal.buildPlaneOffsets(ctx, 2); // halfSide=2 → 5×5
-        return Traversal.collectBox(world, origin, offsets, maxBlocks, Traversal.notAir());
+                                        int maxBlocks, OrientationContext ctx) {
+        int[][] offsets = Traversal.buildPlaneOffsets(ctx, 2);
+        // [ĐÃ SỬA]: Chỉ đào block cùng loại
+        return Traversal.collectBox(world, origin, offsets, maxBlocks, Traversal.sameBlock(target));
     }
 }

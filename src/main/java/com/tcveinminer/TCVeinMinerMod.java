@@ -18,11 +18,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class TCVeinMinerMod implements ModInitializer {
 
-    /**
-     * Players currently holding the key.
-     * ConcurrentHashMap.newKeySet() = thread-safe Set.
-     * Only mutated on server main thread (via server.execute()).
-     */
     public static final Set<UUID> playersHoldingV =
             Collections.newSetFromMap(new ConcurrentHashMap<>());
 
@@ -32,41 +27,40 @@ public class TCVeinMinerMod implements ModInitializer {
 
         PayloadTypeRegistry.playC2S().register(HoldKeyPayload.ID, HoldKeyPayload.CODEC);
 
-        // FIXED: network receiver runs on network thread — dispatch everything
-        // to main thread before touching any mutable server state.
         ServerPlayNetworking.registerGlobalReceiver(HoldKeyPayload.ID, (payload, context) -> {
             UUID uuid = context.player().getUuid();
-            // Server-side clamp: never trust client maxBlocks value.
             int safeMax = Math.min(payload.maxBlocks(), ConfigManager.get().maxBlocks);
+
             context.server().execute(() -> {
+                // [ĐÃ SỬA LỖI]: LUÔN LUÔN cập nhật chế độ đào (shape) kể cả khi thả phím.
+                // Tránh việc Client báo đổi chế độ nhưng Server phớt lờ vì đang không nhấn V.
+                MiningEngine.forPlayer(uuid).updatePlayerConfig(payload.shapeId(), safeMax);
+
+                // Sau đó mới cập nhật trạng thái có đang giữ phím hay không
                 if (payload.isHolding()) {
                     playersHoldingV.add(uuid);
-                    MiningEngine.forPlayer(uuid).updatePlayerConfig(payload.shapeId(), safeMax);
                 } else {
                     playersHoldingV.remove(uuid);
                 }
             });
         });
 
-        // Break event triggers engine scan. Guard flag inside engine prevents re-entry.
         PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, be) -> {
             if (world instanceof ServerWorld sw) {
                 MiningEngine.forPlayer(player.getUuid())
-                            .onBreakTrigger(player, sw, pos, state);
+                        .onBreakTrigger(player, sw, pos, state);
             }
         });
 
-        // Tick-sliced mining execution.
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             for (ServerWorld world : server.getWorlds()) {
                 for (var player : world.getPlayers()) {
                     MiningEngine.forPlayer(player.getUuid())
-                                .onServerTick(player, world);
+                            .onServerTick(player, world);
                 }
             }
         });
 
-        // FIXED: cleanup all player state on disconnect to prevent memory leaks.
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             UUID uuid = handler.player.getUuid();
             server.execute(() -> {

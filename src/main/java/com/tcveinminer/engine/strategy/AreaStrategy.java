@@ -5,14 +5,8 @@ import com.tcveinminer.engine.traversal.Traversal;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
-
 import java.util.List;
 
-/**
- * AreaStrategy: 3×3 oriented relative to the hit face.
- * When mining a wall → 3×3 grid perpendicular to that wall.
- * When mining a floor/ceiling → 3×3 horizontal grid.
- */
 public final class AreaStrategy implements MiningStrategy {
     public static final String ID = "AREA_3x3";
 
@@ -22,8 +16,9 @@ public final class AreaStrategy implements MiningStrategy {
 
     @Override
     public List<BlockPos> collectBlocks(World world, BlockPos origin, BlockState target,
-                                         int maxBlocks, OrientationContext ctx) {
-        int[][] offsets = Traversal.buildPlaneOffsets(ctx, 1); // halfSide=1 → 3×3
-        return Traversal.collectBox(world, origin, offsets, maxBlocks, Traversal.notAir());
+                                        int maxBlocks, OrientationContext ctx) {
+        int[][] offsets = Traversal.buildPlaneOffsets(ctx, 1);
+        // [ĐÃ SỬA]: Chỉ đào block cùng loại với block mục tiêu
+        return Traversal.collectBox(world, origin, offsets, maxBlocks, Traversal.sameBlock(target));
     }
 }
