@@ -3,6 +3,7 @@ package com.tcveinminer.gui.screens;
 import com.tcveinminer.config.ConfigManager;
 import com.tcveinminer.gui.CustomButton;
 import com.tcveinminer.util.DrawHelper;
+import com.tcveinminer.util.ToggleDrawUtil;
 import com.tcveinminer.util.ThemeColors;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -16,26 +17,23 @@ public class ToolConfigScreen extends Screen {
     private static final int HEADER_H = 24;
 
     private static final String[][] TOOLS = {
-        {"pickaxe", "⛏ Pickaxe"},
-        {"axe",     "🪓 Axe"},
-        {"shovel",  "🔪 Shovel"},
-        {"sword",   "🗡 Sword"},
-        {"hand",    "✋ Tay trần"},
-        {"hoe",     "🪚 Hoe"},
+            {"pickaxe", "⛏ Pickaxe"},
+            {"axe",     "🪓 Axe"},
+            {"shovel",  "🔪 Shovel"},
+            {"sword",   "🗡 Sword"},
+            {"hand",    "✋ Tay trần"},
+            {"hoe",     "🪚 Hoe"},
     };
 
     private final Screen parent;
-    // Working copy để hủy nếu cần
     private final Map<String, Boolean> toolState = new LinkedHashMap<>();
     private int x, y;
 
-    // Card dims
     private static final int CARD_W = 120, CARD_H = 44, CARD_GAP = 10;
 
     public ToolConfigScreen(Screen parent) {
         super(Text.literal("Tool Config"));
         this.parent = parent;
-        // Copy config
         ConfigManager.get().enabledTools.forEach(toolState::put);
     }
 
@@ -44,7 +42,6 @@ public class ToolConfigScreen extends Screen {
         x = (width - W) / 2;
         y = (height - H) / 2;
 
-        // Tool cards — click để toggle
         int startX = x + (W - (CARD_W * 2 + CARD_GAP)) / 2;
         int startY = y + HEADER_H + 10;
 
@@ -55,13 +52,11 @@ public class ToolConfigScreen extends Screen {
             int cx = startX + col * (CARD_W + CARD_GAP);
             int cy = startY + row * (CARD_H + 8);
 
-            // Invisible button covering card area
             addDrawableChild(new CustomButton(cx, cy, CARD_W, CARD_H, Text.empty(), btn -> {
                 toolState.merge(toolKey, false, (old, v) -> !old);
             }));
         }
 
-        // Save
         addDrawableChild(new CustomButton(x + W / 2 - 80, y + H - 34, 160, 18,
                 Text.literal("LƯU & QUAY LẠI"), btn -> {
             ConfigManager.get().enabledTools.clear();
@@ -90,22 +85,16 @@ public class ToolConfigScreen extends Screen {
             int cx = startX + col * (CARD_W + CARD_GAP);
             int cy = startY + row * (CARD_H + 8);
 
-            // Card background
-            DrawHelper.drawToggleButton(ctx, cx, cy, CARD_W, CARD_H, on);
+            // Dùng ToggleDrawUtil thay DrawHelper.drawToggleButton
+            ToggleDrawUtil.draw(ctx, cx, cy, CARD_W, CARD_H, on);
 
-            // Tool name
-            ctx.drawTextWithShadow(textRenderer, label,
-                cx + 16, cy + 10, on ? ThemeColors.TOGGLE_ON_TEXT : ThemeColors.TOGGLE_OFF_TEXT);
-
-            // Status
-            String status = on ? "✓ BẬT" : "✗ TẮT";
-            ctx.drawTextWithShadow(textRenderer, status,
-                cx + 16, cy + 24, on ? ThemeColors.TOGGLE_ON_TEXT : ThemeColors.TOGGLE_OFF_TEXT);
+            int textColor = on ? ThemeColors.EMERALD_TEXT : ThemeColors.REDSTONE_TEXT;
+            ctx.drawTextWithShadow(textRenderer, label,    cx + 16, cy + 10, textColor);
+            ctx.drawTextWithShadow(textRenderer, on ? "✓ BẬT" : "✗ TẮT", cx + 16, cy + 24, textColor);
         }
 
         super.render(ctx, mouseX, mouseY, delta);
     }
 
-    @Override
-    public boolean shouldPause() { return false; }
+    @Override public boolean shouldPause() { return false; }
 }

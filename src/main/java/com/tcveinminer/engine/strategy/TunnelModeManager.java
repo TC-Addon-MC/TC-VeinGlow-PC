@@ -36,7 +36,7 @@ public final class TunnelModeManager implements MiningStrategy {
     private final int uMin, uMax; // tiết diện: trục dọc (up)
 
     public TunnelModeManager(String id, String label, String icon,
-                              int sMin, int sMax, int uMin, int uMax) {
+                             int sMin, int sMax, int uMin, int uMax) {
         this.id    = id;
         this.label = label;
         this.icon  = icon;
@@ -55,28 +55,29 @@ public final class TunnelModeManager implements MiningStrategy {
                                         int maxBlocks, OrientationContext ctx) {
         List<BlockPos> result    = new ArrayList<>();
         int consecutiveAirSlices = 0;
-        int depth                = 0;
+        int depth                = -1; // bắt đầu từ -1 để tầng đầu tiên là f=0 (cùng lớp với origin)
 
         while (result.size() < maxBlocks) {
             depth++;
 
-            // Thu thập tất cả block trong tầng này (tiết diện tại chiều sâu `depth`)
             List<BlockPos> sliceBlocks = new ArrayList<>();
             for (int s = sMin; s <= sMax; s++) {
                 for (int u = uMin; u <= uMax; u++) {
+                    if (depth == 0 && s == 0 && u == 0) continue; // bỏ chính origin
                     BlockPos pos = ctx.offset(origin, depth, s, u);
-                    if (!world.getBlockState(pos).isAir()) {
+
+                    // SỬA TẠI ĐÂY: Chỉ lấy những khối trùng loại với khối mục tiêu
+                    if (world.getBlockState(pos).getBlock() == target.getBlock()) {
                         sliceBlocks.add(pos);
                     }
                 }
             }
 
             if (sliceBlocks.isEmpty()) {
-                // Tầng toàn air
+                // Tầng này không chứa khối nào cùng loại (có thể là không khí hoặc khối khác)
                 consecutiveAirSlices++;
-                if (consecutiveAirSlices >= AIR_SLICE_STOP) break; // dừng sau 3 tầng air
+                if (consecutiveAirSlices >= AIR_SLICE_STOP) break;
             } else {
-                // Tầng có block thực → reset đếm air
                 consecutiveAirSlices = 0;
                 for (BlockPos pos : sliceBlocks) {
                     if (result.size() >= maxBlocks) break;

@@ -109,7 +109,9 @@ public final class ShapeModeManager implements MiningStrategy {
             BlockPos pos = (type == ShapeType.PLANE_2D)
                     ? ctx.planeOffset(origin, off[0], off[1])
                     : ctx.offset(origin, off[0], off[1], off[2]);
-            if (!world.getBlockState(pos).isAir()) {
+
+            // SỬA TẠI ĐÂY: Thay !isAir() bằng kiểm tra trùng loại block đang đào
+            if (world.getBlockState(pos).getBlock() == target.getBlock()) {
                 result.add(pos);
             }
         }

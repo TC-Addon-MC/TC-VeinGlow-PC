@@ -242,18 +242,11 @@ public final class MiningEngine {
         return Registries.BLOCK.getId(state.getBlock()).toString();
     }
 
-    /**
-     * Infer the hit face from player's look direction.
-     * pitch > 60 degrees down  => player looking at floor => UP face
-     * pitch < -60 degrees up   => player looking at ceiling => DOWN face
-     * otherwise                => horizontal wall face (opposite of player facing)
-     */
     private static Direction approximateHitFace(PlayerEntity player) {
         float pitch = player.getPitch();
         if (pitch > 60f)  return Direction.UP;
         if (pitch < -60f) return Direction.DOWN;
-        // Horizontal: the wall face is the one the player is looking AT,
-        // which is the same as playerFacing (not opposite).
-        return OrientationContext.facingFromYaw(player.getYaw());
+        // Thay đổi ở đây: lấy hướng ngược lại cho mặt tường
+        return OrientationContext.facingFromYaw(player.getYaw()).getOpposite();
     }
 }

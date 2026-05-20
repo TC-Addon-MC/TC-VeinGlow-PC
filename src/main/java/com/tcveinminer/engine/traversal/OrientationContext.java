@@ -6,21 +6,6 @@ import net.minecraft.util.math.Vec3i;
 
 /**
  * Spatial orientation for direction-aware mining.
- *
- * Coordinate frame (right-hand rule):
- *   forward = depth axis (into the wall, away from player)
- *   up      = +Y world axis
- *   right   = cross(up, forward)  — gives correct handedness
- *
- * Wall face (NORTH/SOUTH/EAST/WEST):
- *   forward = hitFace.getOpposite()
- *   right   = cross(up, forward)
- *
- * Floor/ceiling (UP/DOWN):
- *   forward = playerFacing (horizontal)
- *   right   = cross(up, forward)
- *
- * "plane" for AreaStrategy = (right × up) plane at origin.
  */
 public final class OrientationContext {
 
@@ -29,33 +14,40 @@ public final class OrientationContext {
     public final Vec3i forward;
     public final Vec3i right;
     public final Vec3i up;
+    public final Vec3i planeUp; // Thuộc tính mới cho việc trải lưới Area
 
     private OrientationContext(Direction hitFace, Direction playerFacing,
-                               Vec3i forward, Vec3i right, Vec3i up) {
+                               Vec3i forward, Vec3i right, Vec3i up, Vec3i planeUp) {
         this.hitFace      = hitFace;
         this.playerFacing = playerFacing;
         this.forward      = forward;
         this.right        = right;
         this.up           = up;
+        this.planeUp      = planeUp;
     }
 
     public static OrientationContext of(Direction hitFace, Direction playerFacing) {
         Vec3i worldUp = new Vec3i(0, 1, 0);
         Vec3i fwd;
+        Vec3i planeUp;
 
         switch (hitFace) {
-            case UP, DOWN ->
-                // Floor/ceiling: use player's horizontal facing as depth axis
-                    fwd = playerFacing.getVector();
-            default ->
-                // Wall: forward = direction INTO the wall
-                    fwd = hitFace.getOpposite().getVector();
+            case UP, DOWN -> {
+                // Sàn/Trần: sử dụng hướng nhìn ngang của người chơi làm trục chiều sâu
+                fwd = playerFacing.getVector();
+                planeUp = playerFacing.getVector(); // Trải phẳng theo hướng người chơi nhìn
+            }
+            default -> {
+                // Tường: hướng đi sâu vào trong lòng tường
+                fwd = hitFace.getOpposite().getVector();
+                planeUp = worldUp; // Giữ nguyên worldUp cho các mặt tường đứng
+            }
         }
 
-        // right = cross(up, forward) — standard right-hand rule
-        Vec3i r = cross(worldUp, fwd);
+        // Sửa Bug 2: Đổi thứ tự để đảm bảo quy tắc bàn tay phải
+        Vec3i r = cross(fwd, worldUp);
 
-        return new OrientationContext(hitFace, playerFacing, fwd, r, worldUp);
+        return new OrientationContext(hitFace, playerFacing, fwd, r, worldUp, planeUp);
     }
 
     public static OrientationContext defaultContext() {
@@ -64,19 +56,19 @@ public final class OrientationContext {
 
     /**
      * Map (sideOffset, upOffset) in the hit-face plane to world BlockPos offset.
-     * AreaStrategy uses this: s = horizontal spread, u = vertical spread.
+     * Sử dụng planeUp thay vì up cố định.
      */
     public BlockPos planeOffset(BlockPos origin, int s, int u) {
         return origin.add(
-                right.getX() * s + this.up.getX() * u,
-                right.getY() * s + this.up.getY() * u,
-                right.getZ() * s + this.up.getZ() * u
+                right.getX() * s + this.planeUp.getX() * u,
+                right.getY() * s + this.planeUp.getY() * u,
+                right.getZ() * s + this.planeUp.getZ() * u
         );
     }
 
     /**
      * Map (forward, side, up) to world BlockPos offset from origin.
-     * TunnelStrategy uses this.
+     * Giữ nguyên up (worldUp) để đảm bảo chiều cao các mode Tunnel/Stair chính xác.
      */
     public BlockPos offset(BlockPos origin, int f, int s, int u) {
         return origin.add(
@@ -97,7 +89,6 @@ public final class OrientationContext {
 
     /**
      * Map Minecraft yaw → cardinal direction.
-     * Minecraft yaw: 0 = south, 90 = west, 180 = north, 270 = east.
      */
     public static Direction facingFromYaw(float yaw) {
         float y = ((yaw % 360) + 360) % 360;

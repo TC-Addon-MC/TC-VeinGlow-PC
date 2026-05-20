@@ -77,12 +77,12 @@ public final class RotationManager {
         return list.toArray(new int[0][]);
     }
 
-    /** Suy ra hitFace từ pitch/yaw của player. */
     public static Direction approximateHitFace(PlayerEntity player) {
         float pitch = player.getPitch();
         if (pitch > 60f)  return Direction.UP;
         if (pitch < -60f) return Direction.DOWN;
-        return OrientationContext.facingFromYaw(player.getYaw());
+        // Thay đổi ở đây: lấy hướng ngược lại cho mặt tường
+        return OrientationContext.facingFromYaw(player.getYaw()).getOpposite();
     }
 
     private RotationManager() {}

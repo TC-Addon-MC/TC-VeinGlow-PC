@@ -93,9 +93,10 @@ public class BlockHighlighter {
         PlayerEntity player = client.player;
         float pitch = player.getPitch();
         // Use same face approximation as server so highlight matches what will be mined
+        // Sửa phần xác định hitFace dưới Client
         Direction hitFace = pitch > 60f  ? Direction.UP
                 : pitch < -60f ? Direction.DOWN
-                : OrientationContext.facingFromYaw(player.getYaw());
+                : OrientationContext.facingFromYaw(player.getYaw()).getOpposite();
 
         int yawBucket   = (int)(player.getYaw()   / YAW_BUCKET);
         int pitchBucket = (int)(player.getPitch()  / PITCH_BUCKET);

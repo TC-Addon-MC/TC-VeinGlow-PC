@@ -1,6 +1,6 @@
 package com.tcveinminer.gui;
 
-import com.tcveinminer.util.DrawHelper;
+import com.tcveinminer.util.ButtonDrawUtil;
 import com.tcveinminer.util.ThemeColors;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
@@ -15,19 +15,16 @@ public class CustomButton extends ButtonWidget {
     }
 
     @Override
-    protected void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
-        // Tự vẽ nền tùy chỉnh bằng DrawHelper của bạn
-        DrawHelper.drawButton(context, this.getX(), this.getY(), this.getWidth(), this.getHeight(), this.isHovered(), false);
+    protected void renderWidget(DrawContext ctx, int mouseX, int mouseY, float delta) {
+        ButtonDrawUtil.drawPrimary(ctx, getX(), getY(), getWidth(), getHeight(),
+                isHovered(), false);
 
-        // Lấy TextRenderer từ MinecraftClient
-        TextRenderer textRenderer = MinecraftClient.getInstance().textRenderer;
-
-        // Vẽ Text ra giữa nút
-        int color = this.isHovered() ? ThemeColors.BTN_TEXT : 0xFFAAAAAA;
-        int textWidth = textRenderer.getWidth(this.getMessage());
-
-        context.drawTextWithShadow(textRenderer, this.getMessage(),
-                this.getX() + (this.getWidth() - textWidth) / 2,
-                this.getY() + (this.getHeight() - 8) / 2, color);
+        TextRenderer tr = MinecraftClient.getInstance().textRenderer;
+        int color = isHovered() ? ThemeColors.GOLD : ThemeColors.TEXT_LABEL;
+        int tw    = tr.getWidth(getMessage());
+        ctx.drawTextWithShadow(tr, getMessage(),
+                getX() + (getWidth()  - tw) / 2,
+                getY() + (getHeight() - 8)  / 2,
+                color);
     }
 }

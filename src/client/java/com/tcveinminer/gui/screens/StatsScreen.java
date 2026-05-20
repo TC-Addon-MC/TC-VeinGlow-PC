@@ -1,17 +1,17 @@
 package com.tcveinminer.gui.screens;
 
 import com.tcveinminer.gui.CustomButton;
-import com.tcveinminer.util.DrawHelper;
-import com.tcveinminer.util.SessionStats;
-import com.tcveinminer.util.ThemeColors;
+import com.tcveinminer.util.*;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 
+import com.tcveinminer.util.SessionStats;
+
 public class StatsScreen extends Screen {
 
-    private static final int W = 280, H = 220;
-    private static final int HEADER_H = 24;
+    private static final int W = LayoutUtil.SCREEN_W_SM;
+    private static final int H = 220;
 
     private final Screen parent;
     private int x, y;
@@ -23,45 +23,55 @@ public class StatsScreen extends Screen {
 
     @Override
     protected void init() {
-        x = (width - W) / 2;
+        x = (width  - W) / 2;
         y = (height - H) / 2;
 
-        addDrawableChild(new CustomButton(x + 20, y + H - 36, 100, 18,
-                Text.literal("RESET STATS"), btn -> SessionStats.reset()));
+        addDrawableChild(new CustomButton(
+                x + LayoutUtil.CONTENT_PAD_X,
+                LayoutUtil.footerY(y, H),
+                100, LayoutUtil.BTN_H,
+                Text.literal("RESET STATS"),
+                btn -> SessionStats.reset()));
 
-        addDrawableChild(new CustomButton(x + W - 120, y + H - 36, 100, 18,
-                Text.literal("QUAY LẠI"), btn -> client.setScreen(parent)));
+        addDrawableChild(new CustomButton(
+                x + W - 120,
+                LayoutUtil.footerY(y, H),
+                100, LayoutUtil.BTN_H,
+                Text.literal("QUAY LẠI"),
+                btn -> client.setScreen(parent)));
     }
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        DrawHelper.drawPanel(ctx, x, y, W, H);
-        DrawHelper.drawHeader(ctx, x, y, W, HEADER_H);
+        PanelDrawUtil.panel(ctx, x, y, W, H);
+        DrawHelper.drawHeader(ctx, x, y, W, LayoutUtil.HEADER_H);
 
-        // Title
         ctx.drawTextWithShadow(textRenderer, "📊 Thống Kê Phiên Này",
-            x + 12, y + 8, ThemeColors.TEXT_TITLE);
+                x + LayoutUtil.HEADER_PAD_X, y + LayoutUtil.HEADER_PAD_Y,
+                ThemeColors.TEXT_TITLE);
 
-        // Divider
-        ctx.fill(x + 2, y + HEADER_H + 6, x + W - 2, y + HEADER_H + 7, ThemeColors.BORDER_INNER);
+        // Section card
+        int cardY = y + LayoutUtil.HEADER_H + 8;
+        PanelDrawUtil.card(ctx, x + 8, cardY, W - 16, H - LayoutUtil.HEADER_H - 48);
 
-        int rowY = y + HEADER_H + 14;
-        int rowStep = 18;
-
-        drawStatRow(ctx, rowY,              "🪨 Tổng block đã đào:",      String.format("%,d", SessionStats.getTotalBlocks()));
-        drawStatRow(ctx, rowY + rowStep,    "⛏  Lần vein mine kích hoạt:", String.format("%,d", SessionStats.getActivations()));
-        drawStatRow(ctx, rowY + rowStep*2,  "💎 Block hiếm nhất đào được:", SessionStats.getRarestBlock());
-        drawStatRow(ctx, rowY + rowStep*3,  "⏱  Thời gian bật mod:",       SessionStats.getUptimeFormatted());
-        drawStatRow(ctx, rowY + rowStep*4,  "🔋 Durability đã tiêu tốn:",  String.format("%,d", SessionStats.getDurabilityUsed()));
+        int rowY = cardY + LayoutUtil.CONTENT_PAD_Y;
+        drawStatRow(ctx, rowY,                           "🪨 Block đã đào:",        String.format("%,d", SessionStats.getTotalBlocks()));
+        drawStatRow(ctx, rowY + LayoutUtil.ROW_STEP_SM,  "⛏  Lần kích hoạt:",       String.format("%,d", SessionStats.getActivations()));
+        drawStatRow(ctx, rowY + LayoutUtil.ROW_STEP_SM*2,"💎 Block hiếm nhất:",      SessionStats.getRarestBlock());
+        drawStatRow(ctx, rowY + LayoutUtil.ROW_STEP_SM*3,"⏱  Uptime mod:",           SessionStats.getUptimeFormatted());
+        drawStatRow(ctx, rowY + LayoutUtil.ROW_STEP_SM*4,"🔋 Durability tiêu tốn:",  String.format("%,d", SessionStats.getDurabilityUsed()));
 
         super.render(ctx, mouseX, mouseY, delta);
     }
 
     private void drawStatRow(DrawContext ctx, int rowY, String label, String value) {
-        ctx.drawTextWithShadow(textRenderer, label, x + 14, rowY, ThemeColors.TEXT_LABEL);
-        ctx.drawTextWithShadow(textRenderer, value, x + W - 14 - textRenderer.getWidth(value), rowY, ThemeColors.TEXT_VALUE);
+        ctx.drawTextWithShadow(textRenderer, label,
+                x + LayoutUtil.CONTENT_PAD_X + 4, rowY, ThemeColors.TEXT_LABEL);
+        ctx.drawTextWithShadow(textRenderer, value,
+                x + W - LayoutUtil.CONTENT_PAD_X - 4 - textRenderer.getWidth(value),
+                rowY, ThemeColors.TEXT_VALUE);
     }
 
-    @Override
-    public boolean shouldPause() { return false; }
+    @Override public boolean shouldPause() { return false; }
+    @Override public void renderBackground(DrawContext ctx, int mx, int my, float delta) {}
 }

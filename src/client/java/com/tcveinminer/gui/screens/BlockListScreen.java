@@ -2,6 +2,7 @@ package com.tcveinminer.gui.screens;
 
 import com.tcveinminer.config.ConfigManager;
 import com.tcveinminer.gui.CustomButton;
+import com.tcveinminer.util.ButtonDrawUtil;
 import com.tcveinminer.util.DrawHelper;
 import com.tcveinminer.util.ThemeColors;
 import net.minecraft.client.gui.DrawContext;
@@ -46,7 +47,7 @@ public class BlockListScreen extends Screen {
 
         // Search field
         searchField = new TextFieldWidget(textRenderer, x + 10, y + HEADER_H + 8, W - 20, 16,
-            Text.literal("Tìm kiếm..."));
+                Text.literal("Tìm kiếm..."));
         searchField.setMaxLength(100);
         searchField.setPlaceholder(Text.literal("Tìm kiếm..."));
         addDrawableChild(searchField);
@@ -74,7 +75,7 @@ public class BlockListScreen extends Screen {
 
         // Popup add field
         addField = new TextFieldWidget(textRenderer, x + W/2 - 100, y + H/2 - 10, 200, 20,
-            Text.literal("minecraft:diamond_ore"));
+                Text.literal("minecraft:diamond_ore"));
         addField.setMaxLength(200);
         addField.setVisible(false);
         addDrawableChild(addField);
@@ -109,16 +110,16 @@ public class BlockListScreen extends Screen {
             int rowY = listY + (i - startIdx) * ROW_H;
             int rowBg = (i % 2 == 0) ? ThemeColors.BG_ROW_A : ThemeColors.BG_ROW_B;
             boolean hovered = mouseX >= listX && mouseX <= listX + W - 20 - 30
-                           && mouseY >= rowY && mouseY <= rowY + ROW_H;
+                    && mouseY >= rowY && mouseY <= rowY + ROW_H;
             ctx.fill(listX, rowY, listX + W - 20, rowY + ROW_H, hovered ? ThemeColors.BG_ROW_HOVER : rowBg);
 
             ctx.drawTextWithShadow(textRenderer, block, listX + 6, rowY + 6, ThemeColors.TEXT_LABEL);
 
             // Remove button [✕]
             boolean removeBtnHovered = mouseX >= listX + W - 26 && mouseX <= listX + W - 20
-                                    && mouseY >= rowY + 3 && mouseY <= rowY + 16;
+                    && mouseY >= rowY + 3 && mouseY <= rowY + 16;
             ctx.fill(listX + W - 26, rowY + 3, listX + W - 20, rowY + 16,
-                removeBtnHovered ? 0xFF6B2737 : 0xFF3A1A1A);
+                    removeBtnHovered ? 0xFF6B2737 : 0xFF3A1A1A);
             ctx.drawTextWithShadow(textRenderer, "✕", listX + W - 24, rowY + 5, ThemeColors.TEXT_ERROR);
         }
         ctx.disableScissor();
@@ -126,8 +127,8 @@ public class BlockListScreen extends Screen {
         if (filtered.isEmpty()) {
             String empty = "Không có block nào";
             ctx.drawTextWithShadow(textRenderer, empty,
-                listX + (W - 20 - textRenderer.getWidth(empty)) / 2, listY + LIST_H / 2 - 4,
-                ThemeColors.TEXT_LABEL);
+                    listX + (W - 20 - textRenderer.getWidth(empty)) / 2, listY + LIST_H / 2 - 4,
+                    ThemeColors.TEXT_LABEL);
         }
 
         super.render(ctx, mouseX, mouseY, delta);
@@ -160,13 +161,13 @@ public class BlockListScreen extends Screen {
         boolean addHov = mouseX >= px + 10 && mouseX <= px + 70 && mouseY >= py + 58 && mouseY <= py + 72;
         boolean canHov = mouseX >= px + pw - 70 && mouseX <= px + pw - 10 && mouseY >= py + 58 && mouseY <= py + 72;
 
-        DrawHelper.drawButton(ctx, px + 10, py + 58, 60, 14, addHov, false);
+        ButtonDrawUtil.drawPrimary(ctx, px + 10, py + 58, 60, 14, addHov, false);
         ctx.drawTextWithShadow(textRenderer, "THÊM", px + 10 + (60 - textRenderer.getWidth("THÊM")) / 2,
-            py + 62, ThemeColors.BTN_TEXT);
+                py + 62, ThemeColors.BTN_TEXT);
 
-        DrawHelper.drawButton(ctx, px + pw - 70, py + 58, 60, 14, canHov, false);
+        ButtonDrawUtil.drawPrimary(ctx, px + pw - 70, py + 58, 60, 14, canHov, false);
         ctx.drawTextWithShadow(textRenderer, "HỦY", px + pw - 70 + (60 - textRenderer.getWidth("HỦY")) / 2,
-            py + 62, ThemeColors.BTN_TEXT);
+                py + 62, ThemeColors.BTN_TEXT);
     }
 
     @Override
@@ -200,7 +201,7 @@ public class BlockListScreen extends Screen {
         for (int i = startIdx; i < Math.min(filtered.size(), startIdx + maxVisible); i++) {
             int rowY = listY + (i - startIdx) * ROW_H;
             if (mouseX >= listX + W - 26 && mouseX <= listX + W - 20
-             && mouseY >= rowY + 3 && mouseY <= rowY + 16) {
+                    && mouseY >= rowY + 3 && mouseY <= rowY + 16) {
                 blocks.remove(filtered.get(i));
                 return true;
             }
