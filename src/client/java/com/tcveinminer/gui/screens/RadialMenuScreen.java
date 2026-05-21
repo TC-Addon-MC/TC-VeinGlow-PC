@@ -296,7 +296,7 @@ public class RadialMenuScreen extends Screen {
 
     private void executeClickAction() {
         if (clickedAction == -2) {
-            client.setScreen(new SettingsScreen(this));
+            client.setScreen(new MainMenuScreen(this));
         } else if (clickedAction >= 0) {
             ConfigManager.get().miningShape = activeShapes.get(clickedAction);
             ConfigManager.save();
