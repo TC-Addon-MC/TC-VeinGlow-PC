@@ -1,5 +1,6 @@
 package com.tcveinminer;
 
+import com.tcveinminer.config.ClientConfigManager;
 import com.tcveinminer.config.ConfigManager;
 import com.tcveinminer.gui.screens.RadialMenuScreen;
 import com.tcveinminer.hud.VeinMinerHudOverlay;
@@ -8,6 +9,7 @@ import com.tcveinminer.network.HoldKeyPayload;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.option.KeyBinding;
@@ -19,13 +21,23 @@ public class TCVeinMinerClient implements ClientModInitializer {
     public static KeyBinding KEY_MINE;
     public static KeyBinding KEY_MENU;
 
-    /** True khi player đang giữ phím đào. */
+    /** Trạng thái "đang kích hoạt" gửi lên server (kết quả sau khi xử lý activation mode). */
     public static boolean holdKeyDown = false;
-    private static boolean lastHoldState = false;
-    private static String lastShapeId = "";
+
+    private static boolean lastHoldState  = false;
+    private static String  lastShapeId    = "";
+    private static int     lastMaxBlocks  = -1;
+
+    /** Dùng cho TOGGLE/TOGGLE_SNEAK: trạng thái toggle hiện tại. */
+    private static boolean toggleActive   = false;
+    /** Để phát hiện edge "vừa nhấn" V (tránh lặp nhiều tick). */
+    private static boolean lastKeyPressed = false;
 
     @Override
     public void onInitializeClient() {
+        // Load config client ngay khi khởi động
+        ClientConfigManager.load();
+
         KEY_MINE = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.tc_veinminer.mine",
                 InputUtil.Type.KEYSYM,
@@ -40,8 +52,25 @@ public class TCVeinMinerClient implements ClientModInitializer {
                 "key.categories.tc_veinminer"
         ));
 
-        // Đăng ký HUD overlay duy nhất
         HudRenderCallback.EVENT.register(new VeinMinerHudOverlay());
+
+        // Đồng bộ trạng thái ngay khi join server
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+            lastShapeId   = ClientConfigManager.instance.currentShape;
+            lastMaxBlocks = ClientConfigManager.instance.getEffectiveMaxBlocks();
+            lastHoldState = holdKeyDown;
+            ClientPlayNetworking.send(new HoldKeyPayload(holdKeyDown, lastShapeId, lastMaxBlocks));
+        });
+
+        // Reset khi ngắt kết nối
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            holdKeyDown    = false;
+            lastHoldState  = false;
+            lastShapeId    = "";
+            lastMaxBlocks  = -1;
+            toggleActive   = false;
+            lastKeyPressed = false;
+        });
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             // Mở menu radial
@@ -49,30 +78,55 @@ public class TCVeinMinerClient implements ClientModInitializer {
                 client.setScreen(new RadialMenuScreen(client.currentScreen));
             }
 
-            // Xác định trạng thái giữ phím
-            if (client.currentScreen == null && client.getWindow() != null) {
+            // Xác định holdKeyDown theo activation mode
+            if (client.currentScreen == null && client.getWindow() != null && client.player != null) {
                 int boundKey = KeyBindingHelper.getBoundKeyOf(KEY_MINE).getCode();
                 boolean physicallyHeld = InputUtil.isKeyPressed(client.getWindow().getHandle(), boundKey);
+                boolean sneaking = client.player.isSneaking();
+                // Edge "vừa nhấn xuống" (rising edge)
+                boolean justPressed = physicallyHeld && !lastKeyPressed;
+                lastKeyPressed = physicallyHeld;
 
-                // Nếu requireSneak = true, cần giữ Shift đồng thời
-                if (ConfigManager.get().requireSneak && client.player != null) {
-                    holdKeyDown = physicallyHeld && client.player.isSneaking();
-                } else {
-                    holdKeyDown = physicallyHeld;
+                int mode = ClientConfigManager.instance.activationMode;
+                switch (mode) {
+                    case 1 -> // HOLD_KEY: giữ V
+                        holdKeyDown = physicallyHeld;
+                    case 2 -> // HOLD_SNEAK: giữ V + sneak
+                        holdKeyDown = physicallyHeld && sneaking;
+                    case 3 -> { // TOGGLE: nhấn V một lần bật/tắt
+                        if (justPressed) toggleActive = !toggleActive;
+                        holdKeyDown = toggleActive;
+                    }
+                    case 4 -> { // TOGGLE_SNEAK: sneak + nhấn V bật/tắt
+                        if (justPressed && sneaking) toggleActive = !toggleActive;
+                        holdKeyDown = toggleActive;
+                    }
+                    default -> holdKeyDown = physicallyHeld;
                 }
             } else {
                 holdKeyDown = false;
+                // Toggle mode không tắt khi mở màn hình, chỉ HOLD reset
+                int mode = ClientConfigManager.instance.activationMode;
+                if (mode == 1 || mode == 2) {
+                    lastKeyPressed = false;
+                }
             }
 
-            // Gửi packet khi trạng thái thay đổi (hold state hoặc shape)
-            var cfg = ConfigManager.get();
-            String currentShapeId = cfg.miningShape.strategyId;
-            if ((holdKeyDown != lastHoldState || !currentShapeId.equals(lastShapeId))
-                    && client.getNetworkHandler() != null) {
+            // Kiểm tra và gửi packet nếu có thay đổi
+            String currentShapeId = ClientConfigManager.instance.currentShape;
+            int currentMaxBlocks  = ClientConfigManager.instance.getEffectiveMaxBlocks();
+
+            boolean stateChanged = (holdKeyDown != lastHoldState)
+                    || (!currentShapeId.equals(lastShapeId))
+                    || (currentMaxBlocks != lastMaxBlocks);
+
+            if (stateChanged && client.player != null && ClientPlayNetworking.canSend(HoldKeyPayload.ID)) {
                 lastHoldState = holdKeyDown;
                 lastShapeId   = currentShapeId;
+                lastMaxBlocks = currentMaxBlocks;
+
                 ClientPlayNetworking.send(
-                        new HoldKeyPayload(holdKeyDown, currentShapeId, cfg.maxBlocks)
+                        new HoldKeyPayload(holdKeyDown, currentShapeId, currentMaxBlocks)
                 );
             }
         });
