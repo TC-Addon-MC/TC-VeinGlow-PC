@@ -1,5 +1,7 @@
 package com.tcveinminer.gui.screens;
 
+import net.minecraft.util.Identifier;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -13,9 +15,10 @@ public class MenuState {
     public boolean showHud;
     public boolean showOutline;
     public Set<String> enabledShapes = new LinkedHashSet<>();
-    public List<String> blacklist = new ArrayList<>();
+    public Set<Identifier> blacklist = new LinkedHashSet<>();
     public Map<String, Boolean> enabledTools = new LinkedHashMap<>();
     public int colorR, colorG, colorB;
     public boolean colorRainbow, colorDisabled;
     public String hoveredShapeId;
+
 }

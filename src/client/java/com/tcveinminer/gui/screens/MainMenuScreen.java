@@ -19,18 +19,20 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-
+import net.minecraft.util.Identifier;
+import java.util.Set;
 public class MainMenuScreen extends Screen {
 
     private final int HDR_H     = 20;
-    private final int TAB_H     = 20;
-    private final int FOOTER_H  = 26;
+    private final int TAB_H     = 30; // Tăng chiều cao để nút tab trông thoáng hơn giống trong ảnh
+    private final int FOOTER_H  = 36; // Điều chỉnh lại footer để chứa nút LƯU cho đẹp
     private final int PAD_X     = 10;
     private final int PAD_Y     = 8;
 
     private int W, H, px, py;
     private int currentTabIndex = 0;
-    private static final String[] TABS = {"CHÍNH", "PHỤ", "ĐÀO", "LỌC", "MÀU"};
+    // Cập nhật tên tab giống hệt trong ảnh
+    private static final String[] TABS = {"BẢNG CHÍNH", "CẤU HÌNH PHỤ", "CHẾ ĐỘ ĐÀO", "BỘ LỌC", "CÀI ĐẶT MÀU"};
 
     private final Screen parent;
     private final MenuState state = new MenuState();
@@ -65,7 +67,7 @@ public class MainMenuScreen extends Screen {
         state.colorB         = fieldInt(cfg,  "colorB",           91);
         state.colorRainbow   = fieldBool(cfg, "colorRainbow",     false);
         state.colorDisabled  = fieldBool(cfg, "colorDisabled",    false);
-        state.blacklist      = new ArrayList<>(fieldList(cfg,  "blacklistedBlocks"));
+        state.blacklist = new LinkedHashSet<>();
         state.enabledTools   = new LinkedHashMap<>(fieldToolMap(cfg));
 
         if (state.hoveredShapeId == null) state.hoveredShapeId = cfg.miningShape.name();
@@ -76,10 +78,11 @@ public class MainMenuScreen extends Screen {
     private void rebuild() {
         clearChildren();
         int cx = px + PAD_X, cw = W - PAD_X * 2;
-        int cy = py + HDR_H + TAB_H + PAD_Y;
-        int ch = H - (HDR_H + TAB_H + FOOTER_H) - PAD_Y * 2;
+        // Tính toán lại không gian nội dung (Content Area): Nằm giữa Header và Tab bar
+        int cy = py + HDR_H + PAD_Y;
+        int ch = H - HDR_H - TAB_H - FOOTER_H - PAD_Y * 2;
 
-        addDrawableChild(new AmberButton(px + W - 70, py + H - 22, 60, 16, Text.literal("LƯU"), btn -> { save(); triggerSave(); }));
+        addDrawableChild(new AmberButton(px + W - 90, py + H - 28, 80, 20, Text.literal("LƯU CẤU HÌNH"), btn -> { save(); triggerSave(); }));
 
         tabInstances[currentTabIndex].init(this, cx, cy, cw, ch);
     }
@@ -102,32 +105,43 @@ public class MainMenuScreen extends Screen {
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         DrawHelper.drawPanel(ctx, px, py, W, H);
-        DrawHelper.drawHeader(ctx, px, py, W, HDR_H);
+
+        // Bỏ bớt header rườm rà nếu muốn tối giản, hoặc cứ giữ lại
         ctx.drawTextWithShadow(textRenderer, "TC VEINGLOW", px + W / 2 - textRenderer.getWidth("TC VEINGLOW") / 2, py + 6, ThemeColors.TEXT_TITLE);
 
-        ctx.fill(px + 2, py + HDR_H, px + W - 2, py + HDR_H + TAB_H, ThemeColors.BG_PANEL_INSET);
-        DrawHelper.drawSolidBorder(ctx, px + 2, py + HDR_H + TAB_H - 1, W - 4, 1, ThemeColors.BORDER_DEFAULT);
+        // --- VẼ TAB BAR ---
+        int tabBarY = py + H - FOOTER_H - TAB_H;
+        DrawHelper.drawSolidBorder(ctx, px + 2, tabBarY, W - 4, 1, DrawHelper.BORDER_MODERN); // Đường viền ngăn cách mảnh
+
         int tabW = (W - 4) / TABS.length;
         for (int i = 0; i < TABS.length; i++) {
             int tx = px + 2 + i * tabW;
-            if (i == currentTabIndex) ctx.fill(tx, py + HDR_H + TAB_H - 2, tx + tabW, py + HDR_H + TAB_H, ThemeColors.GOLD);
+
+            if (i == currentTabIndex) {
+                // Viền trắng bao quanh tab đang chọn (mỏng và tinh tế hơn)
+                DrawHelper.drawSolidBorder(ctx, tx + 2, tabBarY + 4, tabW - 4, TAB_H - 8, 0xFFFFFFFF);
+            }
+
             int tc = (i == currentTabIndex) ? ThemeColors.GOLD : ThemeColors.TEXT_LABEL;
             int tw = textRenderer.getWidth(TABS[i]);
-            ctx.drawTextWithShadow(textRenderer, TABS[i], tx + (tabW - tw) / 2, py + HDR_H + (TAB_H - 8) / 2, tc);
+            ctx.drawTextWithShadow(textRenderer, TABS[i], tx + (tabW - tw) / 2, tabBarY + (TAB_H - 8) / 2, tc);
         }
 
+        // --- VẼ FOOTER ---
         int fy = py + H - FOOTER_H;
         ctx.fill(px + 2, fy, px + W - 2, py + H - 2, ThemeColors.BG_PANEL_INSET);
         DrawHelper.drawSolidBorder(ctx, px + 2, fy, W - 4, 1, ThemeColors.BORDER_DEFAULT);
 
+        // --- VẼ NỘI DUNG TỪNG TAB ---
         int cx = px + PAD_X, cw = W - PAD_X * 2;
-        int cy = py + HDR_H + TAB_H + PAD_Y;
-        int ch = H - (HDR_H + TAB_H + FOOTER_H) - PAD_Y * 2;
+        int cy = py + HDR_H + PAD_Y;
+        int ch = H - HDR_H - TAB_H - FOOTER_H - PAD_Y * 2;
 
         tabInstances[currentTabIndex].render(ctx, this, cx, cy, cw, ch, mouseX, mouseY, delta);
 
         super.render(ctx, mouseX, mouseY, delta);
 
+        // Thông báo lưu
         if (saveNotify && System.currentTimeMillis() < saveHideAt) {
             String msg = "LƯU THÀNH CÔNG!";
             int mw = textRenderer.getWidth(msg) + 24, mh = 18, mx = (width - mw) / 2, my = py - 22;
@@ -139,7 +153,8 @@ public class MainMenuScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int btn) {
-        int tabBarY = py + HDR_H;
+        // Cập nhật vùng nhận sự kiện click chuột cho tab bar mới
+        int tabBarY = py + H - FOOTER_H - TAB_H;
         if (my >= tabBarY && my <= tabBarY + TAB_H) {
             int tw = (W - 4) / TABS.length;
             for (int i = 0; i < TABS.length; i++) {

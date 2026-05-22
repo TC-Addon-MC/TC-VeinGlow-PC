@@ -1,5 +1,7 @@
 package com.tcveinminer.config;
 
+import net.minecraft.util.Identifier;
+
 import java.util.*;
 
 public class ModConfig {
@@ -38,6 +40,7 @@ public class ModConfig {
             this.blockCount = blockCount;
         }
     }
+    public Set<Identifier> blacklist = new LinkedHashSet<>();
 
     // Cài đặt chung
     public boolean enabled            = true;

@@ -13,7 +13,7 @@ public class AmberButton extends CustomButton {
 
     @Override
     protected void renderWidget(DrawContext ctx, int mx, int my, float d) {
-        ButtonDrawUtil.drawAmber(ctx, getX(), getY(), getWidth(), getHeight(), isHovered());
+        ButtonDrawUtil.drawAmber(ctx, getX(), getY(), getWidth(), getHeight(), isHovered(), false);
         net.minecraft.client.MinecraftClient mc = net.minecraft.client.MinecraftClient.getInstance();
         int tw = mc.textRenderer.getWidth(getMessage());
         ctx.drawTextWithShadow(mc.textRenderer, getMessage(), getX() + (getWidth() - tw) / 2, getY() + (getHeight() - 8) / 2, ThemeColors.BG_SCREEN);

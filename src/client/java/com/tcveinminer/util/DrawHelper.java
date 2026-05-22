@@ -4,41 +4,49 @@ import net.minecraft.client.gui.DrawContext;
 
 /**
  * Primitive draw calls — panel, border, divider, card.
+ * Đã được cập nhật sang phong cách hiện đại (Modern Dark Theme).
  */
 public final class DrawHelper {
+
+    // Màu sắc hiện đại bám sát thiết kế mới
+    public static final int BG_APP = 0xFF0B0F19; // Nền tổng thể tối (xanh đen)
+    public static final int BG_CARD = 0xFF111827; // Nền của các hộp nhỏ bên trong (sáng hơn nền chính 1 chút)
+    public static final int BORDER_MODERN = 0xFF1F2937; // Viền xám tối phẳng
+
     public static void drawHudPill(DrawContext ctx, int x, int y, int w, int h, boolean active) {
         // Tạo màu nền hơi trong suốt (thêm alpha 0xAA vào mã màu)
         int bg = active ? 0xAA0F172A : 0xAA020408;
-        int border = active ? ThemeColors.GOLD_DIM : ThemeColors.BORDER_DIM;
+        // Đổi màu viền active sang màu cam/vàng hiện đại thay vì GOLD_DIM cũ
+        int border = active ? 0xFFF59E0B : BORDER_MODERN;
 
         ctx.fill(x, y, x + w, y + h, bg);
         drawSolidBorder(ctx, x, y, w, h, border);
     }
+
     public static void drawPanel(DrawContext ctx, int x, int y, int w, int h) {
-        ctx.fill(x + 2, y + 2, x + w - 2, y + h - 2, ThemeColors.BG_WINDOW);
-        drawGradientBorder(ctx, x, y, w, h);
+        // Vẽ nền chính trơn
+        ctx.fill(x, y, x + w, y + h, BG_APP);
+        // Vẽ viền ngoài cùng phẳng thay vì gradient
+        drawSolidBorder(ctx, x, y, w, h, BORDER_MODERN);
     }
 
+    // Giữ lại tên hàm này để các file cũ không báo lỗi,
+    // nhưng hiển thị dưới dạng viền phẳng hiện đại.
     public static void drawGradientBorder(DrawContext ctx, int x, int y, int w, int h) {
-        int half = x + w / 2;
-        ctx.fillGradient(x, y,        half,  y + 2,    ThemeColors.GOLD_DIM, ThemeColors.GOLD);
-        ctx.fillGradient(half, y,      x + w, y + 2,    ThemeColors.GOLD,     ThemeColors.COPPER_DIM);
-        ctx.fillGradient(x, y + h - 2, half,  y + h,   ThemeColors.GOLD_DIM, ThemeColors.GOLD);
-        ctx.fillGradient(half, y + h - 2, x + w, y + h, ThemeColors.GOLD,   ThemeColors.COPPER_DIM);
-        ctx.fill(x,         y + 2, x + 2,     y + h - 2, ThemeColors.GOLD_DIM);
-        ctx.fill(x + w - 2, y + 2, x + w,     y + h - 2, ThemeColors.COPPER_DIM);
+        drawSolidBorder(ctx, x, y, w, h, BORDER_MODERN);
     }
 
     public static void drawHeader(DrawContext ctx, int x, int y, int w, int hh) {
-        ctx.fill(x + 2, y + 2, x + w - 2, y + hh, ThemeColors.BG_HEADER);
-        int half = x + w / 2;
-        ctx.fillGradient(x + 2, y + hh, half,    y + hh + 1, ThemeColors.GOLD,     ThemeColors.GOLD_DIM);
-        ctx.fillGradient(half,  y + hh, x + w - 2, y + hh + 1, ThemeColors.GOLD_DIM, ThemeColors.COPPER_DIM);
+        // Nền mờ nhẹ cho Header
+        ctx.fill(x, y, x + w, y + hh, 0x1AFFFFFF);
+        // Đường phân cách mỏng dưới header
+        ctx.fill(x, y + hh - 1, x + w, y + hh, BORDER_MODERN);
     }
 
     public static void drawCard(DrawContext ctx, int x, int y, int w, int h) {
-        ctx.fill(x, y, x + w, y + h, ThemeColors.BG_PANEL);
-        drawSolidBorder(ctx, x, y, w, h, ThemeColors.BORDER_DEFAULT);
+        // Hộp chứa nội dung với viền bao quanh
+        ctx.fill(x, y, x + w, y + h, BG_CARD);
+        drawSolidBorder(ctx, x, y, w, h, BORDER_MODERN);
     }
 
     public static void drawSolidBorder(DrawContext ctx, int x, int y, int w, int h, int c) {
@@ -48,10 +56,11 @@ public final class DrawHelper {
         ctx.fill(x + w - 1, y + 1,     x + w,     y + h - 1, c);
     }
 
+    // Giữ lại hàm divider để không lỗi code, nhưng vẽ kiểu hiện đại (xám mờ dần ở 2 đầu)
     public static void drawDivider(DrawContext ctx, int x, int y, int w) {
         int half = x + w / 2;
-        ctx.fillGradient(x,    y, half,  y + 1, ThemeColors.GOLD_BORDER, ThemeColors.GOLD_DIM);
-        ctx.fillGradient(half, y, x + w, y + 1, ThemeColors.GOLD_DIM,    0x00000000);
+        ctx.fillGradient(x,    y, half,  y + 1, 0x001F2937, BORDER_MODERN);
+        ctx.fillGradient(half, y, x + w, y + 1, BORDER_MODERN,    0x001F2937);
     }
 
     // Legacy alias used by old code
@@ -59,6 +68,5 @@ public final class DrawHelper {
         drawCard(ctx, x, y, w, h);
     }
 
-    
     private DrawHelper() {}
 }
