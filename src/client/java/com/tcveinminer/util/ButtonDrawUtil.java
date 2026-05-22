@@ -28,11 +28,19 @@ public final class ButtonDrawUtil {
     }
 
     public static void drawPrimary(DrawContext ctx, int x, int y, int w, int h, boolean hovered, boolean selected) {
-        int bg = selected || hovered ? ThemeColors.BTN_PRIMARY_HOVER_BG : ThemeColors.BTN_PRIMARY_BG;
-        fillRoundedGradient(ctx, x, y, w, h, bg, ThemeColors.APP_BG);
-
-        int border = selected || hovered ? ThemeColors.BTN_PRIMARY_SELECTED_BORDER : ThemeColors.BTN_PRIMARY_BORDER;
-        drawRoundedBorder(ctx, x, y, w, h, border);
+        if (selected) {
+            // Selected: nền vàng mờ + viền vàng sáng rõ ràng
+            fillRounded(ctx, x, y, w, h, 0x44D8A15B);
+            drawRoundedBorder(ctx, x, y, w, h, ThemeColors.BTN_PRIMARY_SELECTED_BORDER);
+        } else if (hovered) {
+            // Hover: nền sáng nhẹ + viền vàng mờ
+            fillRoundedGradient(ctx, x, y, w, h, ThemeColors.BTN_PRIMARY_HOVER_BG, ThemeColors.APP_BG);
+            drawRoundedBorder(ctx, x, y, w, h, ThemeColors.GOLD_BORDER);
+        } else {
+            // Normal
+            fillRoundedGradient(ctx, x, y, w, h, ThemeColors.BTN_PRIMARY_BG, ThemeColors.APP_BG);
+            drawRoundedBorder(ctx, x, y, w, h, ThemeColors.BTN_PRIMARY_BORDER);
+        }
     }
 
     public static void drawAmber(DrawContext ctx, int x, int y, int w, int h, boolean hovered, boolean pressed) {

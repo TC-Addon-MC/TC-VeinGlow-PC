@@ -1,6 +1,8 @@
 package com.tcveinminer.logic;
 
 import com.tcveinminer.TCVeinMinerClient;
+import com.tcveinminer.config.ClientConfig;
+import com.tcveinminer.config.ClientConfigManager;
 import com.tcveinminer.config.ConfigManager;
 import com.tcveinminer.engine.strategy.MiningStrategy;
 import com.tcveinminer.engine.strategy.StrategyRegistry;
@@ -22,52 +24,68 @@ import org.joml.Matrix4f;
 
 import java.util.*;
 
-/**
- * BlockHighlighter: renders outlines for blocks that will be mined.
- *
- * FIXED cache key: now includes yaw bucket + pitch bucket + hitFace so that
- * rotating the camera invalidates the cache and re-scans with correct orientation.
- * Previously the key was only (targetPos, strategyId) — rotating caused stale previews.
- */
 public class BlockHighlighter {
 
-    private static final RenderLayer LINES_NO_DEPTH = RenderLayer.of(
-            "tc_veinminer_lines_no_depth",
-            VertexFormats.LINES,
-            VertexFormat.DrawMode.LINES,
-            256, false, false,
-            RenderLayer.MultiPhaseParameters.builder()
-                    .program(RenderPhase.LINES_PROGRAM)
-                    .lineWidth(new RenderPhase.LineWidth(OptionalDouble.of(2.5)))
-                    .layering(RenderPhase.VIEW_OFFSET_Z_LAYERING)
-                    .transparency(RenderPhase.TRANSLUCENT_TRANSPARENCY)
-                    .target(RenderPhase.ITEM_ENTITY_TARGET)
-                    .writeMaskState(RenderPhase.COLOR_MASK)
-                    .depthTest(RenderPhase.ALWAYS_DEPTH_TEST)
-                    .cull(RenderPhase.DISABLE_CULLING)
-                    .build(false)
-    );
+    // ── Render Layer Cache ────────────────────────────────────────────────────
+    private static float lastThickness = -1f;
+    private static RenderLayer cachedSolidLayer;
+    private static RenderLayer cachedXrayLayer;
 
-    // ── Cache ─────────────────────────────────────────────────────────────────
+    /** * Khởi tạo lại RenderLayer CHỈ KHI config thickness thay đổi.
+     * Cách này giúp dynamic thickness hoạt động mà không tốn per-frame performance.
+     */
+    private static void updateRenderLayers(float thickness) {
+        if (thickness != lastThickness || cachedSolidLayer == null) {
+            lastThickness = thickness;
 
-    /** Buckets for yaw/pitch so small jitter does not thrash cache. */
+            // Layer solid: Bị che bởi block (Depth test LEQUAL)
+            cachedSolidLayer = RenderLayer.of("tc_veinminer_lines_solid", VertexFormats.LINES, VertexFormat.DrawMode.LINES, 256, false, false,
+                    RenderLayer.MultiPhaseParameters.builder()
+                            .program(RenderPhase.LINES_PROGRAM)
+                            .lineWidth(new RenderPhase.LineWidth(OptionalDouble.of(thickness)))
+                            .layering(RenderPhase.VIEW_OFFSET_Z_LAYERING)
+                            .transparency(RenderPhase.TRANSLUCENT_TRANSPARENCY)
+                            .target(RenderPhase.MAIN_TARGET) // Fix lỗi clip sai
+                            .writeMaskState(RenderPhase.COLOR_MASK)
+                            .depthTest(RenderPhase.LEQUAL_DEPTH_TEST)
+                            .cull(RenderPhase.DISABLE_CULLING)
+                            .build(false)
+            );
+
+            // Layer xray: Render xuyên block (Depth test ALWAYS)
+            cachedXrayLayer = RenderLayer.of("tc_veinminer_lines_xray", VertexFormats.LINES, VertexFormat.DrawMode.LINES, 256, false, false,
+                    RenderLayer.MultiPhaseParameters.builder()
+                            .program(RenderPhase.LINES_PROGRAM)
+                            .lineWidth(new RenderPhase.LineWidth(OptionalDouble.of(thickness)))
+                            .layering(RenderPhase.VIEW_OFFSET_Z_LAYERING)
+                            .transparency(RenderPhase.TRANSLUCENT_TRANSPARENCY)
+                            .target(RenderPhase.MAIN_TARGET) // Fix lỗi clip sai
+                            .writeMaskState(RenderPhase.COLOR_MASK)
+                            .depthTest(RenderPhase.ALWAYS_DEPTH_TEST) // Xuyên tường
+                            .cull(RenderPhase.DISABLE_CULLING)
+                            .build(false)
+            );
+        }
+    }
+
+    // ── Cache Logic ───────────────────────────────────────────────────────────
     private static final float YAW_BUCKET   = 5.0f;
     private static final float PITCH_BUCKET = 5.0f;
 
-    private static BlockPos       lastTarget     = null;
-    private static String         lastStrategyId = null;
-    private static Direction      lastHitFace    = null;
-    private static int            lastYawBucket  = Integer.MIN_VALUE;
-    private static int            lastPitchBucket= Integer.MIN_VALUE;
-    private static Set<BlockPos>  cachedHighlight = Collections.emptySet();
+    private static BlockPos         lastTarget     = null;
+    private static String           lastStrategyId = null;
+    private static Direction        lastHitFace    = null;
+    private static int              lastYawBucket  = Integer.MIN_VALUE;
+    private static int              lastPitchBucket= Integer.MIN_VALUE;
+    private static Set<BlockPos>    cachedHighlight = Collections.emptySet();
 
     public static void register() {
         WorldRenderEvents.BLOCK_OUTLINE.register(BlockHighlighter::onDrawOutline);
     }
 
-    private static boolean onDrawOutline(WorldRenderContext context,
-                                         WorldRenderContext.BlockOutlineContext outlineCtx) {
+    private static boolean onDrawOutline(WorldRenderContext context, WorldRenderContext.BlockOutlineContext outlineCtx) {
         if (!TCVeinMinerClient.holdKeyDown) return true;
+        if (!ClientConfigManager.instance.showOutline) return true;
 
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.world == null || client.player == null) return true;
@@ -88,12 +106,10 @@ public class BlockHighlighter {
 
         BlockHitResult bhr = (BlockHitResult) hit;
         BlockPos targetPos  = bhr.getBlockPos();
-        String strategyId   = ConfigManager.get().miningShape.strategyId;
+        String strategyId   = ClientConfigManager.instance.currentShape;
 
         PlayerEntity player = client.player;
         float pitch = player.getPitch();
-        // Use same face approximation as server so highlight matches what will be mined
-        // Sửa phần xác định hitFace dưới Client
         Direction hitFace = pitch > 60f  ? Direction.UP
                 : pitch < -60f ? Direction.DOWN
                 : OrientationContext.facingFromYaw(player.getYaw()).getOpposite();
@@ -101,7 +117,6 @@ public class BlockHighlighter {
         int yawBucket   = (int)(player.getYaw()   / YAW_BUCKET);
         int pitchBucket = (int)(player.getPitch()  / PITCH_BUCKET);
 
-        // [FIXED] Cache key now includes hitFace + yaw bucket + pitch bucket
         if (targetPos.equals(lastTarget)
                 && strategyId.equals(lastStrategyId)
                 && hitFace == lastHitFace
@@ -122,7 +137,6 @@ public class BlockHighlighter {
             return cachedHighlight;
         }
 
-        // Build full orientation context for the strategy
         OrientationContext ctx = OrientationContext.of(
                 hitFace,
                 OrientationContext.facingFromYaw(player.getYaw())
@@ -131,7 +145,7 @@ public class BlockHighlighter {
         MiningStrategy strategy = StrategyRegistry.get(strategyId);
         List<BlockPos> preview = strategy.collectBlocks(
                 client.world, targetPos, targetState,
-                ConfigManager.get().maxBlocks - 1,
+                ClientConfigManager.instance.getEffectiveMaxBlocks() - 1,
                 ctx
         );
 
@@ -151,8 +165,7 @@ public class BlockHighlighter {
 
     // ── Rendering ─────────────────────────────────────────────────────────────
 
-    private static void drawOutlines(WorldRenderContext context, MinecraftClient client,
-                                     Set<BlockPos> blockSet) {
+    private static void drawOutlines(WorldRenderContext context, MinecraftClient client, Set<BlockPos> blockSet) {
         Map<Long, EdgeData> edgeCount = new HashMap<>();
         for (BlockPos pos : blockSet) {
             var shape = client.world.getBlockState(pos).getOutlineShape(client.world, pos);
@@ -161,24 +174,69 @@ public class BlockHighlighter {
             addAllEdges(edgeCount, pos, box);
         }
 
+        ClientConfig cfg = ClientConfigManager.instance;
+
+        // Đảm bảo layer render được cập nhật độ dày mới nhất
+        updateRenderLayers(cfg.outlineThickness);
+
+        // Đọc màu và tính toán Alpha
+        float[] rgb = resolveColor(cfg);
+        float r = rgb[0], g = rgb[1], b = rgb[2];
+        float alpha = Math.max(0f, Math.min(1f, cfg.outlineAlpha));
+        float alphaXray = alpha * 0.25f; // Giảm alpha của Xray xuống để nhìn có chiều sâu hơn
+
         MatrixStack matrices = context.matrixStack();
         Vec3d cameraPos = context.camera().getPos();
+
         matrices.push();
         matrices.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
         Matrix4f mat = matrices.peek().getPositionMatrix();
 
-        VertexConsumer solid = context.consumers().getBuffer(RenderLayer.getLines());
-        VertexConsumer xray  = context.consumers().getBuffer(LINES_NO_DEPTH);
+        VertexConsumer solid = context.consumers().getBuffer(cachedSolidLayer);
+        VertexConsumer xray  = context.consumers().getBuffer(cachedXrayLayer);
 
         for (EdgeData ed : edgeCount.values()) {
             if (ed.count != 1) continue;
-            solid.vertex(mat, ed.ax, ed.ay, ed.az).color(0f, 1f, 1f, 1f).normal(ed.nx, ed.ny, ed.nz);
-            solid.vertex(mat, ed.bx, ed.by, ed.bz).color(0f, 1f, 1f, 1f).normal(ed.nx, ed.ny, ed.nz);
-            xray.vertex(mat, ed.ax, ed.ay, ed.az).color(0f, 1f, 1f, 0.35f).normal(ed.nx, ed.ny, ed.nz);
-            xray.vertex(mat, ed.bx, ed.by, ed.bz).color(0f, 1f, 1f, 0.35f).normal(ed.nx, ed.ny, ed.nz);
+
+            // Vẽ lớp Xray (xuyên tường) trước
+            xray.vertex(mat, ed.ax, ed.ay, ed.az).color(r, g, b, alphaXray).normal(ed.nx, ed.ny, ed.nz);
+            xray.vertex(mat, ed.bx, ed.by, ed.bz).color(r, g, b, alphaXray).normal(ed.nx, ed.ny, ed.nz);
+
+            // Vẽ lớp Solid (bị tường che) đè lên
+            solid.vertex(mat, ed.ax, ed.ay, ed.az).color(r, g, b, alpha).normal(ed.nx, ed.ny, ed.nz);
+            solid.vertex(mat, ed.bx, ed.by, ed.bz).color(r, g, b, alpha).normal(ed.nx, ed.ny, ed.nz);
         }
         matrices.pop();
     }
+
+    // ── Color Utilities ───────────────────────────────────────────────────────
+
+    private static float[] resolveColor(ClientConfig cfg) {
+        if (cfg.colorDisabled) return new float[]{0.5f, 0.5f, 0.5f};
+
+        if (cfg.colorRainbow) {
+            float hue = (System.currentTimeMillis() % 4000) / 4000f; // Chỉnh nhẹ chu kỳ mượt hơn
+            return hsvToRgb(hue, 1f, 1f);
+        }
+
+        return new float[]{cfg.colorR / 255f, cfg.colorG / 255f, cfg.colorB / 255f};
+    }
+
+    private static float[] hsvToRgb(float h, float s, float v) {
+        int i = (int)(h * 6);
+        float f = h * 6 - i;
+        float p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
+        return switch (i % 6) {
+            case 0 -> new float[]{v, t, p};
+            case 1 -> new float[]{q, v, p};
+            case 2 -> new float[]{p, v, t};
+            case 3 -> new float[]{p, q, v};
+            case 4 -> new float[]{t, p, v};
+            default -> new float[]{v, p, q};
+        };
+    }
+
+    // ── Edge Merging Logic ────────────────────────────────────────────────────
 
     private static void addAllEdges(Map<Long, EdgeData> edgeCount, BlockPos pos, Box box) {
         int bx2 = pos.getX()*2, by2 = pos.getY()*2, bz2 = pos.getZ()*2;
@@ -224,6 +282,7 @@ public class BlockHighlighter {
         if(pa>pb){long t=pa;pa=pb;pb=t;}
         return pa*1_000_000_007L+pb;
     }
+
     private static long packPoint(int x2,int y2,int z2){
         return ((long)(x2+4096)*8193L+(y2+4096))*8193L+(z2+4096);
     }

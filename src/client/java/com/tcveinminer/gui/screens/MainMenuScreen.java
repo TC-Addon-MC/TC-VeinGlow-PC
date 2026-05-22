@@ -1,6 +1,8 @@
 package com.tcveinminer.gui.screens;
 
 import com.tcveinminer.config.ConfigManager;
+import com.tcveinminer.config.ClientConfig;
+import com.tcveinminer.config.ClientConfigManager;
 import com.tcveinminer.config.ModConfig;
 import com.tcveinminer.gui.screens.tabs.*;
 import com.tcveinminer.gui.widgets.AmberButton;
@@ -15,12 +17,10 @@ import net.minecraft.client.font.TextRenderer;
 import net.minecraft.text.Text;
 
 import java.util.ArrayList;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
 import net.minecraft.util.Identifier;
-import java.util.Set;
 public class MainMenuScreen extends Screen {
 
     private final int HDR_H     = 20;
@@ -56,21 +56,26 @@ public class MainMenuScreen extends Screen {
         this.py = (this.height - this.H) / 2;
 
         ModConfig cfg = ConfigManager.get();
-        state.maxBlocks     = cfg.maxBlocks;
-        state.showHud       = cfg.showHud;
-        state.enabledShapes = new LinkedHashSet<>(cfg.enabledShapes);
-
-        state.activationMode = fieldInt(cfg,  "activationMode",  1);
-        state.showOutline    = fieldBool(cfg, "showOutline",      true);
-        state.colorR         = fieldInt(cfg,  "colorR",           216);
-        state.colorG         = fieldInt(cfg,  "colorG",           161);
-        state.colorB         = fieldInt(cfg,  "colorB",           91);
-        state.colorRainbow   = fieldBool(cfg, "colorRainbow",     false);
-        state.colorDisabled  = fieldBool(cfg, "colorDisabled",    false);
-        state.blacklist = new LinkedHashSet<>();
-        state.enabledTools   = new LinkedHashMap<>(fieldToolMap(cfg));
-
         if (state.hoveredShapeId == null) state.hoveredShapeId = cfg.miningShape.name();
+
+        // --- Load từ ClientConfig (nguồn dữ liệu chính) ---
+        ClientConfig ccfg = ClientConfigManager.instance;
+        state.showOutline         = ccfg.showOutline;
+        state.colorR              = ccfg.colorR;
+        state.colorG              = ccfg.colorG;
+        state.colorB              = ccfg.colorB;
+        state.colorRainbow        = ccfg.colorRainbow;
+        state.colorDisabled       = ccfg.colorDisabled;
+        state.showHud             = ccfg.showHud;
+        state.activationMode      = ccfg.activationMode;
+        state.maxBlocks           = ccfg.clientMaxBlocks;
+        state.enabledShapes       = new LinkedHashSet<>(ccfg.enabledShapes);
+        state.enabledTools        = new LinkedHashMap<>(ccfg.enabledTools);
+        state.blacklist           = new LinkedHashSet<>(ccfg.personalBlacklist.stream()
+                .map(Identifier::of).toList());
+        state.requireCorrectTool  = ccfg.requireCorrectTool;
+        state.customShapeEquation = ccfg.customShapeEquation;
+        state.customShapes        = new ArrayList<>(ccfg.customShapes);
 
         rebuild();
     }
@@ -181,36 +186,33 @@ public class MainMenuScreen extends Screen {
     }
 
     private void save() {
+        // Sync hoveredShapeId → ModConfig (vẫn cần cho logic server)
         ModConfig cfg = ConfigManager.get();
-        cfg.maxBlocks = state.maxBlocks;
-        cfg.showHud = state.showHud;
-        cfg.enabledShapes = state.enabledShapes;
-        setF(cfg, "activationMode",     state.activationMode);
-        setF(cfg, "showOutline",        state.showOutline);
-        setF(cfg, "colorR",             state.colorR);
-        setF(cfg, "colorG",             state.colorG);
-        setF(cfg, "colorB",             state.colorB);
-        setF(cfg, "colorRainbow",       state.colorRainbow);
-        setF(cfg, "colorDisabled",      state.colorDisabled);
-        setF(cfg, "blacklistedBlocks",  state.blacklist);
-        setF(cfg, "enabledTools",       state.enabledTools);
+        try { cfg.miningShape = ModConfig.MiningShape.valueOf(state.hoveredShapeId); } catch (Exception ignored) {}
         ConfigManager.save();
+
+        // --- Ghi vào ClientConfig (nguồn dữ liệu chính) ---
+        ClientConfig ccfg = ClientConfigManager.instance;
+        ccfg.showOutline         = state.showOutline;
+        ccfg.colorR              = state.colorR;
+        ccfg.colorG              = state.colorG;
+        ccfg.colorB              = state.colorB;
+        ccfg.colorRainbow        = state.colorRainbow;
+        ccfg.colorDisabled       = state.colorDisabled;
+        ccfg.showHud             = state.showHud;
+        ccfg.activationMode      = state.activationMode;
+        ccfg.clientMaxBlocks     = state.maxBlocks;
+        ccfg.enabledShapes       = state.enabledShapes;
+        ccfg.enabledTools        = state.enabledTools;
+        ccfg.personalBlacklist   = new ArrayList<>(state.blacklist.stream()
+                .map(Identifier::toString).toList());
+        ccfg.requireCorrectTool  = state.requireCorrectTool;
+        ccfg.customShapeEquation = state.customShapeEquation;
+        ccfg.customShapes        = new ArrayList<>(state.customShapes);
+        ClientConfigManager.save();
     }
 
     private void triggerSave() { saveNotify = true; saveHideAt = System.currentTimeMillis() + 2500; }
-
-    private static int fieldInt(ModConfig c, String n, int d) { try{return (int)ModConfig.class.getField(n).get(c);}catch(Exception e){return d;} }
-    private static boolean fieldBool(ModConfig c, String n, boolean d) { try{return (boolean)ModConfig.class.getField(n).get(c);}catch(Exception e){return d;} }
-    @SuppressWarnings("unchecked")
-    private static List<String> fieldList(ModConfig c, String n) { try{Object v=ModConfig.class.getField(n).get(c); return v instanceof List<?> l?new ArrayList<>((List<String>)l):new ArrayList<>();}catch(Exception e){return new ArrayList<>();} }
-    @SuppressWarnings("unchecked")
-    private static Map<String,Boolean> fieldToolMap(ModConfig c) {
-        try { Object v=ModConfig.class.getField("enabledTools").get(c); if(v instanceof Map<?,?> m) return new LinkedHashMap<>((Map<String,Boolean>)m); } catch(Exception ignored){}
-        Map<String,Boolean> m=new LinkedHashMap<>(); m.put("all",true);
-        for(String k:List.of("hand","item","pickaxe","axe","shovel","sword","hoe")) m.put(k,false);
-        return m;
-    }
-    private static void setF(ModConfig c, String n, Object v) { try{ModConfig.class.getField(n).set(c,v);}catch(Exception ignored){} }
 
     @Override public boolean shouldPause() { return false; }
     @Override public void renderBackground(DrawContext c, int mx, int my, float d) {}

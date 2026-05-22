@@ -14,13 +14,26 @@ public final class DrawHelper {
     public static final int BORDER_MODERN = 0xFF1F2937; // Viền xám tối phẳng
 
     public static void drawHudPill(DrawContext ctx, int x, int y, int w, int h, boolean active) {
-        // Tạo màu nền hơi trong suốt (thêm alpha 0xAA vào mã màu)
         int bg = active ? 0xAA0F172A : 0xAA020408;
-        // Đổi màu viền active sang màu cam/vàng hiện đại thay vì GOLD_DIM cũ
         int border = active ? 0xFFF59E0B : BORDER_MODERN;
+        drawHudPillRounded(ctx, x, y, w, h, bg, border);
+    }
 
-        ctx.fill(x, y, x + w, y + h, bg);
-        drawSolidBorder(ctx, x, y, w, h, border);
+    // Bo tròn góc 2px kiểu pixel: cắt 4 góc, vẽ viền bo theo
+    private static void drawHudPillRounded(DrawContext ctx, int x, int y, int w, int h, int bg, int border) {
+        // Nền
+        ctx.fill(x + 2, y,         x + w - 2, y + 1,         bg);
+        ctx.fill(x + 1, y + 1,     x + w - 1, y + h - 1,     bg);
+        ctx.fill(x + 2, y + h - 1, x + w - 2, y + h,         bg);
+        // Viền
+        ctx.fill(x + 2,     y,         x + w - 2, y + 1,         border); // trên
+        ctx.fill(x + 2,     y + h - 1, x + w - 2, y + h,         border); // dưới
+        ctx.fill(x + 1,     y + 1,     x + 2,     y + h - 1,     border); // trái
+        ctx.fill(x + w - 2, y + 1,     x + w - 1, y + h - 1,     border); // phải
+        ctx.fill(x + 1,     y + 1,     x + 2,     y + 2,         border); // góc trên-trái
+        ctx.fill(x + w - 2, y + 1,     x + w - 1, y + 2,         border); // góc trên-phải
+        ctx.fill(x + 1,     y + h - 2, x + 2,     y + h - 1,     border); // góc dưới-trái
+        ctx.fill(x + w - 2, y + h - 2, x + w - 1, y + h - 1,     border); // góc dưới-phải
     }
 
     public static void drawPanel(DrawContext ctx, int x, int y, int w, int h) {

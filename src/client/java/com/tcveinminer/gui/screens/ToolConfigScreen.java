@@ -10,7 +10,7 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 
 import java.util.*;
-
+import com.tcveinminer.config.ClientConfigManager;
 public class ToolConfigScreen extends Screen {
 
     private static final int W = 300, H = 230;
@@ -34,7 +34,7 @@ public class ToolConfigScreen extends Screen {
     public ToolConfigScreen(Screen parent) {
         super(Text.literal("Tool Config"));
         this.parent = parent;
-        ConfigManager.get().enabledTools.forEach(toolState::put);
+        ClientConfigManager.instance.enabledTools.forEach(toolState::put);
     }
 
     @Override
@@ -59,9 +59,9 @@ public class ToolConfigScreen extends Screen {
 
         addDrawableChild(new CustomButton(x + W / 2 - 80, y + H - 34, 160, 18,
                 Text.literal("LƯU & QUAY LẠI"), btn -> {
-            ConfigManager.get().enabledTools.clear();
-            ConfigManager.get().enabledTools.putAll(toolState);
-            ConfigManager.save();
+            ClientConfigManager.instance.enabledTools.clear();
+            ClientConfigManager.instance.enabledTools.putAll(toolState);
+            ClientConfigManager.save();
             client.setScreen(parent);
         }));
     }

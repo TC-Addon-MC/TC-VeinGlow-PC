@@ -1,5 +1,6 @@
 package com.tcveinminer.gui.screens;
 
+import com.tcveinminer.config.ClientConfig;
 import net.minecraft.util.Identifier;
 
 import java.util.ArrayList;
@@ -21,4 +22,10 @@ public class MenuState {
     public boolean colorRainbow, colorDisabled;
     public String hoveredShapeId;
 
+    // ---- Từ ClientConfig ----
+    public boolean requireCorrectTool;
+    public String customShapeEquation;
+
+    /** Danh sách custom shapes — đồng bộ với ClientConfig.customShapes */
+    public List<ClientConfig.CustomShapeEntry> customShapes = new ArrayList<>();
 }

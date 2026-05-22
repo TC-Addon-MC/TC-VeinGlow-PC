@@ -13,7 +13,7 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
 import java.util.*;
-
+import com.tcveinminer.config.ClientConfigManager;
 public class BlockListScreen extends Screen {
 
     private static final int W = 300, H = 270;
@@ -37,7 +37,7 @@ public class BlockListScreen extends Screen {
     public BlockListScreen(Screen parent) {
         super(Text.literal("Block List"));
         this.parent = parent;
-        blocks.addAll(ConfigManager.get().blacklistedBlocks);
+        blocks.addAll(ClientConfigManager.instance.personalBlacklist);
     }
 
     @Override
@@ -67,9 +67,9 @@ public class BlockListScreen extends Screen {
 
         addDrawableChild(new CustomButton(x + W / 2 - 70, y + H - 36, 140, 18,
                 Text.literal("LƯU & QUAY LẠI"), btn -> {
-            ConfigManager.get().blacklistedBlocks.clear();
-            ConfigManager.get().blacklistedBlocks.addAll(blocks);
-            ConfigManager.save();
+            ClientConfigManager.instance.personalBlacklist.clear();
+            ClientConfigManager.instance.personalBlacklist.addAll(blocks);
+            ClientConfigManager.save();
             client.setScreen(parent);
         }));
 

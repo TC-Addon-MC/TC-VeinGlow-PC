@@ -1,6 +1,7 @@
 // File 7: CustomShapeDesignerScreen.java
 package com.tcveinminer.gui.screens;
 
+import com.tcveinminer.config.ClientConfig;
 import com.tcveinminer.gui.CustomButton;
 import com.tcveinminer.gui.widgets.AmberButton;
 import com.tcveinminer.util.DrawHelper;
@@ -10,6 +11,8 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
+
+import java.util.List;
 
 import com.tcveinminer.gui.screens.custom.*;
 
@@ -30,13 +33,16 @@ public class CustomShapeDesignerScreen extends Screen {
     private CustomButton[] presetButtons;
 
     private final Screen parent;
+    /** Khác null = đang chỉnh sửa entry có sẵn; null = tạo mới. */
+    private final ClientConfig.CustomShapeEntry editEntry;
+
     private TextFieldWidget nameField;
     private TextFieldWidget equationField;
 
     private String equationError = null;
     private String nameError = null;
-    private String equationText = "x^2 + y^2 + z^2 <= 4";
-    private String nameText = "Hình Cầu Tùy Chỉnh";
+    private String equationText;
+    private String nameText;
 
     private float rotX = -20, rotY = 45;
     private boolean dragging;
@@ -50,9 +56,12 @@ public class CustomShapeDesignerScreen extends Screen {
     private static final long DEBOUNCE_MS = 400;
     private boolean voxelDirty = false;
 
-    public CustomShapeDesignerScreen(Screen parent) {
+    public CustomShapeDesignerScreen(Screen parent, ClientConfig.CustomShapeEntry editEntry) {
         super(Text.literal("TC VEINGLOW - THIẾT KẾ PHƯƠNG TRÌNH ĐÀO"));
         this.parent = parent;
+        this.editEntry = editEntry;
+        this.nameText     = (editEntry != null) ? editEntry.name     : "Hình Cầu Tùy Chỉnh";
+        this.equationText = (editEntry != null) ? editEntry.equation : "x^2 + y^2 + z^2 <= 4";
     }
 
     @Override
@@ -117,7 +126,33 @@ public class CustomShapeDesignerScreen extends Screen {
         nameError = null;
         if (nameText == null || nameText.isBlank()) { nameError = "Thiếu tên."; return; }
         if (equationError != null) return;
-        if (meshCache.isEmpty() || currentShapeType == ShapeType.EMPTY) { nameError = "Phương trình không tạo khối nào."; return; }
+        if (meshCache.isEmpty() || currentShapeType == ShapeType.EMPTY) {
+            nameError = "Phương trình không tạo khối nào."; return;
+        }
+
+        // Lưu vào MenuState của MainMenuScreen (parent)
+        if (parent instanceof MainMenuScreen mainMenu) {
+            List<ClientConfig.CustomShapeEntry> list = mainMenu.getState().customShapes;
+
+            if (editEntry != null) {
+                // Chỉnh sửa: cập nhật entry cũ tại chỗ
+                editEntry.name = nameText;
+                editEntry.equation = equationText;
+                editEntry.strategyId = "custom:" + nameText.toLowerCase().replaceAll("[^a-z0-9_]", "_");
+            } else {
+                // Tạo mới: kiểm tra trùng tên
+                String newId = "custom:" + nameText.toLowerCase().replaceAll("[^a-z0-9_]", "_");
+                boolean duplicate = list.stream().anyMatch(e -> e.strategyId.equals(newId));
+                if (duplicate) { nameError = "Tên đã tồn tại!"; return; }
+
+                list.add(new ClientConfig.CustomShapeEntry(nameText, equationText));
+            }
+        }
+
+        // Rebuild UI trước khi quay lại để danh sách cập nhật ngay
+        if (parent instanceof MainMenuScreen mainMenu) {
+            mainMenu.rebuildMenu();
+        }
         client.setScreen(parent);
     }
 

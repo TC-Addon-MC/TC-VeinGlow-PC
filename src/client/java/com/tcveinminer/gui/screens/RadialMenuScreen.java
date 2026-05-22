@@ -15,6 +15,7 @@ import org.joml.Matrix4f;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.tcveinminer.config.ClientConfigManager;
 
 public class RadialMenuScreen extends Screen {
 
@@ -39,10 +40,9 @@ public class RadialMenuScreen extends Screen {
     private float animOpen = 0.0f;
     private float[] sliceHoverProgress;
 
-    // Biến cho hiệu ứng click (Shockwave)
     private boolean isClosing = false;
     private float clickProgress = 0.0f;
-    private int clickedAction = -1; // -2 cho settings, >= 0 cho shape
+    private int clickedAction = -1;
 
     public RadialMenuScreen(Screen parent) {
         super(Text.literal("TC VeinMiner"));
@@ -63,7 +63,7 @@ public class RadialMenuScreen extends Screen {
     private void rebuildShapes() {
         activeShapes = new ArrayList<>();
         for (ModConfig.MiningShape shape : ModConfig.MiningShape.values()) {
-            if (ConfigManager.get().enabledShapes.contains(shape.name()))
+            if (ClientConfigManager.instance.enabledShapes.contains(shape.name()))
                 activeShapes.add(shape);
         }
         if (activeShapes.isEmpty()) activeShapes.add(ModConfig.MiningShape.FACE);
@@ -71,7 +71,7 @@ public class RadialMenuScreen extends Screen {
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        // Cập nhật logic đóng/mở
+
         if (isClosing) {
             clickProgress += delta * 0.15f;
             if (clickProgress >= 1.0f) {
@@ -83,17 +83,21 @@ public class RadialMenuScreen extends Screen {
             hoveredSlice = getHoveredSlice(mouseX, mouseY);
         }
 
-        ModConfig.MiningShape currentActive = ConfigManager.get().miningShape;
+        // ===== FIX 1: dùng ClientConfigManager thay ConfigManager =====
+        ModConfig.MiningShape currentActive = ModConfig.MiningShape.FACE;
+        try {
+            currentActive = ModConfig.MiningShape.valueOf(ClientConfigManager.instance.currentShape);
+        } catch (IllegalArgumentException | NullPointerException e) {
+        }
 
         MatrixStack matrices = ctx.getMatrices();
         matrices.push();
         matrices.translate(cx, cy, 0);
 
-        // HIỆU ỨNG 1: Elastic Open (phồng ra rồi co lại nhẹ)
         float t = animOpen;
         float scale = 1.0f + (float)(Math.sin(t * Math.PI * 3.5f) * (1.0f - t) * 0.15f);
         if (t < 0.99f) {
-            scale *= (float)Math.pow(t, 0.5); // Giúp mượt phần xuất hiện ban đầu
+            scale *= (float)Math.pow(t, 0.5);
         }
         matrices.scale(scale, scale, 1.0f);
 
@@ -122,6 +126,7 @@ public class RadialMenuScreen extends Screen {
             float slicePop = 1.0f - (float)Math.pow(1.0f - sliceT, 3);
 
             int color = isAct ? COLOR_SLICE_ACTIVE : lerpColor(COLOR_SLICE_NORMAL, COLOR_SLICE_HOVER, hovP);
+
             float startRad = (float) Math.toRadians(-90f + i * angleStep);
             float endRad = (float) Math.toRadians(-90f + (i + 1) * angleStep);
 
@@ -129,80 +134,37 @@ public class RadialMenuScreen extends Screen {
             float currentInnerR = INNER_R * slicePop;
             float currentOuterR = (OUTER_R + hovRadiusOff) * slicePop;
 
-            // HIỆU ỨNG: Glow hover (sẽ mờ dần khi đang click)
             if (hovP > 0.01f && !isClosing) {
                 int glowAlpha = (int)(hovP * 80);
                 int glowColor = (0x00FFFFFF & COLOR_SLICE_HOVER) | (glowAlpha << 24);
                 RadialDrawingUtils.fillArc(buf, mat, currentInnerR - 2, currentOuterR + 8, startRad, endRad, glowColor);
             }
 
-            // LOGIC MỚI: Sóng quét tới đâu đổi màu tới đó
             if (isClosing && clickedAction == i) {
-                // Tính bán kính của sóng dựa trên clickProgress
-                // Thêm 20f để đảm bảo sóng quét qua hoàn toàn rìa ngoài
                 float waveR = INNER_R + (clickProgress * (OUTER_R - INNER_R + 20));
                 float splitR = MathHelper.clamp(waveR, currentInnerR, currentOuterR);
 
-                // 1. Vẽ phần đã bị sóng quét qua (Màu Active)
                 RadialDrawingUtils.fillArc(buf, mat, currentInnerR, splitR, startRad, endRad, COLOR_SLICE_ACTIVE);
 
-                // 2. Vẽ phần còn lại chưa bị sóng quét tới (Màu cũ)
                 if (splitR < currentOuterR) {
                     RadialDrawingUtils.fillArc(buf, mat, splitR, currentOuterR, startRad, endRad, color);
                 }
             } else {
-                // Vẽ bình thường cho các slice khác hoặc khi không click
                 RadialDrawingUtils.fillArc(buf, mat, currentInnerR, currentOuterR, startRad, endRad, color);
             }
         }
 
-        // Nút tâm
         int centerIdx = n;
         boolean centerHov = (!isClosing && hoveredSlice == -2);
         sliceHoverProgress[centerIdx] = MathHelper.lerp(delta * 0.3f, sliceHoverProgress[centerIdx], centerHov ? 1.0f : 0.0f);
         int centerColor = lerpColor(COLOR_CENTER_NORMAL, COLOR_CENTER_HOVER, sliceHoverProgress[centerIdx]);
 
-        // HIỆU ỨNG 5: Center pulse breathing
         float pulse = 1.0f + MathHelper.sin((float)(Util.getMeasuringTimeMs() / 200.0)) * 0.03f;
         float currentCenterR = CENTER_R * animOpen * pulse;
+
         RadialDrawingUtils.fillCircle(buf, mat, currentCenterR, centerColor);
 
         BufferRenderer.drawWithGlobalProgram(buf.end());
-
-        // Vẽ Borders
-        BufferBuilder borderBuf = tess.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
-        for (int i = 0; i < n; i++) {
-            float sliceT = MathHelper.clamp((animOpen - (i * 0.05f)) * 1.5f, 0f, 1f);
-            float slicePop = 1.0f - (float)Math.pow(1.0f - sliceT, 3);
-
-            boolean isAct = currentActive == activeShapes.get(i);
-            int borderColor = isAct ? COLOR_BORDER_ACTIVE : COLOR_BORDER;
-            float startRad = (float) Math.toRadians(-90f + i * angleStep);
-            float endRad = (float) Math.toRadians(-90f + (i + 1) * angleStep);
-
-            float currentInnerR = INNER_R * slicePop;
-            float currentOuterR = (OUTER_R + (sliceHoverProgress[i] * 4.0f)) * slicePop;
-
-            RadialDrawingUtils.strokeArc(borderBuf, mat, currentInnerR, currentOuterR, startRad, endRad, BORDER_W, borderColor);
-        }
-        RadialDrawingUtils.strokeRing(borderBuf, mat, currentCenterR - BORDER_W, currentCenterR, 0, (float)(2 * Math.PI), COLOR_BORDER);
-
-        // HIỆU ỨNG 6: Click Shockwave (vòng sóng lan tỏa khi chọn)
-        if (isClosing && clickedAction >= 0) {
-            float shockWaveR = INNER_R + (clickProgress * 60f);
-            int shockAlpha = (int)((1.0f - clickProgress) * 200);
-            int shockColor = (0x00FFFFFF & COLOR_BORDER_ACTIVE) | (shockAlpha << 24);
-            float startRad = (float) Math.toRadians(-90f + clickedAction * angleStep);
-            float endRad = (float) Math.toRadians(-90f + (clickedAction + 1) * angleStep);
-            RadialDrawingUtils.strokeArc(borderBuf, mat, shockWaveR, shockWaveR + 2, startRad, endRad, 2.0f, shockColor);
-        } else if (isClosing && clickedAction == -2) {
-            float shockWaveR = CENTER_R + (clickProgress * 40f);
-            int shockAlpha = (int)((1.0f - clickProgress) * 200);
-            int shockColor = (0x00FFFFFF & COLOR_BORDER) | (shockAlpha << 24);
-            RadialDrawingUtils.strokeRing(borderBuf, mat, shockWaveR, shockWaveR + 2, 0, (float)(2 * Math.PI), shockColor);
-        }
-
-        BufferRenderer.drawWithGlobalProgram(borderBuf.end());
 
         RenderSystem.enableCull();
         RenderSystem.disableBlend();
@@ -215,6 +177,25 @@ public class RadialMenuScreen extends Screen {
         }
     }
 
+    private void executeClickAction() {
+
+        if (clickedAction == -2) {
+            client.setScreen(new MainMenuScreen(this));
+
+        } else if (clickedAction >= 0) {
+
+            // ===== FIX 2: lưu String Enum vào ClientConfigManager =====
+            ClientConfigManager.instance.currentShape =
+                    activeShapes.get(clickedAction).name();
+
+            ClientConfigManager.save();
+
+            client.setScreen(parent);
+        }
+    }
+
+    // ===== phần còn lại giữ nguyên =====
+
     private void renderLabels(DrawContext ctx, int n, float angleStep, ModConfig.MiningShape currentActive) {
         for (int i = 0; i < n; i++) {
             ModConfig.MiningShape shape = activeShapes.get(i);
@@ -224,13 +205,11 @@ public class RadialMenuScreen extends Screen {
             float hovP = sliceHoverProgress[i];
             int baseLabelR = (INNER_R + OUTER_R) / 2;
 
-            // Lấy theo tỷ lệ mở để chữ bay ra cùng với khung
             float sliceT = MathHelper.clamp((animOpen - (i * 0.05f)) * 1.5f, 0f, 1f);
             float slicePop = 1.0f - (float)Math.pow(1.0f - sliceT, 3);
 
             float labelR = baseLabelR * slicePop;
 
-            // HIỆU ỨNG 4: Magnetic cursor pull (kéo icon/text nhẹ ra ngoài góc khi hover)
             float pull = hovP * 6.0f;
             float dx = (float)Math.cos(mid) * pull;
             float dy = (float)Math.sin(mid) * pull;
@@ -238,7 +217,6 @@ public class RadialMenuScreen extends Screen {
             int lx = cx + (int)(Math.cos(mid) * labelR + dx);
             int ly = cy + (int)(Math.sin(mid) * labelR + dy);
 
-            // Xử lý alpha để fade in text
             int alpha = (int)(slicePop * 255);
             if (alpha < 10) continue;
 
@@ -292,16 +270,6 @@ public class RadialMenuScreen extends Screen {
 
         client.setScreen(parent);
         return true;
-    }
-
-    private void executeClickAction() {
-        if (clickedAction == -2) {
-            client.setScreen(new MainMenuScreen(this));
-        } else if (clickedAction >= 0) {
-            ConfigManager.get().miningShape = activeShapes.get(clickedAction);
-            ConfigManager.save();
-            client.setScreen(parent);
-        }
     }
 
     @Override

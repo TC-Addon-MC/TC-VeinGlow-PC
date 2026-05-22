@@ -1,6 +1,7 @@
 package com.tcveinminer.hud;
 
 import com.tcveinminer.TCVeinMinerClient;
+import com.tcveinminer.config.ClientConfigManager;
 import com.tcveinminer.config.ConfigManager;
 import com.tcveinminer.config.ModConfig;
 import com.tcveinminer.logic.HudNotifier;
@@ -17,7 +18,7 @@ public class VeinMinerHudOverlay implements HudRenderCallback {
     public void onHudRender(DrawContext ctx, RenderTickCounter tickCounter) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client == null || client.options == null) return;
-        if (!ConfigManager.get().showHud) return;
+        if (!ClientConfigManager.instance.showHud) return;
         if (client.options.hudHidden) return;
         if (client.currentScreen != null) return;
 
@@ -29,7 +30,8 @@ public class VeinMinerHudOverlay implements HudRenderCallback {
         String statusText = "⛏ " + (holding ? "SẴN SÀNG" : "CHỜ [V]") + "  " + modeName;
         int textW = client.textRenderer.getWidth(statusText);
         int pillW = textW + 16;
-        int x = 6, y = 6;
+        int x = ClientConfigManager.instance.hudPositionX;
+        int y = ClientConfigManager.instance.hudPositionY;
 
         DrawHelper.drawHudPill(ctx, x, y, pillW, 14, holding);
         int textColor = holding ? ThemeColors.HUD_ON_TEXT : ThemeColors.HUD_OFF_TEXT;
@@ -48,7 +50,7 @@ public class VeinMinerHudOverlay implements HudRenderCallback {
 
             DrawHelper.drawHudPill(ctx, x, msgY, msgPillW, 14, true);
             ctx.drawTextWithShadow(client.textRenderer, msg, x + 8, msgY + 3,
-                (ThemeColors.TEXT_VALUE & 0x00FFFFFF) | alphaInt);
+                    (ThemeColors.TEXT_VALUE & 0x00FFFFFF) | alphaInt);
         }
     }
 }
