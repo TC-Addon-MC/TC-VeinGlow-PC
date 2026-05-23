@@ -12,6 +12,8 @@ import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import org.lwjgl.glfw.GLFW;
@@ -27,6 +29,8 @@ public class TCVeinMinerClient implements ClientModInitializer {
     private static boolean lastHoldState  = false;
     private static String  lastShapeId    = "";
     private static int     lastMaxBlocks  = -1;
+            lastBlacklist  = new ArrayList<>();
+    private static List<String> lastBlacklist = new ArrayList<>();
 
     /** Dùng cho TOGGLE/TOGGLE_SNEAK: trạng thái toggle hiện tại. */
     private static boolean toggleActive   = false;
@@ -59,7 +63,8 @@ public class TCVeinMinerClient implements ClientModInitializer {
             lastShapeId   = ClientConfigManager.instance.currentShape;
             lastMaxBlocks = ClientConfigManager.instance.getEffectiveMaxBlocks();
             lastHoldState = holdKeyDown;
-            ClientPlayNetworking.send(new HoldKeyPayload(holdKeyDown, lastShapeId, lastMaxBlocks, currentEquation(lastShapeId)));
+            lastBlacklist = new ArrayList<>(currentBlacklist);
+                ClientPlayNetworking.send(new HoldKeyPayload(holdKeyDown, lastShapeId, lastMaxBlocks, currentEquation(lastShapeId), ClientConfigManager.instance.personalBlacklist));
         });
 
         // Reset khi ngắt kết nối
@@ -68,6 +73,7 @@ public class TCVeinMinerClient implements ClientModInitializer {
             lastHoldState  = false;
             lastShapeId    = "";
             lastMaxBlocks  = -1;
+            lastBlacklist  = new ArrayList<>();
             toggleActive   = false;
             lastKeyPressed = false;
         });
@@ -116,17 +122,19 @@ public class TCVeinMinerClient implements ClientModInitializer {
             String currentShapeId = ClientConfigManager.instance.currentShape;
             int currentMaxBlocks  = ClientConfigManager.instance.getEffectiveMaxBlocks();
 
+            List<String> currentBlacklist = ClientConfigManager.instance.personalBlacklist;
             boolean stateChanged = (holdKeyDown != lastHoldState)
                     || (!currentShapeId.equals(lastShapeId))
-                    || (currentMaxBlocks != lastMaxBlocks);
+                    || (currentMaxBlocks != lastMaxBlocks) || (!currentBlacklist.equals(lastBlacklist));
 
             if (stateChanged && client.player != null && ClientPlayNetworking.canSend(HoldKeyPayload.ID)) {
                 lastHoldState = holdKeyDown;
                 lastShapeId   = currentShapeId;
                 lastMaxBlocks = currentMaxBlocks;
 
+                lastBlacklist = new ArrayList<>(currentBlacklist);
                 ClientPlayNetworking.send(
-                        new HoldKeyPayload(holdKeyDown, currentShapeId, currentMaxBlocks, currentEquation(currentShapeId))
+                        new HoldKeyPayload(holdKeyDown, currentShapeId, currentMaxBlocks, currentEquation(currentShapeId), currentBlacklist)
                 );
             }
         });

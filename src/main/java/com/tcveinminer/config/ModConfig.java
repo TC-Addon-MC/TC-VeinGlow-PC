@@ -50,7 +50,6 @@ public class ModConfig {
     public int     cooldownTicks      = 0;
     public boolean showHud            = true;
     public boolean requireSneak       = false;
-    public boolean diagonalMining     = false;
     public int     tickSliceSize      = 4;
 
     // Chế độ kích hoạt: 1=giữ, 2=giữ+sneak, 3=toggle, 4=toggle+sneak

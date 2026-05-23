@@ -8,6 +8,7 @@ import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.registry.tag.BlockTags;
+import net.minecraft.registry.Registries;
 import net.minecraft.registry.tag.TagKey;
 import net.minecraft.state.property.Property;
 import net.minecraft.util.math.BlockPos;
@@ -54,7 +55,8 @@ public final class FilterModeManager {
             int distance,                // Khoảng cách hình học tính từ origin
             int visitedCount,            // Tổng số block đã duyệt qua
             MiningMode mode,             // Chế độ đang chạy
-            FilterCache cache            // Bộ nhớ đệm dùng chung cho một phiên đào
+            FilterCache cache,           // Bộ nhớ đệm dùng chung cho một phiên đào
+            Set<String> blacklist        // Danh sách đen cá nhân
     ) {}
 
     public enum MiningMode {
@@ -120,6 +122,13 @@ public final class FilterModeManager {
     // ==========================================
 
     public static final class Filters {
+
+        public static BlockFilter blacklist(Set<String> blocked) {
+            return ctx -> {
+                String id = Registries.BLOCK.getId(ctx.currentState().getBlock()).toString();
+                return !blocked.contains(id);
+            };
+        }
 
         // --- SINGLETONS CƠ BẢN (Không cấp phát rác) ---
         public static final BlockFilter NOT_AIR = ctx -> !ctx.currentState().isAir();
@@ -243,7 +252,8 @@ public final class FilterModeManager {
                 Filters.chunkLoadedOnly(),
                 Filters.NOT_AIR,
                 Filters.BREAKABLE_ONLY,
-                Filters.avoidTileEntity()
+                Filters.avoidTileEntity(),
+                ctx -> Filters.blacklist(ctx.blacklist()).test(ctx)
         );
 
         /**

@@ -96,6 +96,7 @@ public class MainMenuScreen extends Screen {
         int ch = H - HDR_H - TAB_H - FOOTER_H - PAD_Y * 2;
 
         addDrawableChild(new AmberButton(px + W - 90, py + H - 28, 80, 20, Text.literal("LƯU CẤU HÌNH"), btn -> { save(); triggerSave(); }));
+        addDrawableChild(new AmberButton(px + W - 20, py + 2, 18, 16, Text.literal("X"), btn -> client.setScreen(parent)));
 
         tabInstances[currentTabIndex].init(this, cx, cy, cw, ch);
     }

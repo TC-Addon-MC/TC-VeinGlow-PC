@@ -8,6 +8,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Core abstraction for mining modes.
@@ -37,6 +38,7 @@ public interface MiningStrategy {
             int maxBlocks,
             OrientationContext orientCtx,
             FilterModeManager.BlockFilter filter,
-            FilterModeManager.FilterCache cache
+            FilterModeManager.FilterCache cache,
+            Set<String> blacklist
     ) {}
 }

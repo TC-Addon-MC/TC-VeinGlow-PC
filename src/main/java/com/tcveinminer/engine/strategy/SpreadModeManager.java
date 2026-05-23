@@ -86,7 +86,7 @@ public final class SpreadModeManager implements MiningStrategy {
                 FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
                         req.world(), req.player(), req.tool(), req.origin(), nb,
                         req.targetState(), nbState, approach, cur.depth + 1, distance,
-                        result.size(), getModeType(), req.cache()
+                        result.size(), getModeType(), req.cache(), req.blacklist()
                 );
 
                 if (req.filter().test(fCtx)) {
@@ -130,7 +130,7 @@ public final class SpreadModeManager implements MiningStrategy {
                 FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
                         req.world(), req.player(), req.tool(), req.origin(), nb,
                         req.targetState(), nbState, approach, cur.depth + 1, distance,
-                        result.size(), getModeType(), req.cache()
+                        result.size(), getModeType(), req.cache(), req.blacklist()
                 );
 
                 if (req.filter().test(fCtx) && added.add(nb)) {
@@ -172,7 +172,7 @@ public final class SpreadModeManager implements MiningStrategy {
                     FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
                             req.world(), req.player(), req.tool(), req.origin(), leafPos,
                             req.targetState(), leafState, Direction.UP, 0, distance,
-                            result.size(), getModeType(), req.cache()
+                            result.size(), getModeType(), req.cache(), req.blacklist()
                     );
 
                     if (req.filter().test(fCtx)) {
@@ -202,7 +202,7 @@ public final class SpreadModeManager implements MiningStrategy {
                 FilterModeManager.FilterContext ctx = new FilterModeManager.FilterContext(
                         req.world(), req.player(), req.tool(), req.origin(), pos,
                         req.targetState(), state, Direction.UP, parent.depth + 1, dist,
-                        result.size(), getModeType(), req.cache()
+                        result.size(), getModeType(), req.cache(), req.blacklist()
                 );
                 if (req.filter().test(ctx)) {
                     result.add(pos);

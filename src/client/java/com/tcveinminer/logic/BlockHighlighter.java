@@ -182,7 +182,8 @@ public class BlockHighlighter {
         // 2. Đóng gói MiningRequest
         MiningStrategy.MiningRequest req = new MiningStrategy.MiningRequest(
                 client.world, player, player.getMainHandStack(),
-                targetPos, targetState, maxBlocks, ctx, filter, cache
+                targetPos, targetState, maxBlocks, ctx, filter, cache,
+                new HashSet<>(ClientConfigManager.instance.personalBlacklist)
         );
 
         // 3. Lấy danh sách preview thông qua Filter mới

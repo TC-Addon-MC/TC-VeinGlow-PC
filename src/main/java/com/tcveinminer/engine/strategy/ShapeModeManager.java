@@ -90,7 +90,7 @@ public final class ShapeModeManager implements MiningStrategy {
             FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
                     req.world(), req.player(), req.tool(), req.origin(), pos,
                     req.targetState(), currentState, forwardDir,
-                    depth, distance, result.size(), getModeType(), req.cache()
+                    depth, distance, result.size(), getModeType(), req.cache(), req.blacklist()
             );
 
             if (req.filter().test(fCtx)) {

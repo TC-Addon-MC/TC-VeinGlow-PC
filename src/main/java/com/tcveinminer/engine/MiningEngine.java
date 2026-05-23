@@ -77,15 +77,17 @@ public final class MiningEngine {
     private String playerShape    = "FACE";
     private int    playerMaxBlocks = 64;
     private MiningStrategy customStrategy = null;
+    private Set<String>    playerBlacklist = new HashSet<>();
 
     private MiningEngine() {}
 
     public void updatePlayerConfig(String shapeId, int maxBlocks) {
-        updatePlayerConfig(shapeId, maxBlocks, "");
+        updatePlayerConfig(shapeId, maxBlocks, "", Collections.emptyList());
     }
 
-    public void updatePlayerConfig(String shapeId, int maxBlocks, String equation) {
+    public void updatePlayerConfig(String shapeId, int maxBlocks, String equation, List<String> blacklist) {
         this.playerMaxBlocks  = maxBlocks;
+        this.playerBlacklist  = new HashSet<>(blacklist);
         if (shapeId != null && shapeId.startsWith("custom:") && equation != null && !equation.isBlank()) {
             this.customStrategy = buildCustomStrategy(shapeId, equation);
             this.playerShape = (this.customStrategy != null) ? shapeId : "FACE";
@@ -113,7 +115,7 @@ public final class MiningEngine {
         if (!c.enabled) return;
         if (!TCVeinMinerMod.playersHoldingV.contains(player.getUuid())) return;
         if (c.requireCorrectTool && !toolOk(player, c)) return;
-        if (c.blacklistedBlocks.contains(blockId(originState))) return;
+        if (c.blacklistedBlocks.contains(blockId(originState)) || playerBlacklist.contains(blockId(originState))) return;
         if (c.requireSneak && !player.isSneaking()) return;
         if (!checkCooldown(player.getUuid(), world.getTime(), c)) return;
 
@@ -152,7 +154,7 @@ public final class MiningEngine {
         // 2. Nạp toàn bộ dữ liệu vào MiningRequest để Strategy xử lý (Contextual Injection)
         MiningStrategy.MiningRequest req = new MiningStrategy.MiningRequest(
                 world, player, player.getMainHandStack(),
-                origin, originState, maxBlocksToMine, ctx, filter, cache
+                origin, originState, maxBlocksToMine, ctx, filter, cache, playerBlacklist
         );
 
         // 3. Tiến hành thu thập khối theo Filter Mode mới

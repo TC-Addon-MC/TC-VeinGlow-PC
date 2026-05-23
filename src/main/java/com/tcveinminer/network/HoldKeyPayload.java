@@ -5,8 +5,9 @@ import net.minecraft.network.codec.PacketCodec;
 import net.minecraft.network.codec.PacketCodecs;
 import net.minecraft.network.packet.CustomPayload;
 import net.minecraft.util.Identifier;
+import java.util.List;
 
-public record HoldKeyPayload(boolean isHolding, String shapeId, int maxBlocks, String equation) implements CustomPayload {
+public record HoldKeyPayload(boolean isHolding, String shapeId, int maxBlocks, String equation, List<String> blacklist) implements CustomPayload {
     public static final Id<HoldKeyPayload> ID =
         new Id<>(Identifier.of("tc_veinminer", "hold_key"));
 
@@ -15,6 +16,7 @@ public record HoldKeyPayload(boolean isHolding, String shapeId, int maxBlocks, S
             PacketCodecs.STRING,  HoldKeyPayload::shapeId,
             PacketCodecs.INTEGER, HoldKeyPayload::maxBlocks,
             PacketCodecs.STRING,  HoldKeyPayload::equation,
+            PacketCodecs.STRING.collect(PacketCodecs.toList()), HoldKeyPayload::blacklist,
             HoldKeyPayload::new
     );
 

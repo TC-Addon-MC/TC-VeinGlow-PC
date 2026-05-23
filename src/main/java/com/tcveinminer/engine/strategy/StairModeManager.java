@@ -41,18 +41,23 @@ public final class StairModeManager implements MiningStrategy {
                     req.orientCtx().forward.getZ() * stepIndex + req.orientCtx().up.getZ() * dy * stepIndex
             );
 
-            if (visited.add(step)) {
-                BlockState state = req.world().getBlockState(step);
-                int dist = (int) Math.sqrt(step.getSquaredDistance(req.origin()));
+            // Thử đào cả block chân (step) và block đầu (step.up()) để người đi vừa
+            BlockPos[] positions = {step, step.up()};
+            for (BlockPos p : positions) {
+                if (result.size() >= req.maxBlocks()) break;
+                if (!visited.add(p)) continue;
+
+                BlockState state = req.world().getBlockState(p);
+                int dist = (int) Math.sqrt(p.getSquaredDistance(req.origin()));
 
                 FilterModeManager.FilterContext ctx = new FilterModeManager.FilterContext(
-                        req.world(), req.player(), req.tool(), req.origin(), step,
+                        req.world(), req.player(), req.tool(), req.origin(), p,
                         req.targetState(), state, forwardDir,
-                        stepIndex, dist, result.size(), getModeType(), req.cache()
+                        stepIndex, dist, result.size(), getModeType(), req.cache(), req.blacklist()
                 );
 
                 if (req.filter().test(ctx)) {
-                    result.add(step);
+                    result.add(p);
                 }
             }
         }
