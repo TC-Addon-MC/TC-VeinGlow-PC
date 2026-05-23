@@ -31,12 +31,16 @@ public class ClientConfigManager {
                 if (instance == null) {
                     instance = new ClientConfig();
                 }
-            } catch (IOException e) {
+                instance.postLoad();
+                save();
+            } catch (Exception e) {
                 System.err.println("Lỗi đọc file client config, dùng mặc định: " + e.getMessage());
                 instance = new ClientConfig();
+                instance.postLoad();
             }
         } else {
             // Nếu chưa có file thì tạo mới với thông số mặc định
+            instance.postLoad();
             save();
         }
     }

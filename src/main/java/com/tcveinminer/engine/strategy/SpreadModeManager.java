@@ -12,9 +12,10 @@ public final class SpreadModeManager implements MiningStrategy {
     public enum Mode { FACE, EDGES, CORNERS, TALL, TREE_CAP }
 
     private static final int[][] D6  = {{1,0,0}, {-1,0,0}, {0,1,0}, {0,-1,0}, {0,0,1}, {0,0,-1}};
-    private static final int[][] D18 = {/* Chứa 18 offset... (bạn tự giữ mảng D18 cũ từ Traversal) */ {1,1,0}, {-1,-1,0}}; // Thu gọn để biểu diễn
-    private static final int[][] D26 = {/* Chứa 26 offset... */} ; // Thu gọn
+    private static final int[][] D18 = buildAdjacency(2);
+    private static final int[][] D26 = buildAdjacency(3);
     private static final int[][] HORIZ = {{1,0,0}, {-1,0,0}, {0,0,1}, {0,0,-1}};
+    private static final int TREE_LEAF_RADIUS = 6;
 
     private final Mode   mode;
     private final String id, label, icon;
@@ -44,8 +45,23 @@ public final class SpreadModeManager implements MiningStrategy {
             case EDGES    -> executeBfs(req, D18, false); // Hoặc nạp D18 thật
             case CORNERS  -> executeBfs(req, D26, false); // Hoặc nạp D26 thật
             case TALL     -> collectTall(req);
-            case TREE_CAP -> executeBfs(req, D26, true);
+            case TREE_CAP -> collectTree(req);
         };
+    }
+
+    private static int[][] buildAdjacency(int maxManhattan) {
+        List<int[]> dirs = new ArrayList<>();
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    int manhattan = Math.abs(dx) + Math.abs(dy) + Math.abs(dz);
+                    if (manhattan > 0 && manhattan <= maxManhattan) {
+                        dirs.add(new int[]{dx, dy, dz});
+                    }
+                }
+            }
+        }
+        return dirs.toArray(new int[0][]);
     }
 
     private List<BlockPos> executeBfs(MiningRequest req, int[][] directions, boolean isTree) {
@@ -85,6 +101,86 @@ public final class SpreadModeManager implements MiningStrategy {
         }
         if (isTree) result.sort(Comparator.comparingInt(BlockPos::getY));
         return result;
+    }
+
+    private List<BlockPos> collectTree(MiningRequest req) {
+        List<BlockPos> result = new ArrayList<>();
+        Set<BlockPos> visitedLogs = new HashSet<>();
+        Set<BlockPos> added = new HashSet<>();
+        Deque<SearchNode> queue = new ArrayDeque<>();
+
+        visitedLogs.add(req.origin());
+        queue.add(new SearchNode(req.origin(), 0, null));
+
+        while (!queue.isEmpty() && result.size() < req.maxBlocks()) {
+            SearchNode cur = queue.poll();
+
+            for (int[] d : D26) {
+                BlockPos nb = cur.pos.add(d[0], d[1], d[2]);
+                if (!visitedLogs.add(nb)) continue;
+
+                BlockState nbState = req.world().getBlockState(nb);
+                if (!nbState.isIn(BlockTags.LOGS)) continue;
+
+                int distance = Math.abs(nb.getX() - req.origin().getX())
+                        + Math.abs(nb.getY() - req.origin().getY())
+                        + Math.abs(nb.getZ() - req.origin().getZ());
+                Direction approach = Direction.fromVector(d[0], d[1], d[2]);
+
+                FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
+                        req.world(), req.player(), req.tool(), req.origin(), nb,
+                        req.targetState(), nbState, approach, cur.depth + 1, distance,
+                        result.size(), getModeType(), req.cache()
+                );
+
+                if (req.filter().test(fCtx) && added.add(nb)) {
+                    result.add(nb);
+                    queue.add(new SearchNode(nb, cur.depth + 1, approach));
+                }
+            }
+        }
+
+        List<BlockPos> logs = new ArrayList<>(added);
+        logs.add(req.origin());
+        for (BlockPos logPos : logs) {
+            collectLeavesAroundLog(req, logPos, result, added);
+            if (result.size() >= req.maxBlocks()) break;
+        }
+
+        result.sort(Comparator.comparingInt(BlockPos::getY));
+        return result;
+    }
+
+    private void collectLeavesAroundLog(MiningRequest req, BlockPos logPos, List<BlockPos> result, Set<BlockPos> added) {
+        for (int dx = -TREE_LEAF_RADIUS; dx <= TREE_LEAF_RADIUS; dx++) {
+            for (int dy = -TREE_LEAF_RADIUS; dy <= TREE_LEAF_RADIUS; dy++) {
+                for (int dz = -TREE_LEAF_RADIUS; dz <= TREE_LEAF_RADIUS; dz++) {
+                    if (result.size() >= req.maxBlocks()) return;
+                    int distanceFromLog = Math.abs(dx) + Math.abs(dy) + Math.abs(dz);
+                    if (distanceFromLog > TREE_LEAF_RADIUS) continue;
+
+                    BlockPos leafPos = logPos.add(dx, dy, dz);
+                    if (!added.add(leafPos)) continue;
+
+                    BlockState leafState = req.world().getBlockState(leafPos);
+                    if (!leafState.isIn(BlockTags.LEAVES)) continue;
+
+                    int distance = Math.abs(leafPos.getX() - req.origin().getX())
+                            + Math.abs(leafPos.getY() - req.origin().getY())
+                            + Math.abs(leafPos.getZ() - req.origin().getZ());
+
+                    FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
+                            req.world(), req.player(), req.tool(), req.origin(), leafPos,
+                            req.targetState(), leafState, Direction.UP, 0, distance,
+                            result.size(), getModeType(), req.cache()
+                    );
+
+                    if (req.filter().test(fCtx)) {
+                        result.add(leafPos);
+                    }
+                }
+            }
+        }
     }
 
     private List<BlockPos> collectTall(MiningRequest req) {

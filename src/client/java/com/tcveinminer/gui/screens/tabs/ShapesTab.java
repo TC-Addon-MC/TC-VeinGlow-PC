@@ -85,8 +85,8 @@ public class ShapesTab implements MenuTab {
                     String deletedId = customs.get(finalCi).strategyId;
                     screen.getState().customShapes.remove(finalCi);
                     screen.getState().enabledShapes.remove(deletedId);
-                    if (deletedId.equals(screen.getState().hoveredShapeId)) {
-                        screen.getState().hoveredShapeId = "FACE";
+                    if (deletedId.equals(screen.getState().selectedShapeId)) {
+                        screen.getState().selectedShapeId = "FACE";
                     }
                     screen.syncShapeStateToClientConfig();
                     screen.rebuildMenu();
@@ -120,15 +120,12 @@ public class ShapesTab implements MenuTab {
         for (ModConfig.MiningShape s : builtins) {
             if (rowIndex >= start && rowIndex < start + maxV) {
                 int ry = cy + 26 + (rowIndex - start) * 24;
-                boolean sel = s.name().equals(screen.getState().hoveredShapeId);
 
-                ctx.fill(cx, ry, cx + cw, ry + 22, sel ? 0x33F59E0B : DrawHelper.BG_CARD);
-                DrawHelper.drawSolidBorder(ctx, cx, ry, cw, 22,
-                        sel ? ThemeColors.GOLD : DrawHelper.BORDER_MODERN);
-                if (sel) ctx.fill(cx, ry + 4, cx + 2, ry + 18, ThemeColors.GOLD);
+                ctx.fill(cx, ry, cx + cw, ry + 22, DrawHelper.BG_CARD);
+                DrawHelper.drawSolidBorder(ctx, cx, ry, cw, 22, DrawHelper.BORDER_MODERN);
 
                 ctx.drawTextWithShadow(screen.getTextRenderer(), s.icon + " " + s.label,
-                        cx + 8, ry + 7, sel ? ThemeColors.GOLD : 0xFFA0AEC0);
+                        cx + 8, ry + 7, 0xFFA0AEC0);
             }
             rowIndex++;
         }
@@ -137,24 +134,33 @@ public class ShapesTab implements MenuTab {
         for (ClientConfig.CustomShapeEntry entry : customs) {
             if (rowIndex >= start && rowIndex < start + maxV) {
                 int ry = cy + 26 + (rowIndex - start) * 24;
-                boolean sel = entry.strategyId.equals(screen.getState().hoveredShapeId);
                 boolean blocked = isCustomBlockedByServer();
 
                 // Màu tím cho custom, xám nếu bị server chặn
-                int fillColor  = blocked ? 0x22888888 : (sel ? 0x338B5CF6 : DrawHelper.BG_CARD);
-                int borderColor = blocked ? DrawHelper.BORDER_MODERN
-                        : (sel ? ThemeColors.PURPLE : ThemeColors.PURPLE_BORDER_DIM);
-                int textColor  = blocked ? ThemeColors.TEXT_DIM
-                        : (sel ? ThemeColors.PURPLE_TEXT : 0xFFB39DDB);
+                int fillColor  = blocked ? 0x22888888 : DrawHelper.BG_CARD;
+                int borderColor = blocked ? DrawHelper.BORDER_MODERN : ThemeColors.PURPLE_BORDER_DIM;
+                int textColor  = blocked ? ThemeColors.TEXT_DIM : 0xFFB39DDB;
 
                 ctx.fill(cx, ry, cx + cw, ry + 22, fillColor);
                 DrawHelper.drawSolidBorder(ctx, cx, ry, cw, 22, borderColor);
-                if (sel && !blocked) ctx.fill(cx, ry + 4, cx + 2, ry + 18, ThemeColors.PURPLE);
 
                 String label = "✦ " + entry.name;
                 ctx.drawTextWithShadow(screen.getTextRenderer(), label, cx + 8, ry + 7, textColor);
             }
             rowIndex++;
+        }
+
+        if (totalRows > maxV) {
+            int barX = cx + cw - 3;
+            int barH = ch - 26;
+            int trackY = cy + 26;
+            ctx.fill(barX, trackY, barX + 3, trackY + barH, 0x33FFFFFF);
+
+            float thumbRatio = (float) maxV / totalRows;
+            float thumbOffset = (float) start / totalRows;
+            int thumbH = Math.max(12, (int)(barH * thumbRatio));
+            int thumbY = trackY + (int)((barH - thumbH) * thumbOffset / Math.max(1.0f, 1.0f - thumbRatio));
+            ctx.fill(barX, thumbY, barX + 3, thumbY + thumbH, 0xAAA0AEC0);
         }
     }
 
@@ -214,6 +220,8 @@ public class ShapesTab implements MenuTab {
     @Override
     public boolean mouseScrolled(MainMenuScreen screen, double mx, double my, double h, double v) {
         shapeScroll = Math.max(0, shapeScroll - (int) v);
+        screen.rebuildMenu();
         return true;
     }
 }
+

@@ -1,11 +1,15 @@
 package com.tcveinminer.config;
 
+import com.tcveinminer.config.ModConfig;
+
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class ClientConfig {
 
@@ -20,8 +24,26 @@ public class ClientConfig {
         public CustomShapeEntry(String name, String equation) {
             this.name = name;
             this.equation = equation;
-            this.strategyId = "custom:" + name.toLowerCase().replaceAll("[^a-z0-9_]", "_");
+            this.strategyId = customShapeId(name);
         }
+    }
+
+    public static String customShapeId(String name) {
+        if (name == null || name.isBlank()) return "custom:shape";
+
+        String slug = name.toLowerCase()
+                .replaceAll("[àáạảãâầấậẩẫăằắặẳẵ]", "a")
+                .replaceAll("[èéẹẻẽêềếệểễ]", "e")
+                .replaceAll("[ìíịỉĩ]", "i")
+                .replaceAll("[òóọỏõôồốộổỗơờớợởỡ]", "o")
+                .replaceAll("[ùúụủũưừứựửữ]", "u")
+                .replaceAll("[ỳýỵỷỹ]", "y")
+                .replaceAll("đ", "d")
+                .replaceAll("[^a-z0-9_]", "_")
+                .replaceAll("_+", "_")
+                .replaceAll("^_+|_+$", "");
+
+        return "custom:" + (slug.isBlank() ? "shape" : slug);
     }
 
     /** Danh sách chế độ tùy chỉnh — lưu vào JSON. */
@@ -114,5 +136,64 @@ public class ClientConfig {
         if (serverBlacklist.contains(blockId)) return false;
         if (personalBlacklist.contains(blockId)) return false;
         return true;
+    }
+
+    public void postLoad() {
+        if (customShapes == null) customShapes = new ArrayList<>();
+        if (enabledShapes == null) enabledShapes = new LinkedHashSet<>(List.of("FACE"));
+        if (currentShape == null || currentShape.isBlank()) currentShape = "FACE";
+        if (personalBlacklist == null) personalBlacklist = new ArrayList<>();
+        if (enabledTools == null) enabledTools = new LinkedHashMap<>();
+        if (serverDisabledShapes == null) serverDisabledShapes = new ArrayList<>();
+        if (serverBlacklist == null) serverBlacklist = new ArrayList<>();
+        if (serverMaxBlocks <= 0) serverMaxBlocks = 64;
+
+        normalizeShapeConfig();
+    }
+
+    private void normalizeShapeConfig() {
+        Set<String> builtinIds = Arrays.stream(ModConfig.MiningShape.values())
+                .map(Enum::name)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<String> customIds = customShapes.stream()
+                .map(entry -> entry.strategyId)
+                .filter(id -> id != null && !id.isBlank())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        currentShape = normalizeShapeId(currentShape);
+        enabledShapes = enabledShapes.stream()
+                .map(ClientConfig::normalizeShapeId)
+                .filter(id -> builtinIds.contains(id) || customIds.contains(id))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        if (enabledShapes.isEmpty()) {
+            enabledShapes.add("FACE");
+        }
+
+        if (!builtinIds.contains(currentShape) && !customIds.contains(currentShape)) {
+            System.out.println("[TCVeinMiner] Invalid currentShape in client config: " + currentShape + " -> FACE");
+            currentShape = "FACE";
+        }
+
+        if (!enabledShapes.contains(currentShape)) {
+            enabledShapes.add(currentShape);
+        }
+    }
+
+    private static String normalizeShapeId(String id) {
+        if (id == null) return "FACE";
+        String trimmed = id.trim();
+        if (trimmed.startsWith("custom:")) return trimmed;
+        return switch (trimmed.toUpperCase()) {
+            case "STAIRUP", "STAIR_UPWARD", "STAIRS_UP" -> "STAIR_UP";
+            case "STAIRDOWN", "STAIR_DOWNWARD", "STAIRS_DOWN" -> "STAIR_DOWN";
+            case "TREECAP", "TREE_CAPITATOR" -> "TREE_CAP";
+            case "AREA3X3", "AREA_3X3" -> "AREA_3x3";
+            case "AREA5X5", "AREA_5X5" -> "AREA_5x5";
+            case "TUNNEL1X2", "TUNNEL_1X2" -> "TUNNEL_1x2";
+            case "TUNNEL3X3", "TUNNEL_3X3" -> "TUNNEL_3x3";
+            case "TALL1X2", "TALL_1X2" -> "TALL_1x2";
+            default -> trimmed;
+        };
     }
 }

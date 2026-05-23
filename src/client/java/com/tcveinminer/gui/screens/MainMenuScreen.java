@@ -58,12 +58,12 @@ public class MainMenuScreen extends Screen {
 
         if (!stateLoaded) {
         ModConfig cfg = ConfigManager.get();
-        if (state.hoveredShapeId == null) state.hoveredShapeId = cfg.miningShape.name();
+        if (state.selectedShapeId == null) state.selectedShapeId = cfg.miningShape.name();
 
         // --- Load từ ClientConfig (nguồn dữ liệu chính) ---
         ClientConfig ccfg = ClientConfigManager.instance;
         if (ccfg.currentShape != null && !ccfg.currentShape.isBlank()) {
-            state.hoveredShapeId = ccfg.currentShape;
+            state.selectedShapeId = ccfg.currentShape;
         }
         state.showOutline         = ccfg.showOutline;
         state.colorR              = ccfg.colorR;
@@ -109,13 +109,13 @@ public class MainMenuScreen extends Screen {
         normalizeShapeState();
 
         ClientConfig ccfg = ClientConfigManager.instance;
-        ccfg.currentShape = state.hoveredShapeId;
+        ccfg.currentShape = state.selectedShapeId;
         ccfg.enabledShapes = new LinkedHashSet<>(state.enabledShapes);
         ccfg.customShapes = new ArrayList<>(state.customShapes);
         ClientConfigManager.save();
 
         try {
-            ConfigManager.get().miningShape = ModConfig.MiningShape.valueOf(state.hoveredShapeId);
+            ConfigManager.get().miningShape = ModConfig.MiningShape.valueOf(state.selectedShapeId);
             ConfigManager.save();
         } catch (IllegalArgumentException ignored) {
             // Custom shapes only exist in ClientConfig.
@@ -138,11 +138,14 @@ public class MainMenuScreen extends Screen {
             state.enabledShapes.add("FACE");
         }
 
-        if (state.hoveredShapeId == null
-                || state.hoveredShapeId.isBlank()
-                || !availableShapes.contains(state.hoveredShapeId)
-                || !state.enabledShapes.contains(state.hoveredShapeId)) {
-            state.hoveredShapeId = state.enabledShapes.iterator().next();
+        if (state.selectedShapeId == null
+                || state.selectedShapeId.isBlank()
+                || !availableShapes.contains(state.selectedShapeId)
+                || !state.enabledShapes.contains(state.selectedShapeId)) {
+            String oldShapeId = state.selectedShapeId;
+            String newShapeId = state.enabledShapes.iterator().next();
+            System.out.println("[TCVeinMiner] Shape normalized: " + oldShapeId + " -> " + newShapeId);
+            state.selectedShapeId = newShapeId;
         }
     }
 
@@ -236,9 +239,9 @@ public class MainMenuScreen extends Screen {
     }
 
     private void save() {
-        // Sync hoveredShapeId → ModConfig (vẫn cần cho logic server)
+        // Sync selectedShapeId → ModConfig (vẫn cần cho logic server)
         ModConfig cfg = ConfigManager.get();
-        try { cfg.miningShape = ModConfig.MiningShape.valueOf(state.hoveredShapeId); } catch (Exception ignored) {}
+        try { cfg.miningShape = ModConfig.MiningShape.valueOf(state.selectedShapeId); } catch (Exception ignored) {}
         ConfigManager.save();
 
         // --- Ghi vào ClientConfig (nguồn dữ liệu chính) ---
@@ -252,7 +255,7 @@ public class MainMenuScreen extends Screen {
         ccfg.showHud             = state.showHud;
         ccfg.activationMode      = state.activationMode;
         ccfg.clientMaxBlocks     = state.maxBlocks;
-        ccfg.currentShape        = state.hoveredShapeId;
+        ccfg.currentShape        = state.selectedShapeId;
         ccfg.enabledShapes       = state.enabledShapes;
         ccfg.enabledTools        = state.enabledTools;
         ccfg.personalBlacklist   = new ArrayList<>(state.blacklist.stream()
@@ -268,3 +271,4 @@ public class MainMenuScreen extends Screen {
     @Override public boolean shouldPause() { return false; }
     @Override public void renderBackground(DrawContext c, int mx, int my, float d) {}
 }
+

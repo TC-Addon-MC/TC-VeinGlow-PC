@@ -2,6 +2,7 @@ package com.tcveinminer;
 
 import com.tcveinminer.config.ConfigManager;
 import com.tcveinminer.engine.MiningEngine;
+import com.tcveinminer.engine.strategy.StrategyRegistry;
 import com.tcveinminer.network.HoldKeyPayload;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -29,12 +30,22 @@ public class TCVeinMinerMod implements ModInitializer {
 
         ServerPlayNetworking.registerGlobalReceiver(HoldKeyPayload.ID, (payload, context) -> {
             UUID uuid = context.player().getUuid();
-            int safeMax = Math.min(payload.maxBlocks(), ConfigManager.get().maxBlocks);
+            if (payload.shapeId() == null || payload.shapeId().length() > 128) return;
+
+            String safeEq = payload.equation() == null ? "" : payload.equation();
+            if (safeEq.length() > 512) safeEq = "";
+            final String safeEquation = safeEq;
+
+            boolean isCustomShape = payload.shapeId().startsWith("custom:") && !safeEquation.isBlank();
+            String safeShapeId = (StrategyRegistry.contains(payload.shapeId()) || isCustomShape)
+                    ? payload.shapeId()
+                    : "FACE";
+            int safeMax = Math.max(1, Math.min(payload.maxBlocks(), ConfigManager.get().maxBlocks));
 
             context.server().execute(() -> {
                 // [ĐÃ SỬA LỖI]: LUÔN LUÔN cập nhật chế độ đào (shape) kể cả khi thả phím.
                 // Tránh việc Client báo đổi chế độ nhưng Server phớt lờ vì đang không nhấn V.
-                MiningEngine.forPlayer(uuid).updatePlayerConfig(payload.shapeId(), safeMax);
+                MiningEngine.forPlayer(uuid).updatePlayerConfig(safeShapeId, safeMax, safeEquation);
 
                 // Sau đó mới cập nhật trạng thái có đang giữ phím hay không
                 if (payload.isHolding()) {

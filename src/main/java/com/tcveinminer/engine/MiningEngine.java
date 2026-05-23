@@ -8,10 +8,12 @@ import com.tcveinminer.engine.queue.MiningQueue.Entry;
 import com.tcveinminer.engine.state.MiningStateMachine;
 import com.tcveinminer.engine.state.MiningStateMachine.State;
 import com.tcveinminer.engine.strategy.FilterModeManager;
+import com.tcveinminer.engine.strategy.CustomEquationStrategy;
 import com.tcveinminer.engine.strategy.MiningStrategy;
 import com.tcveinminer.engine.strategy.StrategyRegistry;
 import com.tcveinminer.engine.traversal.OrientationContext;
 import com.tcveinminer.logic.HudNotifier;
+import com.tcveinminer.util.ExpressionEvaluator;
 import com.tcveinminer.util.SessionStats;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.EquipmentSlot;
@@ -74,12 +76,29 @@ public final class MiningEngine {
     private int targetCount = 0;
     private String playerShape    = "FACE";
     private int    playerMaxBlocks = 64;
+    private MiningStrategy customStrategy = null;
 
     private MiningEngine() {}
 
     public void updatePlayerConfig(String shapeId, int maxBlocks) {
-        this.playerShape      = shapeId;
+        updatePlayerConfig(shapeId, maxBlocks, "");
+    }
+
+    public void updatePlayerConfig(String shapeId, int maxBlocks, String equation) {
         this.playerMaxBlocks  = maxBlocks;
+        if (shapeId != null && shapeId.startsWith("custom:") && equation != null && !equation.isBlank()) {
+            this.customStrategy = buildCustomStrategy(shapeId, equation);
+            this.playerShape = (this.customStrategy != null) ? shapeId : "FACE";
+        } else {
+            this.customStrategy = null;
+            this.playerShape = shapeId;
+        }
+    }
+
+    private static MiningStrategy buildCustomStrategy(String id, String equation) {
+        ExpressionEvaluator evaluator = new ExpressionEvaluator(equation);
+        if (!evaluator.isValid()) return null;
+        return new CustomEquationStrategy(id, evaluator);
     }
 
     // ── Public API ───────────────────────────────────────────────────────────
@@ -111,7 +130,9 @@ public final class MiningEngine {
                 OrientationContext.facingFromYaw(player.getYaw())
         );
 
-        MiningStrategy strategy = StrategyRegistry.get(this.playerShape);
+        MiningStrategy strategy = (customStrategy != null)
+                ? customStrategy
+                : StrategyRegistry.get(this.playerShape);
         int maxBlocksToMine = this.playerMaxBlocks - 1;
 
         // 1. Khởi tạo Cache và lựa chọn Pipeline Filter cho tác vụ nội bộ Server

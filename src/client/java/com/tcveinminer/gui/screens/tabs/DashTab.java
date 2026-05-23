@@ -49,8 +49,8 @@ public class DashTab implements MenuTab {
             // Cột trái
             DrawHelper.drawCard(ctx, cx + 12, innerY, innerW, innerH);
             ctx.drawTextWithShadow(screen.getTextRenderer(), "CHẾ ĐỘ ĐÀO", cx + 20, innerY + 6, 0xFF6B7280);
-            String label = screen.getState().hoveredShapeId;
-            try { label = ModConfig.MiningShape.valueOf(screen.getState().hoveredShapeId).label; } catch (Exception ignored) {}
+            String label = screen.getState().selectedShapeId;
+            try { label = ModConfig.MiningShape.valueOf(screen.getState().selectedShapeId).label; } catch (Exception ignored) {}
             ctx.drawTextWithShadow(screen.getTextRenderer(), label, cx + 20, innerY + 18, 0xFFFFFFFF);
 
             // Cột phải

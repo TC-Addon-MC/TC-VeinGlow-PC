@@ -269,8 +269,7 @@ public final class FilterModeManager {
                     Filters.maxVisited(maxBlocks),
                     Filters.maxDistance(32), // Không lan quá xa khỏi rễ
                     Composite.or(Filters.LOGS_ONLY, Filters.LEAVES_ONLY),
-                    Filters.naturalTreeOnly(),
-                    Filters.harvestableByTool()
+                    Filters.naturalTreeOnly()
             );
         }
 

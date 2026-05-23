@@ -20,7 +20,7 @@ public class MenuState {
     public Map<String, Boolean> enabledTools = new LinkedHashMap<>();
     public int colorR, colorG, colorB;
     public boolean colorRainbow, colorDisabled;
-    public String hoveredShapeId;
+    public String selectedShapeId;
 
     // ---- Từ ClientConfig ----
     public boolean requireCorrectTool;

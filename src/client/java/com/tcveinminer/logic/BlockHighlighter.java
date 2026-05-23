@@ -3,10 +3,12 @@ package com.tcveinminer.logic;
 import com.tcveinminer.TCVeinMinerClient;
 import com.tcveinminer.config.ClientConfig;
 import com.tcveinminer.config.ClientConfigManager;
+import com.tcveinminer.engine.strategy.CustomEquationStrategy;
 import com.tcveinminer.engine.strategy.FilterModeManager;
 import com.tcveinminer.engine.strategy.MiningStrategy;
 import com.tcveinminer.engine.strategy.StrategyRegistry;
 import com.tcveinminer.engine.traversal.OrientationContext;
+import com.tcveinminer.util.ExpressionEvaluator;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.block.BlockState;
@@ -80,14 +82,20 @@ public class BlockHighlighter {
     private static int              lastYawBucket  = Integer.MIN_VALUE;
     private static int              lastPitchBucket= Integer.MIN_VALUE;
     private static Item             lastItem       = null; // Thêm cache cho Tool để trigger filter harvestable
+    private static int              lastCustomShapesHash = 0;
     private static Set<BlockPos>    cachedHighlight = Collections.emptySet();
+    private static BlockPos         lockedPreviewTarget = null;
 
     public static void register() {
         WorldRenderEvents.BLOCK_OUTLINE.register(BlockHighlighter::onDrawOutline);
     }
 
     private static boolean onDrawOutline(WorldRenderContext context, WorldRenderContext.BlockOutlineContext outlineCtx) {
-        if (!TCVeinMinerClient.holdKeyDown) return true;
+        if (!TCVeinMinerClient.holdKeyDown) {
+            lockedPreviewTarget = null;
+            invalidateCache();
+            return true;
+        }
         if (!ClientConfigManager.instance.showOutline) return true;
 
         MinecraftClient client = MinecraftClient.getInstance();
@@ -103,12 +111,14 @@ public class BlockHighlighter {
     private static Set<BlockPos> resolveHighlightSet(MinecraftClient client) {
         HitResult hit = client.crosshairTarget;
         if (hit == null || hit.getType() != HitResult.Type.BLOCK) {
+            lockedPreviewTarget = null;
             invalidateCache();
             return Collections.emptySet();
         }
 
         BlockHitResult bhr = (BlockHitResult) hit;
-        BlockPos targetPos  = bhr.getBlockPos();
+        BlockPos targetPos = bhr.getBlockPos();
+        lockedPreviewTarget = targetPos;
         String strategyId   = ClientConfigManager.instance.currentShape;
 
         PlayerEntity player = client.player;
@@ -120,13 +130,15 @@ public class BlockHighlighter {
         int yawBucket   = (int)(player.getYaw()   / YAW_BUCKET);
         int pitchBucket = (int)(player.getPitch()  / PITCH_BUCKET);
         Item currentItem = player.getMainHandStack().getItem();
+        int customHash = customShapesHash();
 
         if (targetPos.equals(lastTarget)
                 && strategyId.equals(lastStrategyId)
                 && hitFace == lastHitFace
                 && yawBucket   == lastYawBucket
                 && pitchBucket == lastPitchBucket
-                && currentItem == lastItem) {
+                && currentItem == lastItem
+                && customHash == lastCustomShapesHash) {
             return cachedHighlight;
         }
 
@@ -136,6 +148,7 @@ public class BlockHighlighter {
         lastYawBucket   = yawBucket;
         lastPitchBucket = pitchBucket;
         lastItem        = currentItem;
+        lastCustomShapesHash = customHash;
 
         BlockState targetState = client.world.getBlockState(targetPos);
         if (targetState.isAir()) {
@@ -148,7 +161,7 @@ public class BlockHighlighter {
                 OrientationContext.facingFromYaw(player.getYaw())
         );
 
-        MiningStrategy strategy = StrategyRegistry.get(strategyId);
+        MiningStrategy strategy = resolveStrategy(strategyId);
         int maxBlocks = ClientConfigManager.instance.getEffectiveMaxBlocks() - 1;
 
         // 1. Khởi tạo Cache và Filter cho Client Preview
@@ -187,7 +200,32 @@ public class BlockHighlighter {
         lastYawBucket   = Integer.MIN_VALUE;
         lastPitchBucket = Integer.MIN_VALUE;
         lastItem        = null;
+        lastCustomShapesHash = 0;
         cachedHighlight = Collections.emptySet();
+    }
+
+    private static int customShapesHash() {
+        int hash = 1;
+        for (ClientConfig.CustomShapeEntry entry : ClientConfigManager.instance.customShapes) {
+            hash = 31 * hash + Objects.hash(entry.strategyId, entry.name, entry.equation);
+        }
+        return hash;
+    }
+
+    private static MiningStrategy resolveStrategy(String strategyId) {
+        if (strategyId != null && strategyId.startsWith("custom:")) {
+            String equation = ClientConfigManager.instance.customShapes.stream()
+                    .filter(entry -> strategyId.equals(entry.strategyId))
+                    .map(entry -> entry.equation)
+                    .findFirst()
+                    .orElse("");
+            ExpressionEvaluator evaluator = new ExpressionEvaluator(equation);
+            if (evaluator.isValid()) {
+                return new CustomEquationStrategy(strategyId, evaluator);
+            }
+            return StrategyRegistry.get("FACE");
+        }
+        return StrategyRegistry.get(strategyId);
     }
 
     // ── Rendering ─────────────────────────────────────────────────────────────

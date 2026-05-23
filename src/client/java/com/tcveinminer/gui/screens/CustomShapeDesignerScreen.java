@@ -138,21 +138,21 @@ public class CustomShapeDesignerScreen extends Screen {
                 // Chỉnh sửa: cập nhật entry cũ tại chỗ
                 String oldId = editEntry.strategyId;
                 boolean wasEnabled = mainMenu.getState().enabledShapes.remove(oldId);
-                boolean wasSelected = oldId.equals(mainMenu.getState().hoveredShapeId);
+                boolean wasSelected = oldId.equals(mainMenu.getState().selectedShapeId);
                 editEntry.name = nameText;
                 editEntry.equation = equationText;
-                editEntry.strategyId = "custom:" + nameText.toLowerCase().replaceAll("[^a-z0-9_]", "_");
+                editEntry.strategyId = ClientConfig.customShapeId(nameText);
                 if (wasEnabled) mainMenu.getState().enabledShapes.add(editEntry.strategyId);
-                if (wasSelected) mainMenu.getState().hoveredShapeId = editEntry.strategyId;
+                if (wasSelected) mainMenu.getState().selectedShapeId = editEntry.strategyId;
             } else {
                 // Tạo mới: kiểm tra trùng tên
-                String newId = "custom:" + nameText.toLowerCase().replaceAll("[^a-z0-9_]", "_");
+                String newId = ClientConfig.customShapeId(nameText);
                 boolean duplicate = list.stream().anyMatch(e -> e.strategyId.equals(newId));
                 if (duplicate) { nameError = "Tên đã tồn tại!"; return; }
 
                 list.add(new ClientConfig.CustomShapeEntry(nameText, equationText));
                 mainMenu.getState().enabledShapes.add(newId);
-                mainMenu.getState().hoveredShapeId = newId;
+                mainMenu.getState().selectedShapeId = newId;
             }
         }
 
@@ -275,3 +275,4 @@ public class CustomShapeDesignerScreen extends Screen {
     @Override public boolean shouldPause() { return false; }
     @Override public void renderBackground(DrawContext c, int mx, int my, float d) {}
 }
+

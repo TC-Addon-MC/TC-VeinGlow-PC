@@ -59,7 +59,7 @@ public class TCVeinMinerClient implements ClientModInitializer {
             lastShapeId   = ClientConfigManager.instance.currentShape;
             lastMaxBlocks = ClientConfigManager.instance.getEffectiveMaxBlocks();
             lastHoldState = holdKeyDown;
-            ClientPlayNetworking.send(new HoldKeyPayload(holdKeyDown, lastShapeId, lastMaxBlocks));
+            ClientPlayNetworking.send(new HoldKeyPayload(holdKeyDown, lastShapeId, lastMaxBlocks, currentEquation(lastShapeId)));
         });
 
         // Reset khi ngắt kết nối
@@ -126,11 +126,20 @@ public class TCVeinMinerClient implements ClientModInitializer {
                 lastMaxBlocks = currentMaxBlocks;
 
                 ClientPlayNetworking.send(
-                        new HoldKeyPayload(holdKeyDown, currentShapeId, currentMaxBlocks)
+                        new HoldKeyPayload(holdKeyDown, currentShapeId, currentMaxBlocks, currentEquation(currentShapeId))
                 );
             }
         });
 
         BlockHighlighter.register();
+    }
+
+    private static String currentEquation(String shapeId) {
+        if (shapeId == null || !shapeId.startsWith("custom:")) return "";
+        return ClientConfigManager.instance.customShapes.stream()
+                .filter(entry -> shapeId.equals(entry.strategyId))
+                .map(entry -> entry.equation)
+                .findFirst()
+                .orElse("");
     }
 }

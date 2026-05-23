@@ -16,8 +16,12 @@ import org.joml.Matrix4f;
 import java.util.ArrayList;
 import java.util.List;
 import com.tcveinminer.config.ClientConfigManager;
+import com.tcveinminer.config.ClientConfig;
 
 public class RadialMenuScreen extends Screen {
+
+    /** Unified entry for both builtin enum shapes and custom equation shapes. */
+    private record SliceEntry(String id, String icon, String label) {}
 
     private final Screen parent;
     private static final int OUTER_R = 90;
@@ -35,7 +39,7 @@ public class RadialMenuScreen extends Screen {
 
     private int cx, cy;
     private int hoveredSlice = -1;
-    private List<ModConfig.MiningShape> activeShapes;
+    private List<SliceEntry> activeShapes;
 
     private float animOpen = 0.0f;
     private float[] sliceHoverProgress;
@@ -62,11 +66,22 @@ public class RadialMenuScreen extends Screen {
 
     private void rebuildShapes() {
         activeShapes = new ArrayList<>();
+        // Builtin enum shapes
         for (ModConfig.MiningShape shape : ModConfig.MiningShape.values()) {
-            if (ClientConfigManager.instance.enabledShapes.contains(shape.name()))
-                activeShapes.add(shape);
+            if (ClientConfigManager.instance.enabledShapes.contains(shape.name())
+                    && !ClientConfigManager.instance.serverDisabledShapes.contains(shape.name()))
+                activeShapes.add(new SliceEntry(shape.name(), shape.icon, shape.label));
         }
-        if (activeShapes.isEmpty()) activeShapes.add(ModConfig.MiningShape.FACE);
+        // Custom equation shapes
+        for (ClientConfig.CustomShapeEntry entry : ClientConfigManager.instance.customShapes) {
+            if (ClientConfigManager.instance.enabledShapes.contains(entry.strategyId)
+                    && !ClientConfigManager.instance.serverDisabledShapes.contains("custom")
+                    && !ClientConfigManager.instance.serverDisabledShapes.contains(entry.strategyId))
+                activeShapes.add(new SliceEntry(entry.strategyId, "✦", entry.name));
+        }
+        if (activeShapes.isEmpty())
+            activeShapes.add(new SliceEntry(ModConfig.MiningShape.FACE.name(),
+                    ModConfig.MiningShape.FACE.icon, ModConfig.MiningShape.FACE.label));
     }
 
     @Override
@@ -83,12 +98,10 @@ public class RadialMenuScreen extends Screen {
             hoveredSlice = getHoveredSlice(mouseX, mouseY);
         }
 
-        // ===== FIX 1: dùng ClientConfigManager thay ConfigManager =====
-        ModConfig.MiningShape currentActive = ModConfig.MiningShape.FACE;
-        try {
-            currentActive = ModConfig.MiningShape.valueOf(ClientConfigManager.instance.currentShape);
-        } catch (IllegalArgumentException | NullPointerException e) {
-        }
+        // Resolve currentShape as string ID (works for both builtin and custom)
+        String currentActiveId = ClientConfigManager.instance.currentShape;
+        if (currentActiveId == null || currentActiveId.isBlank())
+            currentActiveId = ModConfig.MiningShape.FACE.name();
 
         MatrixStack matrices = ctx.getMatrices();
         matrices.push();
@@ -116,7 +129,7 @@ public class RadialMenuScreen extends Screen {
 
         for (int i = 0; i < n; i++) {
             boolean isHov = (!isClosing && hoveredSlice == i);
-            boolean isAct = (currentActive == activeShapes.get(i));
+            boolean isAct = activeShapes.get(i).id().equals(currentActiveId);
 
             sliceHoverProgress[i] = MathHelper.lerp(delta * 0.3f, sliceHoverProgress[i], isHov ? 1.0f : 0.0f);
             float hovP = sliceHoverProgress[i];
@@ -170,7 +183,7 @@ public class RadialMenuScreen extends Screen {
         RenderSystem.disableBlend();
         matrices.pop();
 
-        renderLabels(ctx, n, angleStep, currentActive);
+        renderLabels(ctx, n, angleStep, currentActiveId);
 
         if (!isClosing && hoveredSlice >= 0 && hoveredSlice < n) {
             renderTooltip(ctx, mouseX, mouseY);
@@ -184,9 +197,8 @@ public class RadialMenuScreen extends Screen {
 
         } else if (clickedAction >= 0) {
 
-            // ===== FIX 2: lưu String Enum vào ClientConfigManager =====
             ClientConfigManager.instance.currentShape =
-                    activeShapes.get(clickedAction).name();
+                    activeShapes.get(clickedAction).id();
 
             ClientConfigManager.save();
 
@@ -196,10 +208,10 @@ public class RadialMenuScreen extends Screen {
 
     // ===== phần còn lại giữ nguyên =====
 
-    private void renderLabels(DrawContext ctx, int n, float angleStep, ModConfig.MiningShape currentActive) {
+    private void renderLabels(DrawContext ctx, int n, float angleStep, String currentActiveId) {
         for (int i = 0; i < n; i++) {
-            ModConfig.MiningShape shape = activeShapes.get(i);
-            boolean isAct = (currentActive == shape);
+            SliceEntry entry = activeShapes.get(i);
+            boolean isAct = entry.id().equals(currentActiveId);
             float mid = (float) Math.toRadians(-90f + (i + 0.5f) * angleStep);
 
             float hovP = sliceHoverProgress[i];
@@ -223,10 +235,10 @@ public class RadialMenuScreen extends Screen {
             int iconColor = applyAlpha(isAct ? ThemeColors.TOGGLE_ON_TEXT : ThemeColors.BTN_TEXT, alpha);
             int textColor = applyAlpha(isAct ? ThemeColors.TOGGLE_ON_TEXT : ThemeColors.TEXT_LABEL, alpha);
 
-            String icon = shape.icon;
+            String icon = entry.icon();
             ctx.drawTextWithShadow(textRenderer, icon, lx - textRenderer.getWidth(icon) / 2, ly - 10, iconColor);
 
-            String name = shortenLabel(shape.label);
+            String name = shortenLabel(entry.label());
             ctx.drawTextWithShadow(textRenderer, name, lx - textRenderer.getWidth(name) / 2, ly + 1, textColor);
         }
 
@@ -242,7 +254,7 @@ public class RadialMenuScreen extends Screen {
     }
 
     private void renderTooltip(DrawContext ctx, int mouseX, int mouseY) {
-        String fullName = activeShapes.get(hoveredSlice).label;
+        String fullName = activeShapes.get(hoveredSlice).label();
         int tw = textRenderer.getWidth(fullName) + 8;
         ctx.fill(mouseX + 6, mouseY - 14, mouseX + 6 + tw, mouseY, 0xCC000000);
         ctx.drawTextWithShadow(textRenderer, fullName, mouseX + 10, mouseY - 11, 0xFFFFFFFF);
