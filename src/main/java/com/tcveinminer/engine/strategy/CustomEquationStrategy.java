@@ -22,7 +22,7 @@ public final class CustomEquationStrategy implements MiningStrategy {
 
     @Override public String getId() { return id; }
     @Override public String getLabel() { return id; }
-    @Override public String getIcon() { return "✦"; }
+    @Override public String getIcon() { return ""; }
     @Override public FilterModeManager.MiningMode getModeType() { return FilterModeManager.MiningMode.SHAPE; }
 
     @Override

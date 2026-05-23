@@ -77,7 +77,7 @@ public class RadialMenuScreen extends Screen {
             if (ClientConfigManager.instance.enabledShapes.contains(entry.strategyId)
                     && !ClientConfigManager.instance.serverDisabledShapes.contains("custom")
                     && !ClientConfigManager.instance.serverDisabledShapes.contains(entry.strategyId))
-                activeShapes.add(new SliceEntry(entry.strategyId, "✦", entry.name));
+                activeShapes.add(new SliceEntry(entry.strategyId, "", entry.name));
         }
         if (activeShapes.isEmpty())
             activeShapes.add(new SliceEntry(ModConfig.MiningShape.FACE.name(),
@@ -244,8 +244,8 @@ public class RadialMenuScreen extends Screen {
 
         int centerAlpha = (int)(animOpen * 255);
         if (centerAlpha > 10) {
-            ctx.drawTextWithShadow(textRenderer, "⚙", cx - textRenderer.getWidth("⚙") / 2, cy - 9, applyAlpha(ThemeColors.BTN_TEXT, centerAlpha));
-            ctx.drawTextWithShadow(textRenderer, "Settings", cx - textRenderer.getWidth("Settings") / 2, cy + 1, applyAlpha(ThemeColors.TEXT_LABEL, centerAlpha));
+            
+            ctx.drawTextWithShadow(textRenderer, "Settings", cx - textRenderer.getWidth("Settings") / 2, cy - 4, applyAlpha(ThemeColors.TEXT_LABEL, centerAlpha));
         }
     }
 

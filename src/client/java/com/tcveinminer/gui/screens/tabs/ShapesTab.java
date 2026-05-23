@@ -18,6 +18,7 @@ import java.util.Set;
 
 public class ShapesTab implements MenuTab {
     private int shapeScroll = 0;
+    private boolean isDraggingScroll = false;
     private int lastCx, lastCy, lastCw, lastCh;
 
     // Kiểm tra server có chặn custom shapes không (dùng hàm mẫu tạm thời)
@@ -124,7 +125,7 @@ public class ShapesTab implements MenuTab {
                 ctx.fill(cx, ry, cx + cw, ry + 22, DrawHelper.BG_CARD);
                 DrawHelper.drawSolidBorder(ctx, cx, ry, cw, 22, DrawHelper.BORDER_MODERN);
 
-                ctx.drawTextWithShadow(screen.getTextRenderer(), s.icon + " " + s.label,
+                ctx.drawTextWithShadow(screen.getTextRenderer(), s.label,
                         cx + 8, ry + 7, 0xFFA0AEC0);
             }
             rowIndex++;
@@ -144,7 +145,7 @@ public class ShapesTab implements MenuTab {
                 ctx.fill(cx, ry, cx + cw, ry + 22, fillColor);
                 DrawHelper.drawSolidBorder(ctx, cx, ry, cw, 22, borderColor);
 
-                String label = "✦ " + entry.name;
+                String label = entry.name;
                 ctx.drawTextWithShadow(screen.getTextRenderer(), label, cx + 8, ry + 7, textColor);
             }
             rowIndex++;
@@ -167,6 +168,12 @@ public class ShapesTab implements MenuTab {
     @Override
     public boolean mouseClicked(MainMenuScreen screen, double mx, double my, int btn) {
         int cx = lastCx, cy = lastCy, cw = lastCw, ch = lastCh;
+        
+        // Detect scrollbar click
+        if (mx >= cx + cw - 10 && mx <= cx + cw && my >= cy + 26 && my <= cy + ch) {
+            isDraggingScroll = true;
+            return true;
+        }
         if (mx < cx || mx > cx + cw || my < cy || my > cy + ch) return false;
 
         ModConfig.MiningShape[] builtins = ModConfig.MiningShape.values();
@@ -215,6 +222,37 @@ public class ShapesTab implements MenuTab {
         }
         screen.syncShapeStateToClientConfig();
         screen.rebuildMenu();
+    }
+
+    @Override
+    public boolean mouseDragged(MainMenuScreen screen, double mx, double my, int btn, double dx, double dy) {
+        if (isDraggingScroll) {
+            int barH = lastCh - 26;
+            if (barH <= 0) return false;
+
+            int totalRows = ModConfig.MiningShape.values().length + screen.getState().customShapes.size();
+            int maxV = barH / 24;
+
+            if (totalRows > maxV) {
+                float relativeY = (float) (my - (lastCy + 26));
+                float thumbRatio = (float) maxV / totalRows;
+                int thumbH = Math.max(12, (int) (barH * thumbRatio));
+                
+                // Trừ đi nửa chiều cao thumb để tâm thumb bám theo chuột
+                float scrollPos = (relativeY - thumbH / 2.0f) / (barH - thumbH);
+                shapeScroll = (int) (scrollPos * (totalRows - maxV));
+                shapeScroll = Math.max(0, Math.min(shapeScroll, totalRows - maxV));
+                screen.rebuildMenu();
+            }
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean mouseReleased(double mx, double my, int btn) {
+        isDraggingScroll = false;
+        return false;
     }
 
     @Override

@@ -14,17 +14,16 @@ public class ModConfig {
      * Thêm mode mới → chỉ cần thêm một dòng ở đây + đăng ký trong StrategyRegistry.
      */
     public enum MiningShape {
-        FACE        ("FACE",        "Standard (Face)",        "⬛", "Đào các khối kề mặt", 4),
-        EDGES       ("EDGES",       "Standard V2 (Edges)",    "🔷", "Đào các khối kề cạnh", 8),
-        CORNERS     ("CORNERS",     "Standard V3 (Corners)",  "💎", "Đào các khối kề góc", 10),
-        TALL_1x2    ("TALL_1x2",    "1×2 (Tall)",             "🧱", "Đào hầm cao 2 block", 5),
-        TUNNEL_1x2  ("TUNNEL_1x2",  "Tunnel 1×2",             "🚇", "Đào hầm 1x2", 4),
-        TUNNEL_3x3  ("TUNNEL_3x3",  "Tunnel 3×3",             "🚇", "Đào hầm 3x3", 8),
-        STAIR_UP    ("STAIR_UP",    "Stair Up",               "⬆",  "Đào cầu thang lên", 4),
-        STAIR_DOWN  ("STAIR_DOWN",  "Stair Down",             "⬇",  "Đào cầu thang xuống", 4),
-        AREA_3x3    ("AREA_3x3",    "3×3 Area",               "🟦", "Đào khu vực 3x3", 8),
-        AREA_5x5    ("AREA_5x5",    "5×5 Area",               "🔵", "Đào khu vực 5x5", 11),
-        TREE_CAP    ("TREE_CAP",    "TreeCapitator",          "🌳", "Chặt toàn bộ cây", 5);
+        FACE        ("FACE",        "Standard (Face)",        "", "Đào các khối kề mặt", 4),
+        EDGES       ("EDGES",       "Standard V2 (Edges)",    "", "Đào các khối kề cạnh", 8),
+        CORNERS     ("CORNERS",     "Standard V3 (Corners)",  "", "Đào các khối kề góc", 10),
+        TUNNEL_1x2  ("TUNNEL_1x2",  "Tunnel 1×2",             "", "Đào hầm 1x2", 4),
+        TUNNEL_3x3  ("TUNNEL_3x3",  "Tunnel 3×3",             "", "Đào hầm 3x3", 8),
+        STAIR_UP    ("STAIR_UP",    "Stair Up",               "",  "Đào cầu thang lên", 4),
+        STAIR_DOWN  ("STAIR_DOWN",  "Stair Down",             "",  "Đào cầu thang xuống", 4),
+        AREA_3x3    ("AREA_3x3",    "3×3 Area",               "", "Đào khu vực 3x3", 8),
+        AREA_5x5    ("AREA_5x5",    "5×5 Area",               "", "Đào khu vực 5x5", 11),
+        TREE_CAP    ("TREE_CAP",    "TreeCapitator",          "", "Chặt toàn bộ cây", 5);
 
         public final String strategyId;
         public final String label;

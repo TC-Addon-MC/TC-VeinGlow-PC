@@ -25,17 +25,17 @@ public class VeinMinerHudOverlay implements HudRenderCallback {
 
         // Resolve shape hiện tại từ ClientConfig (không dùng ModConfig server-side)
         String currentShapeId = ClientConfigManager.instance.currentShape;
-        String modeIcon  = "⛏";
+        
         String modeLabel = currentShapeId;
         try {
             ModConfig.MiningShape shape = ModConfig.MiningShape.valueOf(currentShapeId);
-            modeIcon  = shape.icon;
+            
             modeLabel = shape.label;
         } catch (IllegalArgumentException | NullPointerException ignored) {
             // custom shape hoặc chưa set: hiện raw id
         }
 
-        String statusText = modeIcon + " " + (holding ? "SẴN SÀNG" : "CHỜ [V]") + "  " + modeLabel;
+        String statusText = (holding ? "SẴN SÀNG" : "CHỜ [V]") + "  " + modeLabel;
         int textW  = client.textRenderer.getWidth(statusText);
         int pillW  = textW + 16;
         int x      = ClientConfigManager.instance.hudPositionX;
@@ -51,7 +51,7 @@ public class VeinMinerHudOverlay implements HudRenderCallback {
             float alpha = Math.min(1f, remaining / 500f);
             int alphaInt = (int)(alpha * 255) << 24;
 
-            String msg = String.format("✓ Đã đào: %d/%d block", HudNotifier.lastMined, HudNotifier.lastMax);
+            String msg = String.format("Đã đào: %d/%d block", HudNotifier.lastMined, HudNotifier.lastMax);
             int msgW     = client.textRenderer.getWidth(msg);
             int msgPillW = msgW + 16;
             int msgY     = y + 18;

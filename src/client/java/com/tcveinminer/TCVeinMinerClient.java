@@ -6,6 +6,8 @@ import com.tcveinminer.gui.screens.RadialMenuScreen;
 import com.tcveinminer.hud.VeinMinerHudOverlay;
 import com.tcveinminer.logic.BlockHighlighter;
 import com.tcveinminer.network.HoldKeyPayload;
+import com.tcveinminer.network.ConfigSyncPayload;
+import com.tcveinminer.network.MiningStatePayload;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
@@ -25,11 +27,12 @@ public class TCVeinMinerClient implements ClientModInitializer {
 
     /** Trạng thái "đang kích hoạt" gửi lên server (kết quả sau khi xử lý activation mode). */
     public static boolean holdKeyDown = false;
+    public static boolean isMining = false;
 
     private static boolean lastHoldState  = false;
     private static String  lastShapeId    = "";
     private static int     lastMaxBlocks  = -1;
-            lastBlacklist  = new ArrayList<>();
+
     private static List<String> lastBlacklist = new ArrayList<>();
 
     /** Dùng cho TOGGLE/TOGGLE_SNEAK: trạng thái toggle hiện tại. */
@@ -63,8 +66,8 @@ public class TCVeinMinerClient implements ClientModInitializer {
             lastShapeId   = ClientConfigManager.instance.currentShape;
             lastMaxBlocks = ClientConfigManager.instance.getEffectiveMaxBlocks();
             lastHoldState = holdKeyDown;
-            lastBlacklist = new ArrayList<>(currentBlacklist);
-                ClientPlayNetworking.send(new HoldKeyPayload(holdKeyDown, lastShapeId, lastMaxBlocks, currentEquation(lastShapeId), ClientConfigManager.instance.personalBlacklist));
+            lastBlacklist = new ArrayList<>(ClientConfigManager.instance.personalBlacklist);
+            ClientPlayNetworking.send(new HoldKeyPayload(holdKeyDown, lastShapeId, lastMaxBlocks, currentEquation(lastShapeId), lastBlacklist));
         });
 
         // Reset khi ngắt kết nối
@@ -122,7 +125,7 @@ public class TCVeinMinerClient implements ClientModInitializer {
             String currentShapeId = ClientConfigManager.instance.currentShape;
             int currentMaxBlocks  = ClientConfigManager.instance.getEffectiveMaxBlocks();
 
-            List<String> currentBlacklist = ClientConfigManager.instance.personalBlacklist;
+            List<String> currentBlacklist = new ArrayList<>(ClientConfigManager.instance.personalBlacklist);
             boolean stateChanged = (holdKeyDown != lastHoldState)
                     || (!currentShapeId.equals(lastShapeId))
                     || (currentMaxBlocks != lastMaxBlocks) || (!currentBlacklist.equals(lastBlacklist));
@@ -137,6 +140,24 @@ public class TCVeinMinerClient implements ClientModInitializer {
                         new HoldKeyPayload(holdKeyDown, currentShapeId, currentMaxBlocks, currentEquation(currentShapeId), currentBlacklist)
                 );
             }
+        });
+
+                ClientPlayNetworking.registerGlobalReceiver(ConfigSyncPayload.ID, (payload, context) -> {
+            context.client().execute(() -> {
+                var ccfg = ClientConfigManager.instance;
+                ccfg.serverMaxBlocks = payload.maxBlocks();
+                ccfg.serverBlacklist = new ArrayList<>(payload.blacklistedBlocks());
+            });
+        });
+
+        ClientPlayNetworking.registerGlobalReceiver(MiningStatePayload.ID, (payload, context) -> {
+            context.client().execute(() -> {
+                isMining = payload.isMining();
+                if (!isMining) {
+                    // When mining stops, we can allow highlight recalculation again if needed.
+                    // The BlockHighlighter will handle the reset of its internal state.
+                }
+            });
         });
 
         BlockHighlighter.register();

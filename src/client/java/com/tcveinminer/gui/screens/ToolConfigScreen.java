@@ -17,7 +17,7 @@ public class ToolConfigScreen extends Screen {
     private static final int HEADER_H = 24;
 
     private static final String[][] TOOLS = {
-            {"pickaxe", "⛏ Pickaxe"},
+            {"pickaxe", "Pickaxe"},
             {"axe",     "🪓 Axe"},
             {"shovel",  "🔪 Shovel"},
             {"sword",   "🗡 Sword"},
@@ -70,7 +70,7 @@ public class ToolConfigScreen extends Screen {
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         DrawHelper.drawPanel(ctx, x, y, W, H);
         DrawHelper.drawHeader(ctx, x, y, W, HEADER_H);
-        ctx.drawTextWithShadow(textRenderer, "🔧 Cấu Hình Công Cụ", x + 12, y + 8, ThemeColors.TEXT_TITLE);
+        ctx.drawTextWithShadow(textRenderer, "Cấu Hình Công Cụ", x + 12, y + 8, ThemeColors.TEXT_TITLE);
 
         int startX = x + (W - (CARD_W * 2 + CARD_GAP)) / 2;
         int startY = y + HEADER_H + 10;
@@ -90,7 +90,7 @@ public class ToolConfigScreen extends Screen {
 
             int textColor = on ? ThemeColors.EMERALD_TEXT : ThemeColors.REDSTONE_TEXT;
             ctx.drawTextWithShadow(textRenderer, label,    cx + 16, cy + 10, textColor);
-            ctx.drawTextWithShadow(textRenderer, on ? "✓ BẬT" : "✗ TẮT", cx + 16, cy + 24, textColor);
+            ctx.drawTextWithShadow(textRenderer, on ? "BẬT" : "TẮT", cx + 16, cy + 24, textColor);
         }
 
         super.render(ctx, mouseX, mouseY, delta);

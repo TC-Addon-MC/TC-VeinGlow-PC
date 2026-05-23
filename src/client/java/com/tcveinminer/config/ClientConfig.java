@@ -192,7 +192,6 @@ public class ClientConfig {
             case "AREA5X5", "AREA_5X5" -> "AREA_5x5";
             case "TUNNEL1X2", "TUNNEL_1X2" -> "TUNNEL_1x2";
             case "TUNNEL3X3", "TUNNEL_3X3" -> "TUNNEL_3x3";
-            case "TALL1X2", "TALL_1X2" -> "TALL_1x2";
             default -> trimmed;
         };
     }

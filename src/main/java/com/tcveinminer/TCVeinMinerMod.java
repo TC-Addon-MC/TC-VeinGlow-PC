@@ -4,6 +4,9 @@ import com.tcveinminer.config.ConfigManager;
 import com.tcveinminer.engine.MiningEngine;
 import com.tcveinminer.engine.strategy.StrategyRegistry;
 import com.tcveinminer.network.HoldKeyPayload;
+import com.tcveinminer.network.ConfigSyncPayload;
+import com.tcveinminer.network.MiningStatePayload;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
@@ -12,6 +15,7 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.world.ServerWorld;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Set;
 import java.util.UUID;
@@ -27,6 +31,8 @@ public class TCVeinMinerMod implements ModInitializer {
         ConfigManager.load();
 
         PayloadTypeRegistry.playC2S().register(HoldKeyPayload.ID, HoldKeyPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(ConfigSyncPayload.ID, ConfigSyncPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(MiningStatePayload.ID, MiningStatePayload.CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(HoldKeyPayload.ID, (payload, context) -> {
             UUID uuid = context.player().getUuid();
@@ -70,6 +76,11 @@ public class TCVeinMinerMod implements ModInitializer {
                             .onServerTick(player, world);
                 }
             }
+        });
+
+                ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+            var cfg = ConfigManager.get();
+            sender.sendPacket(new ConfigSyncPayload(cfg.maxBlocks, new ArrayList<>(cfg.blacklistedBlocks)));
         });
 
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {

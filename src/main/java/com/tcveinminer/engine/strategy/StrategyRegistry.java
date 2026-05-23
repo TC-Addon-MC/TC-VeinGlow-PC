@@ -31,29 +31,27 @@ public final class StrategyRegistry {
     static {
         // ── Vein spread modes ─────────────────────────────────────────────────
         register(new SpreadModeManager(SpreadModeManager.Mode.FACE,
-                "FACE",      "Standard (Face)",        "⬛"));
+                "FACE",      "Standard (Face)",        ""));
         register(new SpreadModeManager(SpreadModeManager.Mode.EDGES,
-                "EDGES",     "Standard V2 (Edges)",    "🔷"));
+                "EDGES",     "Standard V2 (Edges)",    ""));
         register(new SpreadModeManager(SpreadModeManager.Mode.CORNERS,
-                "CORNERS",   "Standard V3 (Corners)",  "💎"));
-        register(new SpreadModeManager(SpreadModeManager.Mode.TALL,
-                "TALL_1x2",  "1×2 (Tall)",             "🧱"));
+                "CORNERS",   "Standard V3 (Corners)",  ""));
         register(new SpreadModeManager(SpreadModeManager.Mode.TREE_CAP,
-                "TREE_CAP",  "TreeCapitator",           "🌳"));
+                "TREE_CAP",  "TreeCapitator",           ""));
 
         // ── Tunnel modes ──────────────────────────────────────────────────────
         // TUNNEL_1x2: 1 rộng × 2 cao (chân + đầu), kéo dài vô tận
-        register(new TunnelModeManager("TUNNEL_1x2",  "Tunnel 1×2",  "🚇", 0, 0, 0, 1));
+        register(new TunnelModeManager("TUNNEL_1x2",  "Tunnel 1×2",  "", 0, 0, 0, 1));
         // TUNNEL_3x3: 3×3, kéo dài vô tận
-        register(new TunnelModeManager("TUNNEL_3x3",  "Tunnel 3×3",  "🚇", -1, 1, -1, 1));
+        register(new TunnelModeManager("TUNNEL_3x3",  "Tunnel 3×3",  "", -1, 1, -1, 1));
 
         // ── Stair modes ───────────────────────────────────────────────────────
         register(new StairModeManager(+1)); // STAIR_UP
         register(new StairModeManager(-1)); // STAIR_DOWN
 
         // ── Shape modes ───────────────────────────────────────────────────────
-        register(ShapeModeManager.from2D("AREA_3x3", "3×3 Area", "🟦", SHAPE_3x3));
-        register(ShapeModeManager.from2D("AREA_5x5", "5×5 Area", "🔵", SHAPE_5x5));
+        register(ShapeModeManager.from2D("AREA_3x3", "3×3 Area", "", SHAPE_3x3));
+        register(ShapeModeManager.from2D("AREA_5x5", "5×5 Area", "", SHAPE_5x5));
     }
 
     public static void register(MiningStrategy s) {

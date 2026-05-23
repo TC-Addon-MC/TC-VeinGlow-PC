@@ -2,6 +2,7 @@ package com.tcveinminer.gui.screens.tabs;
 
 import com.tcveinminer.config.ModConfig;
 import com.tcveinminer.gui.screens.MainMenuScreen;
+import com.tcveinminer.config.ClientConfigManager;
 import com.tcveinminer.gui.widgets.MaxBlockSlider;
 import com.tcveinminer.util.DrawHelper;
 import com.tcveinminer.util.ThemeColors;
@@ -69,7 +70,7 @@ public class DashTab implements MenuTab {
 
         ctx.drawTextWithShadow(screen.getTextRenderer(), "GIỚI HẠN KHỐI TỐI ĐA (MAX BLOCKS)", cx + 12, box2Y + 10, 0xFFFFFFFF);
 
-        String lim = screen.getState().maxBlocks + " / 128 Khối";
+        String lim = screen.getState().maxBlocks + " / " + ClientConfigManager.instance.serverMaxBlocks + " Khối";
         int limW = screen.getTextRenderer().getWidth(lim);
         ctx.drawTextWithShadow(screen.getTextRenderer(), lim, cx + cw - 12 - limW, box2Y + 10, ThemeColors.GOLD);
 

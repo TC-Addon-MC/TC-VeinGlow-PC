@@ -21,7 +21,7 @@ public final class StairModeManager implements MiningStrategy {
 
     @Override public String getId()    { return id; }
     @Override public String getLabel() { return dy > 0 ? "Stair Up" : "Stair Down"; }
-    @Override public String getIcon()  { return dy > 0 ? "⬆" : "⬇"; }
+    @Override public String getIcon()  { return ""; }
     @Override public FilterModeManager.MiningMode getModeType() { return FilterModeManager.MiningMode.TUNNEL; }
 
     @Override

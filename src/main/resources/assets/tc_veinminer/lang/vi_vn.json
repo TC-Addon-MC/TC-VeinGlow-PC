@@ -3,14 +3,13 @@
   "key.tc_veinminer.menu": "Mở Radial Menu VeinGlow",
   "key.categories.tc_veinminer": "TC-VeinGlow",
 
-  "tc_veinminer.mode.FACE":       "⬛ Standard (Face)",
-  "tc_veinminer.mode.EDGES":      "🔷 Standard V2 (Edges)",
-  "tc_veinminer.mode.CORNERS":    "💎 Standard V3 (Corners)",
-  "tc_veinminer.mode.TALL_1x2":   "🧱 1×2 (Tall)",
-  "tc_veinminer.mode.TUNNEL_1x2": "🚇 Tunnel 1×2",
-  "tc_veinminer.mode.STAIR_UP":   "⬆ Stair Up",
-  "tc_veinminer.mode.STAIR_DOWN": "⬇ Stair Down",
-  "tc_veinminer.mode.AREA_3x3":   "🟦 3×3 Area",
-  "tc_veinminer.mode.AREA_5x5":   "🔵 5×5 Area",
-  "tc_veinminer.mode.TREE_CAP":   "🌳 TreeCapitator"
+  "tc_veinminer.mode.FACE":       "Standard (Face)",
+  "tc_veinminer.mode.EDGES":      "Standard V2 (Edges)",
+  "tc_veinminer.mode.CORNERS":    "Standard V3 (Corners)",
+  "tc_veinminer.mode.TUNNEL_1x2": "Tunnel 1×2",
+  "tc_veinminer.mode.STAIR_UP":   "Stair Up",
+  "tc_veinminer.mode.STAIR_DOWN": "Stair Down",
+  "tc_veinminer.mode.AREA_3x3":   "3×3 Area",
+  "tc_veinminer.mode.AREA_5x5":   "5×5 Area",
+  "tc_veinminer.mode.TREE_CAP":   "TreeCapitator"
 }

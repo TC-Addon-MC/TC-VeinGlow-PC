@@ -73,7 +73,7 @@ public class MainMenuScreen extends Screen {
         state.colorDisabled       = ccfg.colorDisabled;
         state.showHud             = ccfg.showHud;
         state.activationMode      = ccfg.activationMode;
-        state.maxBlocks           = ccfg.clientMaxBlocks;
+        state.maxBlocks           = Math.min(ccfg.clientMaxBlocks, ccfg.serverMaxBlocks);
         state.enabledShapes       = new LinkedHashSet<>(ccfg.enabledShapes);
         state.enabledTools        = new LinkedHashMap<>(ccfg.enabledTools);
         state.blacklist           = new LinkedHashSet<>(ccfg.personalBlacklist.stream()
@@ -231,6 +231,18 @@ public class MainMenuScreen extends Screen {
     public boolean mouseScrolled(double mx, double my, double h, double v) {
         if (tabInstances[currentTabIndex].mouseScrolled(this, mx, my, h, v)) return true;
         return super.mouseScrolled(mx, my, h, v);
+    }
+
+    @Override
+    public boolean mouseDragged(double mx, double my, int btn, double dx, double dy) {
+        if (tabInstances[currentTabIndex].mouseDragged(this, mx, my, btn, dx, dy)) return true;
+        return super.mouseDragged(mx, my, btn, dx, dy);
+    }
+
+    @Override
+    public boolean mouseReleased(double mx, double my, int btn) {
+        if (tabInstances[currentTabIndex].mouseReleased(this, mx, my, btn)) return true;
+        return super.mouseReleased(mx, my, btn);
     }
 
     @Override

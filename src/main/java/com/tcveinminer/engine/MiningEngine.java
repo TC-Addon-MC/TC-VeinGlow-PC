@@ -15,6 +15,8 @@ import com.tcveinminer.engine.traversal.OrientationContext;
 import com.tcveinminer.logic.HudNotifier;
 import com.tcveinminer.util.ExpressionEvaluator;
 import com.tcveinminer.util.SessionStats;
+import com.tcveinminer.network.MiningStatePayload;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.player.PlayerEntity;
@@ -109,7 +111,7 @@ public final class MiningEngine {
                                BlockPos origin, BlockState originState) {
         // [CRITICAL] Re-entry guard: if we are already breaking blocks, the AFTER event
         // fired by our own world.interactionManager.tryBreakBlock() must be ignored.
-        if (isMining) return;
+        if (isMining || !stateMachine.is(State.IDLE)) return;
 
         ModConfig c = ConfigManager.get();
         if (!c.enabled) return;
@@ -174,6 +176,7 @@ public final class MiningEngine {
 
         stateMachine.transition(State.MINING);
         SessionStats.onVeinMineStart();
+        if (player instanceof ServerPlayerEntity spe) ServerPlayNetworking.send(spe, new MiningStatePayload(true));
     }
 
     public void onServerTick(PlayerEntity player, ServerWorld world) {
@@ -182,14 +185,14 @@ public final class MiningEngine {
         // [CRITICAL] Check tool validity every tick, not just at trigger
         ModConfig c = ConfigManager.get();
         if (c.requireCorrectTool && !toolOk(player, c)) {
-            stopMining();
+            stopMining(player);
             return;
         }
 
         if (queue.isEmpty()) { finalizeMining(player); return; }
 
         if (!TCVeinMinerMod.playersHoldingV.contains(player.getUuid())) {
-            stopMining();
+            stopMining(player);
             return;
         }
 
@@ -213,7 +216,7 @@ public final class MiningEngine {
 
                 // Tool may have broken inside tryBreakBlock — check
                 if (c.requireCorrectTool && player.getMainHandStack().isEmpty()) {
-                    stopMining();
+                    stopMining(player);
                     return;
                 }
 
@@ -235,12 +238,13 @@ public final class MiningEngine {
 
     // ── Internal ─────────────────────────────────────────────────────────────
 
-    private void stopMining() {
+    private void stopMining(PlayerEntity player) {
         isMining = false;
         queue.interrupt();
         stateMachine.force(State.INTERRUPTED);
         stateMachine.transition(State.IDLE);
         renderSnapshot = Collections.emptySet();
+        if (player instanceof ServerPlayerEntity spe) ServerPlayNetworking.send(spe, new MiningStatePayload(false));
     }
 
     private void finalizeMining(PlayerEntity player) {
@@ -250,6 +254,7 @@ public final class MiningEngine {
         HudNotifier.notifyAt  = System.currentTimeMillis() + 2500;
         stateMachine.force(State.IDLE);
         renderSnapshot = Collections.emptySet();
+        if (player instanceof ServerPlayerEntity spe) ServerPlayNetworking.send(spe, new MiningStatePayload(false));
     }
 
     // Shared cooldown map — cleared in removePlayer() on disconnect

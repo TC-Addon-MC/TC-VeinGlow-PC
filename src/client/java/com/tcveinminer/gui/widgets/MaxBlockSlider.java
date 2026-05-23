@@ -1,5 +1,6 @@
 package com.tcveinminer.gui.widgets;
 
+import com.tcveinminer.config.ClientConfigManager;
 import com.tcveinminer.gui.screens.MenuState;
 import net.minecraft.client.gui.widget.SliderWidget;
 import net.minecraft.text.Text;
@@ -8,13 +9,13 @@ public class MaxBlockSlider extends SliderWidget {
     private final MenuState state;
 
     public MaxBlockSlider(int x, int y, int w, int h, MenuState state) {
-        super(x, y, w, h, Text.literal(String.valueOf(state.maxBlocks)), (state.maxBlocks - 1) / 127.0);
+        super(x, y, w, h, Text.literal(String.valueOf(state.maxBlocks)), ClientConfigManager.instance.serverMaxBlocks <= 1 ? 0 : (state.maxBlocks - 1) / (double)(ClientConfigManager.instance.serverMaxBlocks - 1));
         this.state = state;
     }
 
     @Override
     protected void updateMessage() {
-        state.maxBlocks = (int) (value * 127) + 1;
+        state.maxBlocks = ClientConfigManager.instance.serverMaxBlocks <= 1 ? 1 : (int) (value * (ClientConfigManager.instance.serverMaxBlocks - 1)) + 1;
         setMessage(Text.literal(String.valueOf(state.maxBlocks)));
     }
 

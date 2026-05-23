@@ -134,7 +134,7 @@ public final class FilterModeManager {
         public static final BlockFilter NOT_AIR = ctx -> !ctx.currentState().isAir();
         public static final BlockFilter SOLID_ONLY = ctx -> ctx.currentState().isSolidBlock(ctx.world(), ctx.currentPos());
         public static final BlockFilter BREAKABLE_ONLY = ctx -> ctx.cache().getHardness(ctx.currentState()) >= 0;
-        public static final BlockFilter ORES_ONLY = ctx -> ctx.currentState().isIn(BlockTags.COAL_ORES) || ctx.currentState().isIn(BlockTags.IRON_ORES); // Nên đổi thành tag chung
+        public static final BlockFilter ORES_ONLY = ctx -> ctx.currentState().isIn(BlockTags.COAL_ORES) || ctx.currentState().isIn(BlockTags.IRON_ORES) || ctx.currentState().isIn(BlockTags.GOLD_ORES) || ctx.currentState().isIn(BlockTags.DIAMOND_ORES) || ctx.currentState().isIn(BlockTags.REDSTONE_ORES) || ctx.currentState().isIn(BlockTags.LAPIS_ORES) || ctx.currentState().isIn(BlockTags.EMERALD_ORES) || ctx.currentState().isIn(BlockTags.COPPER_ORES);
         public static final BlockFilter LOGS_ONLY = ctx -> ctx.currentState().isIn(BlockTags.LOGS);
         public static final BlockFilter LEAVES_ONLY = ctx -> ctx.currentState().isIn(BlockTags.LEAVES);
 

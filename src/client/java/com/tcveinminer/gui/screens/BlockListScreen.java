@@ -91,7 +91,7 @@ public class BlockListScreen extends Screen {
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         DrawHelper.drawPanel(ctx, x, y, W, H);
         DrawHelper.drawHeader(ctx, x, y, W, HEADER_H);
-        ctx.drawTextWithShadow(textRenderer, "📋 Danh Sách Block Đen", x + 12, y + 8, ThemeColors.TEXT_TITLE);
+        ctx.drawTextWithShadow(textRenderer, "Danh Sách Block Đen", x + 12, y + 8, ThemeColors.TEXT_TITLE);
 
         // List area background
         int listX = x + 10;
@@ -120,7 +120,7 @@ public class BlockListScreen extends Screen {
                     && mouseY >= rowY + 3 && mouseY <= rowY + 16;
             ctx.fill(listX + W - 26, rowY + 3, listX + W - 20, rowY + 16,
                     removeBtnHovered ? 0xFF6B2737 : 0xFF3A1A1A);
-            ctx.drawTextWithShadow(textRenderer, "✕", listX + W - 24, rowY + 5, ThemeColors.TEXT_ERROR);
+            ctx.drawTextWithShadow(textRenderer, "X", listX + W - 24, rowY + 5, ThemeColors.TEXT_ERROR);
         }
         ctx.disableScissor();
 

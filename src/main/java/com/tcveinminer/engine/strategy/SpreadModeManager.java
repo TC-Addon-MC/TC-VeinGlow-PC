@@ -9,7 +9,7 @@ import java.util.*;
 
 public final class SpreadModeManager implements MiningStrategy {
 
-    public enum Mode { FACE, EDGES, CORNERS, TALL, TREE_CAP }
+    public enum Mode { FACE, EDGES, CORNERS, TREE_CAP }
 
     private static final int[][] D6  = {{1,0,0}, {-1,0,0}, {0,1,0}, {0,-1,0}, {0,0,1}, {0,0,-1}};
     private static final int[][] D18 = buildAdjacency(2);
@@ -44,7 +44,6 @@ public final class SpreadModeManager implements MiningStrategy {
             case FACE     -> executeBfs(req, D6, false);
             case EDGES    -> executeBfs(req, D18, false); // Hoặc nạp D18 thật
             case CORNERS  -> executeBfs(req, D26, false); // Hoặc nạp D26 thật
-            case TALL     -> collectTall(req);
             case TREE_CAP -> collectTree(req);
         };
     }
@@ -105,123 +104,74 @@ public final class SpreadModeManager implements MiningStrategy {
 
     private List<BlockPos> collectTree(MiningRequest req) {
         List<BlockPos> result = new ArrayList<>();
-        Set<BlockPos> visitedLogs = new HashSet<>();
-        Set<BlockPos> added = new HashSet<>();
-        Deque<SearchNode> queue = new ArrayDeque<>();
-
-        visitedLogs.add(req.origin());
-        queue.add(new SearchNode(req.origin(), 0, null));
-
-        while (!queue.isEmpty() && result.size() < req.maxBlocks()) {
-            SearchNode cur = queue.poll();
-
-            for (int[] d : D26) {
-                BlockPos nb = cur.pos.add(d[0], d[1], d[2]);
-                if (!visitedLogs.add(nb)) continue;
-
-                BlockState nbState = req.world().getBlockState(nb);
-                if (!nbState.isIn(BlockTags.LOGS)) continue;
-
-                int distance = Math.abs(nb.getX() - req.origin().getX())
-                        + Math.abs(nb.getY() - req.origin().getY())
-                        + Math.abs(nb.getZ() - req.origin().getZ());
-                Direction approach = Direction.fromVector(d[0], d[1], d[2]);
-
-                FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
-                        req.world(), req.player(), req.tool(), req.origin(), nb,
-                        req.targetState(), nbState, approach, cur.depth + 1, distance,
-                        result.size(), getModeType(), req.cache(), req.blacklist()
-                );
-
-                if (req.filter().test(fCtx) && added.add(nb)) {
-                    result.add(nb);
-                    queue.add(new SearchNode(nb, cur.depth + 1, approach));
-                }
-            }
-        }
-
-        List<BlockPos> logs = new ArrayList<>(added);
-        logs.add(req.origin());
-        for (BlockPos logPos : logs) {
-            collectLeavesAroundLog(req, logPos, result, added);
-            if (result.size() >= req.maxBlocks()) break;
-        }
-
-        result.sort(Comparator.comparingInt(BlockPos::getY));
-        return result;
-    }
-
-    private void collectLeavesAroundLog(MiningRequest req, BlockPos logPos, List<BlockPos> result, Set<BlockPos> added) {
-        for (int dx = -TREE_LEAF_RADIUS; dx <= TREE_LEAF_RADIUS; dx++) {
-            for (int dy = -TREE_LEAF_RADIUS; dy <= TREE_LEAF_RADIUS; dy++) {
-                for (int dz = -TREE_LEAF_RADIUS; dz <= TREE_LEAF_RADIUS; dz++) {
-                    if (result.size() >= req.maxBlocks()) return;
-                    int distanceFromLog = Math.abs(dx) + Math.abs(dy) + Math.abs(dz);
-                    if (distanceFromLog > TREE_LEAF_RADIUS) continue;
-
-                    BlockPos leafPos = logPos.add(dx, dy, dz);
-                    if (!added.add(leafPos)) continue;
-
-                    BlockState leafState = req.world().getBlockState(leafPos);
-                    if (!leafState.isIn(BlockTags.LEAVES)) continue;
-
-                    int distance = Math.abs(leafPos.getX() - req.origin().getX())
-                            + Math.abs(leafPos.getY() - req.origin().getY())
-                            + Math.abs(leafPos.getZ() - req.origin().getZ());
-
-                    FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
-                            req.world(), req.player(), req.tool(), req.origin(), leafPos,
-                            req.targetState(), leafState, Direction.UP, 0, distance,
-                            result.size(), getModeType(), req.cache(), req.blacklist()
-                    );
-
-                    if (req.filter().test(fCtx)) {
-                        result.add(leafPos);
-                    }
-                }
-            }
-        }
-    }
-
-    private List<BlockPos> collectTall(MiningRequest req) {
-        // Logic Tall giữ cấu trúc BFS tương tự executeBfs, nhưng nạp offset HORIZ và tự động check block Y+1.
-        List<BlockPos> result = new ArrayList<>();
         Set<BlockPos> visited = new HashSet<>();
         Deque<SearchNode> queue = new ArrayDeque<>();
 
+        // Giai đoạn 1: Tìm gỗ (D26 để quấn quanh thân gỗ chéo)
         visited.add(req.origin());
         queue.add(new SearchNode(req.origin(), 0, null));
-
-        // Hàm helper test filter
-        var testAndAdd = new java.util.function.BiConsumer<BlockPos, SearchNode>() {
-            @Override
-            public void accept(BlockPos pos, SearchNode parent) {
-                if (!visited.add(pos)) return;
-                BlockState state = req.world().getBlockState(pos);
-                int dist = (int) Math.sqrt(pos.getSquaredDistance(req.origin()));
-                FilterModeManager.FilterContext ctx = new FilterModeManager.FilterContext(
-                        req.world(), req.player(), req.tool(), req.origin(), pos,
-                        req.targetState(), state, Direction.UP, parent.depth + 1, dist,
-                        result.size(), getModeType(), req.cache(), req.blacklist()
-                );
-                if (req.filter().test(ctx)) {
-                    result.add(pos);
-                    queue.add(new SearchNode(pos, parent.depth + 1, Direction.UP));
-                }
-            }
-        };
-
-        testAndAdd.accept(req.origin().up(), new SearchNode(req.origin(), 0, null));
+        List<BlockPos> foundLogs = new ArrayList<>();
 
         while (!queue.isEmpty() && result.size() < req.maxBlocks()) {
             SearchNode cur = queue.poll();
-            for (int[] d : HORIZ) {
-                BlockPos nb = cur.pos.add(d[0], 0, d[2]);
-                testAndAdd.accept(nb, cur);
-                testAndAdd.accept(nb.up(), cur);
+            for (int[] d : D26) {
+                BlockPos nb = cur.pos.add(d[0], d[1], d[2]);
+                if (!visited.add(nb)) continue;
+
+                BlockState state = req.world().getBlockState(nb);
+                if (!state.isIn(BlockTags.LOGS)) {
+                    visited.remove(nb); // Để giai đoạn 2 có thể quét lá tại đây
+                    continue;
+                }
+
+                int dist = Math.abs(nb.getX() - req.origin().getX()) + Math.abs(nb.getY() - req.origin().getY()) + Math.abs(nb.getZ() - req.origin().getZ());
+                FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
+                        req.world(), req.player(), req.tool(), req.origin(), nb,
+                        req.targetState(), state, Direction.fromVector(d[0], d[1], d[2]), cur.depth + 1, dist,
+                        result.size(), getModeType(), req.cache(), req.blacklist()
+                );
+
+                if (req.filter().test(fCtx)) {
+                    result.add(nb);
+                    foundLogs.add(nb);
+                    queue.add(new SearchNode(nb, cur.depth + 1, null));
+                }
             }
         }
+
+        // Giai đoạn 2: Tìm lá (D6 - Standard V1 từ gỗ)
+        queue.clear();
+        for (BlockPos log : foundLogs) queue.add(new SearchNode(log, 0, null));
+        if (!foundLogs.contains(req.origin())) queue.add(new SearchNode(req.origin(), 0, null));
+
+        while (!queue.isEmpty() && result.size() < req.maxBlocks()) {
+            SearchNode cur = queue.poll();
+            for (int[] d : D6) {
+                BlockPos nb = cur.pos.add(d[0], d[1], d[2]);
+                if (!visited.add(nb)) continue;
+
+                BlockState state = req.world().getBlockState(nb);
+                if (!state.isIn(BlockTags.LEAVES)) continue;
+
+                int dist = Math.abs(nb.getX() - req.origin().getX()) + Math.abs(nb.getY() - req.origin().getY()) + Math.abs(nb.getZ() - req.origin().getZ());
+                // Giới hạn lá không lan quá xa gỗ (depth từ gỗ gần nhất)
+                if (cur.depth >= 4) continue; 
+
+                FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
+                        req.world(), req.player(), req.tool(), req.origin(), nb,
+                        req.targetState(), state, Direction.fromVector(d[0], d[1], d[2]), cur.depth + 1, dist,
+                        result.size(), getModeType(), req.cache(), req.blacklist()
+                );
+
+                if (req.filter().test(fCtx)) {
+                    result.add(nb);
+                    queue.add(new SearchNode(nb, cur.depth + 1, null));
+                }
+            }
+        }
+
         result.sort(Comparator.comparingInt(BlockPos::getY));
         return result;
     }
+
 }
