@@ -17,9 +17,9 @@ import net.minecraft.client.font.TextRenderer;
 import net.minecraft.text.Text;
 
 import java.util.ArrayList;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Set;
 import net.minecraft.util.Identifier;
 public class MainMenuScreen extends Screen {
 
@@ -39,6 +39,7 @@ public class MainMenuScreen extends Screen {
     private final MenuTab[] tabInstances = new MenuTab[] {
             new DashTab(), new GeneralTab(), new ShapesTab(), new FilterTab(), new ColorTab()
     };
+    private boolean stateLoaded;
 
     private boolean saveNotify;
     private long saveHideAt;
@@ -55,11 +56,15 @@ public class MainMenuScreen extends Screen {
         this.px = (this.width - this.W) / 2;
         this.py = (this.height - this.H) / 2;
 
+        if (!stateLoaded) {
         ModConfig cfg = ConfigManager.get();
         if (state.hoveredShapeId == null) state.hoveredShapeId = cfg.miningShape.name();
 
         // --- Load từ ClientConfig (nguồn dữ liệu chính) ---
         ClientConfig ccfg = ClientConfigManager.instance;
+        if (ccfg.currentShape != null && !ccfg.currentShape.isBlank()) {
+            state.hoveredShapeId = ccfg.currentShape;
+        }
         state.showOutline         = ccfg.showOutline;
         state.colorR              = ccfg.colorR;
         state.colorG              = ccfg.colorG;
@@ -76,6 +81,9 @@ public class MainMenuScreen extends Screen {
         state.requireCorrectTool  = ccfg.requireCorrectTool;
         state.customShapeEquation = ccfg.customShapeEquation;
         state.customShapes        = new ArrayList<>(ccfg.customShapes);
+        normalizeShapeState();
+        stateLoaded = true;
+        }
 
         rebuild();
     }
@@ -93,7 +101,49 @@ public class MainMenuScreen extends Screen {
     }
 
     public void rebuildMenu() {
+        normalizeShapeState();
         this.rebuild();
+    }
+
+    public void syncShapeStateToClientConfig() {
+        normalizeShapeState();
+
+        ClientConfig ccfg = ClientConfigManager.instance;
+        ccfg.currentShape = state.hoveredShapeId;
+        ccfg.enabledShapes = new LinkedHashSet<>(state.enabledShapes);
+        ccfg.customShapes = new ArrayList<>(state.customShapes);
+        ClientConfigManager.save();
+
+        try {
+            ConfigManager.get().miningShape = ModConfig.MiningShape.valueOf(state.hoveredShapeId);
+            ConfigManager.save();
+        } catch (IllegalArgumentException ignored) {
+            // Custom shapes only exist in ClientConfig.
+        }
+    }
+
+    private void normalizeShapeState() {
+        Set<String> availableShapes = new LinkedHashSet<>();
+        for (ModConfig.MiningShape shape : ModConfig.MiningShape.values()) {
+            availableShapes.add(shape.name());
+        }
+        for (ClientConfig.CustomShapeEntry entry : state.customShapes) {
+            if (entry.strategyId != null && !entry.strategyId.isBlank()) {
+                availableShapes.add(entry.strategyId);
+            }
+        }
+
+        state.enabledShapes.removeIf(shapeId -> !availableShapes.contains(shapeId));
+        if (state.enabledShapes.isEmpty()) {
+            state.enabledShapes.add("FACE");
+        }
+
+        if (state.hoveredShapeId == null
+                || state.hoveredShapeId.isBlank()
+                || !availableShapes.contains(state.hoveredShapeId)
+                || !state.enabledShapes.contains(state.hoveredShapeId)) {
+            state.hoveredShapeId = state.enabledShapes.iterator().next();
+        }
     }
 
     public <T extends Element & Drawable & Selectable> T addUIElement(T element) {
@@ -202,6 +252,7 @@ public class MainMenuScreen extends Screen {
         ccfg.showHud             = state.showHud;
         ccfg.activationMode      = state.activationMode;
         ccfg.clientMaxBlocks     = state.maxBlocks;
+        ccfg.currentShape        = state.hoveredShapeId;
         ccfg.enabledShapes       = state.enabledShapes;
         ccfg.enabledTools        = state.enabledTools;
         ccfg.personalBlacklist   = new ArrayList<>(state.blacklist.stream()

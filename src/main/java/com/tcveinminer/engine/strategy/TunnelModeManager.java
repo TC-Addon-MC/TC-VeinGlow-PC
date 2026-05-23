@@ -3,27 +3,13 @@ package com.tcveinminer.engine.strategy;
 import com.tcveinminer.engine.traversal.OrientationContext;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
+import net.minecraft.util.math.Direction;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Quản lý các chế độ Tunnel.
- *
- * Cách dùng: truyền vào tiết diện (sMin..sMax) × (uMin..uMax).
- * Chiều sâu (forward) sẽ tự động kéo dài cho đến khi:
- *   1. Đạt maxBlocks, HOẶC
- *   2. Gặp 3 tầng liên tiếp toàn là air (hang động / khoảng trống).
- *
- * Ví dụ:
- *   TUNNEL_1x2  : sMin=0, sMax=0, uMin=0, uMax=1  → 1 rộng × 2 cao (chân + đầu)
- *   TUNNEL_1x1  : sMin=0, sMax=0, uMin=0, uMax=0  → 1×1
- *   TUNNEL_3x3  : sMin=-1, sMax=1, uMin=-1, uMax=1 → 3×3 đối xứng
- */
 public final class TunnelModeManager implements MiningStrategy {
 
-    /** Số tầng air liên tiếp trước khi dừng. */
     private static final int AIR_SLICE_STOP = 3;
 
     public static final String ID_1x2  = "TUNNEL_1x2";
@@ -32,11 +18,10 @@ public final class TunnelModeManager implements MiningStrategy {
     private final String id;
     private final String label;
     private final String icon;
-    private final int sMin, sMax; // tiết diện: trục ngang (right)
-    private final int uMin, uMax; // tiết diện: trục dọc (up)
+    private final int sMin, sMax;
+    private final int uMin, uMax;
 
-    public TunnelModeManager(String id, String label, String icon,
-                             int sMin, int sMax, int uMin, int uMax) {
+    public TunnelModeManager(String id, String label, String icon, int sMin, int sMax, int uMin, int uMax) {
         this.id    = id;
         this.label = label;
         this.icon  = icon;
@@ -49,43 +34,61 @@ public final class TunnelModeManager implements MiningStrategy {
     @Override public String getId()    { return id; }
     @Override public String getLabel() { return label; }
     @Override public String getIcon()  { return icon; }
+    @Override public FilterModeManager.MiningMode getModeType() { return FilterModeManager.MiningMode.TUNNEL; }
 
     @Override
-    public List<BlockPos> collectBlocks(World world, BlockPos origin, BlockState target,
-                                        int maxBlocks, OrientationContext ctx) {
-        List<BlockPos> result    = new ArrayList<>();
+    public List<BlockPos> collectBlocks(MiningRequest req) {
+        List<BlockPos> result = new ArrayList<>();
         int consecutiveAirSlices = 0;
-        int depth                = -1; // bắt đầu từ -1 để tầng đầu tiên là f=0 (cùng lớp với origin)
+        int depth = -1;
+        OrientationContext ctx = req.orientCtx();
 
-        while (result.size() < maxBlocks) {
+        // ÉP KIỂU DIRECTION
+        Direction forwardDir = (ctx.hitFace == Direction.UP || ctx.hitFace == Direction.DOWN)
+                ? ctx.playerFacing
+                : ctx.hitFace.getOpposite();
+
+        while (result.size() < req.maxBlocks()) {
             depth++;
-
             List<BlockPos> sliceBlocks = new ArrayList<>();
+            boolean hasSolidInSlice = false;
+
             for (int s = sMin; s <= sMax; s++) {
                 for (int u = uMin; u <= uMax; u++) {
-                    if (depth == 0 && s == 0 && u == 0) continue; // bỏ chính origin
-                    BlockPos pos = ctx.offset(origin, depth, s, u);
+                    if (depth == 0 && s == 0 && u == 0) continue;
+                    BlockPos pos = ctx.offset(req.origin(), depth, s, u);
+                    BlockState currentState = req.world().getBlockState(pos);
 
-                    // SỬA TẠI ĐÂY: Chỉ lấy những khối trùng loại với khối mục tiêu
-                    if (world.getBlockState(pos).getBlock() == target.getBlock()) {
+                    if (!currentState.isAir()) {
+                        hasSolidInSlice = true;
+                    }
+
+                    int distance = (int) Math.sqrt(pos.getSquaredDistance(req.origin()));
+
+                    // SỬA TẠI ĐÂY: forwardDir
+                    FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
+                            req.world(), req.player(), req.tool(), req.origin(), pos,
+                            req.targetState(), currentState, forwardDir,
+                            depth, distance, result.size(), getModeType(), req.cache()
+                    );
+
+                    if (req.filter().test(fCtx)) {
                         sliceBlocks.add(pos);
                     }
                 }
             }
 
-            if (sliceBlocks.isEmpty()) {
-                // Tầng này không chứa khối nào cùng loại (có thể là không khí hoặc khối khác)
+            if (!hasSolidInSlice) {
                 consecutiveAirSlices++;
                 if (consecutiveAirSlices >= AIR_SLICE_STOP) break;
             } else {
                 consecutiveAirSlices = 0;
                 for (BlockPos pos : sliceBlocks) {
-                    if (result.size() >= maxBlocks) break;
+                    if (result.size() >= req.maxBlocks()) break;
                     result.add(pos);
                 }
             }
         }
-
         return result;
     }
 }

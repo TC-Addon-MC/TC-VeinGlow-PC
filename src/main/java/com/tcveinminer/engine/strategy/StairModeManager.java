@@ -1,30 +1,18 @@
 package com.tcveinminer.engine.strategy;
 
-import com.tcveinminer.engine.traversal.OrientationContext;
-import com.tcveinminer.engine.traversal.Traversal;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
+import net.minecraft.util.math.Direction;
 
 import java.util.*;
 
-/**
- * Quản lý chế độ cầu thang (Stair).
- *
- * Mỗi bước: BFS lan 6 mặt + thêm bước đi forward+dy theo hướng người chơi.
- *   dy = +1 → cầu thang đi lên
- *   dy = -1 → cầu thang đi xuống
- *
- * Tạo instance:
- *   new StairModeManager(+1)  → STAIR_UP
- *   new StairModeManager(-1)  → STAIR_DOWN
- */
 public final class StairModeManager implements MiningStrategy {
 
     public static final String ID_UP   = "STAIR_UP";
     public static final String ID_DOWN = "STAIR_DOWN";
+    private static final int[][] D6 = {{1,0,0}, {-1,0,0}, {0,1,0}, {0,-1,0}, {0,0,1}, {0,0,-1}};
 
-    private final int    dy; // +1 = lên, -1 = xuống
+    private final int    dy;
     private final String id;
 
     public StairModeManager(int dy) {
@@ -35,47 +23,73 @@ public final class StairModeManager implements MiningStrategy {
     @Override public String getId()    { return id; }
     @Override public String getLabel() { return dy > 0 ? "Stair Up" : "Stair Down"; }
     @Override public String getIcon()  { return dy > 0 ? "⬆" : "⬇"; }
+    @Override public FilterModeManager.MiningMode getModeType() { return FilterModeManager.MiningMode.TUNNEL; }
+
+    private record Node(BlockPos pos, int depth) {}
 
     @Override
-    public List<BlockPos> collectBlocks(World world, BlockPos origin, BlockState target,
-                                        int maxBlocks, OrientationContext ctx) {
+    public List<BlockPos> collectBlocks(MiningRequest req) {
         List<BlockPos>  result  = new ArrayList<>();
         Set<BlockPos>   visited = new HashSet<>();
-        Deque<BlockPos> queue   = new ArrayDeque<>();
+        Deque<Node> queue = new ArrayDeque<>();
 
-        visited.add(origin);
-        queue.add(origin);
+        visited.add(req.origin());
+        queue.add(new Node(req.origin(), 0));
 
-        while (!queue.isEmpty() && result.size() < maxBlocks) {
-            BlockPos cur = queue.poll();
+        // CHỮA LỖI: Lấy Direction chính xác thay vì dùng Vec3i
+        Direction forwardDir = (req.orientCtx().hitFace == Direction.UP || req.orientCtx().hitFace == Direction.DOWN)
+                ? req.orientCtx().playerFacing
+                : req.orientCtx().hitFace.getOpposite();
 
-            // Lan 6 mặt: block cùng loại
-            for (int[] d : Traversal.D6) {
-                if (result.size() >= maxBlocks) break;
-                BlockPos nb = cur.add(d[0], d[1], d[2]);
+        while (!queue.isEmpty() && result.size() < req.maxBlocks()) {
+            Node cur = queue.poll();
+
+            // 1. Lan 6 mặt
+            for (int[] d : D6) {
+                if (result.size() >= req.maxBlocks()) break;
+                BlockPos nb = cur.pos.add(d[0], d[1], d[2]);
                 if (!visited.add(nb)) continue;
-                if (world.getBlockState(nb).getBlock() != target.getBlock()) continue;
-                result.add(nb);
-                queue.add(nb);
+
+                BlockState state = req.world().getBlockState(nb);
+                int dist = (int) Math.sqrt(nb.getSquaredDistance(req.origin()));
+                FilterModeManager.FilterContext ctx = new FilterModeManager.FilterContext(
+                        req.world(), req.player(), req.tool(), req.origin(), nb,
+                        req.targetState(), state, Direction.fromVector(d[0], d[1], d[2]),
+                        cur.depth + 1, dist, result.size(), getModeType(), req.cache()
+                );
+
+                if (req.filter().test(ctx)) {
+                    result.add(nb);
+                    queue.add(new Node(nb, cur.depth + 1));
+                }
             }
 
-            // Bước cầu thang: tiến 1 bước forward + dy bước dọc
-            BlockPos step = cur.add(
-                ctx.forward.getX() + ctx.up.getX() * dy,
-                ctx.forward.getY() + ctx.up.getY() * dy,
-                ctx.forward.getZ() + ctx.up.getZ() * dy
+            // 2. Bước cầu thang chính
+            BlockPos step = cur.pos.add(
+                    req.orientCtx().forward.getX() + req.orientCtx().up.getX() * dy,
+                    req.orientCtx().forward.getY() + req.orientCtx().up.getY() * dy,
+                    req.orientCtx().forward.getZ() + req.orientCtx().up.getZ() * dy
             );
-            if (visited.add(step)
-                    && world.getBlockState(step).getBlock() == target.getBlock()) {
-                result.add(step);
-                queue.add(step);
+
+            if (visited.add(step)) {
+                BlockState state = req.world().getBlockState(step);
+                int dist = (int) Math.sqrt(step.getSquaredDistance(req.origin()));
+
+                // CHỮA LỖI TẠI ĐÂY: Truyền forwardDir thay vì req.orientCtx().forward
+                FilterModeManager.FilterContext ctx = new FilterModeManager.FilterContext(
+                        req.world(), req.player(), req.tool(), req.origin(), step,
+                        req.targetState(), state, forwardDir,
+                        cur.depth + 1, dist, result.size(), getModeType(), req.cache()
+                );
+
+                if (req.filter().test(ctx)) {
+                    result.add(step);
+                    queue.add(new Node(step, cur.depth + 1));
+                }
             }
         }
 
-        // Sắp xếp theo Y để đào từ thấp lên (hoặc từ cao xuống)
-        result.sort(dy > 0
-                ? Comparator.comparingInt(BlockPos::getY)
-                : Comparator.comparingInt((BlockPos p) -> p.getY()).reversed());
+        result.sort(dy > 0 ? Comparator.comparingInt(BlockPos::getY) : Comparator.comparingInt((BlockPos p) -> p.getY()).reversed());
         return result;
     }
 }

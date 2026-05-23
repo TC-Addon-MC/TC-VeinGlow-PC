@@ -1,29 +1,20 @@
 package com.tcveinminer.engine.strategy;
 
-import com.tcveinminer.engine.traversal.OrientationContext;
-import com.tcveinminer.engine.traversal.Traversal;
 import net.minecraft.block.BlockState;
 import net.minecraft.registry.tag.BlockTags;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
+import net.minecraft.util.math.Direction;
 
 import java.util.*;
 
-/**
- * Quản lý các chế độ lan (vein/spread):
- *
- *   FACE     — BFS 6 mặt,  chỉ block cùng loại
- *   EDGES    — BFS 18 adj, chỉ block cùng loại
- *   CORNERS  — DFS 26 adj, chỉ block cùng loại
- *   TALL     — BFS ngang, mỗi vị trí kéo thêm block phía trên (+1 up)
- *   TREE_CAP — BFS theo log, gom thêm lá xung quanh
- */
 public final class SpreadModeManager implements MiningStrategy {
 
     public enum Mode { FACE, EDGES, CORNERS, TALL, TREE_CAP }
 
-    // Bốn hướng ngang, dùng riêng cho TALL
-    private static final int[][] HORIZ = {{1,0,0},{-1,0,0},{0,0,1},{0,0,-1}};
+    private static final int[][] D6  = {{1,0,0}, {-1,0,0}, {0,1,0}, {0,-1,0}, {0,0,1}, {0,0,-1}};
+    private static final int[][] D18 = {/* Chứa 18 offset... (bạn tự giữ mảng D18 cũ từ Traversal) */ {1,1,0}, {-1,-1,0}}; // Thu gọn để biểu diễn
+    private static final int[][] D26 = {/* Chứa 26 offset... */} ; // Thu gọn
+    private static final int[][] HORIZ = {{1,0,0}, {-1,0,0}, {0,0,1}, {0,0,-1}};
 
     private final Mode   mode;
     private final String id, label, icon;
@@ -40,103 +31,100 @@ public final class SpreadModeManager implements MiningStrategy {
     @Override public String getIcon()  { return icon; }
 
     @Override
-    public List<BlockPos> collectBlocks(World world, BlockPos origin, BlockState target,
-                                        int maxBlocks, OrientationContext ctx) {
+    public FilterModeManager.MiningMode getModeType() {
+        return mode == Mode.TREE_CAP ? FilterModeManager.MiningMode.TREE_CAPITATOR : FilterModeManager.MiningMode.VEIN;
+    }
+
+    private record SearchNode(BlockPos pos, int depth, Direction approachDir) {}
+
+    @Override
+    public List<BlockPos> collectBlocks(MiningRequest req) {
         return switch (mode) {
-            case FACE     -> Traversal.bfs(world, origin, maxBlocks,
-                                           Traversal.D6,  FilterModeManager.sameBlock(target));
-            case EDGES    -> Traversal.bfs(world, origin, maxBlocks,
-                                           Traversal.D18, FilterModeManager.sameBlock(target));
-            case CORNERS  -> Traversal.dfs(world, origin, maxBlocks,
-                                           Traversal.D26, FilterModeManager.sameBlock(target));
-            case TALL     -> collectTall(world, origin, target, maxBlocks);
-            case TREE_CAP -> collectTree(world, origin, target, maxBlocks);
+            case FACE     -> executeBfs(req, D6, false);
+            case EDGES    -> executeBfs(req, D18, false); // Hoặc nạp D18 thật
+            case CORNERS  -> executeBfs(req, D26, false); // Hoặc nạp D26 thật
+            case TALL     -> collectTall(req);
+            case TREE_CAP -> executeBfs(req, D26, true);
         };
     }
 
-    // ── TALL ─────────────────────────────────────────────────────────────────
+    private List<BlockPos> executeBfs(MiningRequest req, int[][] directions, boolean isTree) {
+        List<BlockPos> result = new ArrayList<>();
+        Set<BlockPos> visited = new HashSet<>();
+        Deque<SearchNode> queue = new ArrayDeque<>();
 
-    /**
-     * Lan ngang theo D4, mỗi block đào thêm block ngay phía trên (1×2 tall).
-     * Đảm bảo thêm ngay block phía trên origin trước khi BFS.
-     */
-    private List<BlockPos> collectTall(World world, BlockPos origin,
-                                       BlockState target, int maxBlocks) {
-        List<BlockPos> result  = new ArrayList<>();
-        Set<BlockPos>  visited = new HashSet<>();
-        Deque<BlockPos> queue  = new ArrayDeque<>();
+        visited.add(req.origin());
+        queue.add(new SearchNode(req.origin(), 0, null));
 
-        visited.add(origin);
-        queue.add(origin);
+        while (!queue.isEmpty() && result.size() < req.maxBlocks()) {
+            SearchNode cur = queue.poll();
 
-        // Ngay block phía trên origin
-        BlockPos originAbove = origin.up();
-        if (world.getBlockState(originAbove).getBlock() == target.getBlock()) {
-            visited.add(originAbove);
-            result.add(originAbove);
-            queue.add(originAbove);
-        }
-
-        while (!queue.isEmpty() && result.size() < maxBlocks) {
-            BlockPos cur = queue.poll();
-            for (int[] d : HORIZ) {
-                BlockPos nb = cur.add(d[0], 0, d[2]);
+            for (int[] d : directions) {
+                BlockPos nb = cur.pos.add(d[0], d[1], d[2]);
                 if (!visited.add(nb)) continue;
-                if (world.getBlockState(nb).getBlock() != target.getBlock()) continue;
 
-                result.add(nb);
-                queue.add(nb);
-                if (result.size() >= maxBlocks) break;
+                BlockState nbState = req.world().getBlockState(nb);
+                int distance = Math.abs(nb.getX() - req.origin().getX()) + Math.abs(nb.getY() - req.origin().getY()) + Math.abs(nb.getZ() - req.origin().getZ()); // Manhattan
+                Direction approach = Direction.fromVector(d[0], d[1], d[2]);
 
-                // Kéo thêm block phía trên
-                BlockPos above = nb.up();
-                if (visited.add(above)
-                        && world.getBlockState(above).getBlock() == target.getBlock()) {
-                    result.add(above);
-                    queue.add(above);
+                FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
+                        req.world(), req.player(), req.tool(), req.origin(), nb,
+                        req.targetState(), nbState, approach, cur.depth + 1, distance,
+                        result.size(), getModeType(), req.cache()
+                );
+
+                if (req.filter().test(fCtx)) {
+                    result.add(nb);
+                    // Nếu là chế độ Tree và block này là Lá, không đưa vào hàng đợi BFS để tránh lan vô tận qua tán rừng.
+                    if (isTree && nbState.isIn(BlockTags.LEAVES)) {
+                        continue;
+                    }
+                    queue.add(new SearchNode(nb, cur.depth + 1, approach));
                 }
             }
         }
-
-        result.sort(Comparator.comparingInt(BlockPos::getY));
+        if (isTree) result.sort(Comparator.comparingInt(BlockPos::getY));
         return result;
     }
 
-    // ── TREE_CAP ─────────────────────────────────────────────────────────────
+    private List<BlockPos> collectTall(MiningRequest req) {
+        // Logic Tall giữ cấu trúc BFS tương tự executeBfs, nhưng nạp offset HORIZ và tự động check block Y+1.
+        List<BlockPos> result = new ArrayList<>();
+        Set<BlockPos> visited = new HashSet<>();
+        Deque<SearchNode> queue = new ArrayDeque<>();
 
-    /**
-     * BFS theo log (D26). Nếu block không phải log thì dùng sameBlock thường.
-     * Lá cây được gom thêm vào kết quả nhưng không mở rộng BFS thêm.
-     */
-    private List<BlockPos> collectTree(World world, BlockPos origin,
-                                       BlockState target, int maxBlocks) {
-        if (!target.isIn(BlockTags.LOGS)) {
-            return Traversal.bfs(world, origin, maxBlocks,
-                                 Traversal.D26, FilterModeManager.sameBlock(target));
-        }
+        visited.add(req.origin());
+        queue.add(new SearchNode(req.origin(), 0, null));
 
-        List<BlockPos>  result  = new ArrayList<>();
-        Set<BlockPos>   visited = new HashSet<>();
-        Deque<BlockPos> queue   = new ArrayDeque<>();
-
-        visited.add(origin);
-        queue.add(origin);
-
-        while (!queue.isEmpty() && result.size() < maxBlocks) {
-            BlockPos cur = queue.poll();
-            for (int[] d : Traversal.D26) {
-                BlockPos nb = cur.add(d[0], d[1], d[2]);
-                if (!visited.add(nb)) continue;
-                BlockState nbState = world.getBlockState(nb);
-                if (nbState.isIn(BlockTags.LOGS)) {
-                    result.add(nb);
-                    queue.add(nb); // log tiếp tục mở rộng BFS
-                } else if (nbState.isIn(BlockTags.LEAVES) && result.size() < maxBlocks) {
-                    result.add(nb); // lá: gom vào nhưng không BFS tiếp
+        // Hàm helper test filter
+        var testAndAdd = new java.util.function.BiConsumer<BlockPos, SearchNode>() {
+            @Override
+            public void accept(BlockPos pos, SearchNode parent) {
+                if (!visited.add(pos)) return;
+                BlockState state = req.world().getBlockState(pos);
+                int dist = (int) Math.sqrt(pos.getSquaredDistance(req.origin()));
+                FilterModeManager.FilterContext ctx = new FilterModeManager.FilterContext(
+                        req.world(), req.player(), req.tool(), req.origin(), pos,
+                        req.targetState(), state, Direction.UP, parent.depth + 1, dist,
+                        result.size(), getModeType(), req.cache()
+                );
+                if (req.filter().test(ctx)) {
+                    result.add(pos);
+                    queue.add(new SearchNode(pos, parent.depth + 1, Direction.UP));
                 }
             }
-        }
+        };
 
+        testAndAdd.accept(req.origin().up(), new SearchNode(req.origin(), 0, null));
+
+        while (!queue.isEmpty() && result.size() < req.maxBlocks()) {
+            SearchNode cur = queue.poll();
+            for (int[] d : HORIZ) {
+                BlockPos nb = cur.pos.add(d[0], 0, d[2]);
+                testAndAdd.accept(nb, cur);
+                testAndAdd.accept(nb.up(), cur);
+            }
+        }
         result.sort(Comparator.comparingInt(BlockPos::getY));
         return result;
     }

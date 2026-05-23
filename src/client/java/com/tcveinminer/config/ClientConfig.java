@@ -55,7 +55,7 @@ public class ClientConfig {
     // Lưu dạng int cho khớp với MenuState (1=HOLD_KEY, 2=HOLD_SNEAK, 3=TOGGLE, 4=TOGGLE_SNEAK)
     public int activationMode = 1;
 
-    public String currentShape = "shapeless";
+    public String currentShape = "FACE";
 
     public String customShapeEquation = "x^2 + y^2 + z^2 <= 16";
 

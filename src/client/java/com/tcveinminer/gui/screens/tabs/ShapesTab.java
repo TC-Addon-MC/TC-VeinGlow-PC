@@ -2,7 +2,6 @@ package com.tcveinminer.gui.screens.tabs;
 
 import com.tcveinminer.config.ClientConfig;
 import com.tcveinminer.config.ClientConfigManager;
-import com.tcveinminer.config.ConfigManager;
 import com.tcveinminer.config.ModConfig;
 import com.tcveinminer.gui.CustomButton;
 import com.tcveinminer.gui.screens.CustomShapeDesignerScreen;
@@ -40,6 +39,7 @@ public class ShapesTab implements MenuTab {
                 Text.literal("Khôi phục mặc định"), btn -> {
             screen.getState().enabledShapes = new LinkedHashSet<>(
                     Set.of("FACE", "EDGES", "CORNERS", "TUNNEL_1x2", "AREA_3x3", "TREE_CAP"));
+            screen.syncShapeStateToClientConfig();
             screen.rebuildMenu();
         }));
 
@@ -60,13 +60,7 @@ public class ShapesTab implements MenuTab {
                 int ry = cy + 26 + visualRow * 24;
                 screen.addUIElement(new CustomButton(cx + cw - 40, ry + 2, 36, 18,
                         Text.literal(on ? "BẬT" : "TẮT"), btn -> {
-                    if (on) {
-                        if (screen.getState().enabledShapes.size() > 1)
-                            screen.getState().enabledShapes.remove(s.name());
-                    } else {
-                        screen.getState().enabledShapes.add(s.name());
-                    }
-                    screen.rebuildMenu();
+                    toggleShape(screen, s.name());
                 }));
             }
             rowIndex++;
@@ -78,16 +72,23 @@ public class ShapesTab implements MenuTab {
                 int visualRow = rowIndex - start;
                 int ry = cy + 26 + visualRow * 24;
                 final int finalCi = ci;
+                ClientConfig.CustomShapeEntry entry = customs.get(ci);
+                boolean on = screen.getState().enabledShapes.contains(entry.strategyId);
 
-                // Nút XÓA thay vì BẬT/TẮT cho custom
+                screen.addUIElement(new CustomButton(cx + cw - 84, ry + 2, 40, 18,
+                        Text.literal(on ? "BẬT" : "TẮT"), btn -> {
+                    toggleShape(screen, customs.get(finalCi).strategyId);
+                }));
+
                 screen.addUIElement(new CustomButton(cx + cw - 40, ry + 2, 36, 18,
                         Text.literal("XÓA"), btn -> {
-                    screen.getState().customShapes.remove(finalCi);
-                    // Nếu shape đang được chọn là cái vừa xóa → reset về FACE
                     String deletedId = customs.get(finalCi).strategyId;
+                    screen.getState().customShapes.remove(finalCi);
+                    screen.getState().enabledShapes.remove(deletedId);
                     if (deletedId.equals(screen.getState().hoveredShapeId)) {
                         screen.getState().hoveredShapeId = "FACE";
                     }
+                    screen.syncShapeStateToClientConfig();
                     screen.rebuildMenu();
                 }));
             }
@@ -152,10 +153,6 @@ public class ShapesTab implements MenuTab {
 
                 String label = "✦ " + entry.name;
                 ctx.drawTextWithShadow(screen.getTextRenderer(), label, cx + 8, ry + 7, textColor);
-
-                // Badge "CUSTOM" nhỏ
-                ctx.drawTextWithShadow(screen.getTextRenderer(), "[TÙY CHỈNH]",
-                        cx + cw - 84, ry + 7, ThemeColors.PURPLE_BORDER_DIM);
             }
             rowIndex++;
         }
@@ -179,9 +176,7 @@ public class ShapesTab implements MenuTab {
             if (rowIndex >= start && rowIndex < start + maxV) {
                 int ry = cy + 26 + (rowIndex - start) * 24;
                 if (mx >= cx && mx <= cx + cw - 40 && my >= ry && my <= ry + 22) {
-                    screen.getState().hoveredShapeId = s.name();
-                    ConfigManager.get().miningShape = s;
-                    ConfigManager.save();
+                    toggleShape(screen, s.name());
                     return true;
                 }
             }
@@ -192,9 +187,9 @@ public class ShapesTab implements MenuTab {
         for (ClientConfig.CustomShapeEntry entry : customs) {
             if (rowIndex >= start && rowIndex < start + maxV) {
                 int ry = cy + 26 + (rowIndex - start) * 24;
-                if (mx >= cx && mx <= cx + cw - 40 && my >= ry && my <= ry + 22) {
+                if (mx >= cx && mx <= cx + cw - 86 && my >= ry && my <= ry + 22) {
                     if (isCustomBlockedByServer()) return true; // Bị chặn, không cho chọn
-                    screen.getState().hoveredShapeId = entry.strategyId;
+                    toggleShape(screen, entry.strategyId);
                     return true;
                 }
             }
@@ -202,6 +197,18 @@ public class ShapesTab implements MenuTab {
         }
 
         return false;
+    }
+
+    private void toggleShape(MainMenuScreen screen, String shapeId) {
+        if (screen.getState().enabledShapes.contains(shapeId)) {
+            if (screen.getState().enabledShapes.size() > 1) {
+                screen.getState().enabledShapes.remove(shapeId);
+            }
+        } else {
+            screen.getState().enabledShapes.add(shapeId);
+        }
+        screen.syncShapeStateToClientConfig();
+        screen.rebuildMenu();
     }
 
     @Override

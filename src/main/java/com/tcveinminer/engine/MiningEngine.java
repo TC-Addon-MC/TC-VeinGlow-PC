@@ -7,6 +7,7 @@ import com.tcveinminer.engine.queue.MiningQueue;
 import com.tcveinminer.engine.queue.MiningQueue.Entry;
 import com.tcveinminer.engine.state.MiningStateMachine;
 import com.tcveinminer.engine.state.MiningStateMachine.State;
+import com.tcveinminer.engine.strategy.FilterModeManager;
 import com.tcveinminer.engine.strategy.MiningStrategy;
 import com.tcveinminer.engine.strategy.StrategyRegistry;
 import com.tcveinminer.engine.traversal.OrientationContext;
@@ -29,15 +30,16 @@ import java.util.concurrent.ConcurrentHashMap;
  * MiningEngine: per-player orchestrator.
  *
  * Fixed issues:
- *   [CRITICAL] Re-entry guard: isMining flag prevents AFTER break event from
- *              re-triggering onBreakTrigger while engine is executing.
- *   [CRITICAL] Enchantment/XP/exhaustion: uses ServerPlayerEntity.interactionManager
- *              .tryBreakBlock() which runs full vanilla break pipeline.
- *   [CRITICAL] Tool check every tick: toolOk() called in onServerTick, not just trigger.
- *   [CRITICAL] Tool break: full vanilla pipeline handles it correctly.
- *   [CRITICAL] Cooldowns/playersHoldingV never cleaned → moved to disconnect handler
- *              in TCVeinMinerMod.
- *   [SECURITY] maxBlocks clamped server-side in TCVeinMinerMod packet handler.
+ * [CRITICAL] Re-entry guard: isMining flag prevents AFTER break event from
+ * re-triggering onBreakTrigger while engine is executing.
+ * [CRITICAL] Enchantment/XP/exhaustion: uses ServerPlayerEntity.interactionManager
+ * .tryBreakBlock() which runs full vanilla break pipeline.
+ * [CRITICAL] Tool check every tick: toolOk() called in onServerTick, not just trigger.
+ * [CRITICAL] Tool break: full vanilla pipeline handles it correctly.
+ * [CRITICAL] Cooldowns/playersHoldingV never cleaned → moved to disconnect handler
+ * in TCVeinMinerMod.
+ * [SECURITY] maxBlocks clamped server-side in TCVeinMinerMod packet handler.
+ * [FEATURE]  Đã tích hợp FilterModeManager và MiningRequest vào quy trình BFS.
  */
 public final class MiningEngine {
 
@@ -103,19 +105,37 @@ public final class MiningEngine {
 
         stateMachine.transition(State.SCANNING);
 
-        // Approximate hit face from player pitch + yaw.
-        // PlayerBlockBreakEvents.AFTER does not expose the exact hit face,
-        // so we infer it: steep downward pitch => UP face (mining floor),
-        // steep upward pitch => DOWN face (mining ceiling), otherwise the
-        // horizontal face the player is looking at (wall face they broke).
         Direction hitFace = approximateHitFace(player);
         OrientationContext ctx = OrientationContext.of(
                 hitFace,
                 OrientationContext.facingFromYaw(player.getYaw())
         );
+
         MiningStrategy strategy = StrategyRegistry.get(this.playerShape);
-        List<BlockPos> found = strategy.collectBlocks(
-                world, origin, originState, this.playerMaxBlocks - 1, ctx);
+        int maxBlocksToMine = this.playerMaxBlocks - 1;
+
+        // 1. Khởi tạo Cache và lựa chọn Pipeline Filter cho tác vụ nội bộ Server
+        FilterModeManager.FilterCache cache = new FilterModeManager.FilterCache();
+        FilterModeManager.BlockFilter filter;
+
+        switch (strategy.getModeType()) {
+            case TREE_CAPITATOR -> filter = FilterModeManager.Presets.TREE_CAPITATOR(maxBlocksToMine);
+            case TUNNEL, SHAPE  -> filter = FilterModeManager.Composite.and(
+                    FilterModeManager.Presets.BASE_SAFETY,
+                    FilterModeManager.Filters.maxVisited(maxBlocksToMine),
+                    FilterModeManager.Filters.sameBlock() // Tunnel/Shape mặc định chỉ đào block cùng loại với block vừa phá
+            );
+            default -> filter = FilterModeManager.Presets.VEIN_ORE(maxBlocksToMine);
+        }
+
+        // 2. Nạp toàn bộ dữ liệu vào MiningRequest để Strategy xử lý (Contextual Injection)
+        MiningStrategy.MiningRequest req = new MiningStrategy.MiningRequest(
+                world, player, player.getMainHandStack(),
+                origin, originState, maxBlocksToMine, ctx, filter, cache
+        );
+
+        // 3. Tiến hành thu thập khối theo Filter Mode mới
+        List<BlockPos> found = strategy.collectBlocks(req);
 
         if (found.isEmpty()) {
             stateMachine.force(State.IDLE);
@@ -162,12 +182,6 @@ public final class MiningEngine {
                 String id = blockId(world.getBlockState(e.pos()));
 
                 // [CRITICAL] Use tryBreakBlock for full vanilla pipeline:
-                //   - Fortune / Silk Touch preserved
-                //   - XP orbs spawned correctly
-                //   - Tool damage + tool break animation + sound
-                //   - Exhaustion applied
-                //   - Advancements + statistics updated
-                //   - Loot table honoured
                 boolean broken = spe.interactionManager.tryBreakBlock(e.pos());
                 if (!broken) continue;
 
@@ -181,7 +195,6 @@ public final class MiningEngine {
                 }
 
                 // [CRITICAL] Explicitly track durability cost for stats.
-                // tryBreakBlock already consumed durability; we just mirror it.
                 if (c.consumeDurability) {
                     SessionStats.onDurabilityUsed(1);
                 }
@@ -246,7 +259,6 @@ public final class MiningEngine {
         float pitch = player.getPitch();
         if (pitch > 60f)  return Direction.UP;
         if (pitch < -60f) return Direction.DOWN;
-        // Thay đổi ở đây: lấy hướng ngược lại cho mặt tường
         return OrientationContext.facingFromYaw(player.getYaw()).getOpposite();
     }
 }

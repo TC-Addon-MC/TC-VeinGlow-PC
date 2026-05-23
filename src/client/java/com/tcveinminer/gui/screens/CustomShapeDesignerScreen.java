@@ -136,9 +136,14 @@ public class CustomShapeDesignerScreen extends Screen {
 
             if (editEntry != null) {
                 // Chỉnh sửa: cập nhật entry cũ tại chỗ
+                String oldId = editEntry.strategyId;
+                boolean wasEnabled = mainMenu.getState().enabledShapes.remove(oldId);
+                boolean wasSelected = oldId.equals(mainMenu.getState().hoveredShapeId);
                 editEntry.name = nameText;
                 editEntry.equation = equationText;
                 editEntry.strategyId = "custom:" + nameText.toLowerCase().replaceAll("[^a-z0-9_]", "_");
+                if (wasEnabled) mainMenu.getState().enabledShapes.add(editEntry.strategyId);
+                if (wasSelected) mainMenu.getState().hoveredShapeId = editEntry.strategyId;
             } else {
                 // Tạo mới: kiểm tra trùng tên
                 String newId = "custom:" + nameText.toLowerCase().replaceAll("[^a-z0-9_]", "_");
@@ -146,6 +151,8 @@ public class CustomShapeDesignerScreen extends Screen {
                 if (duplicate) { nameError = "Tên đã tồn tại!"; return; }
 
                 list.add(new ClientConfig.CustomShapeEntry(nameText, equationText));
+                mainMenu.getState().enabledShapes.add(newId);
+                mainMenu.getState().hoveredShapeId = newId;
             }
         }
 

@@ -3,7 +3,7 @@ package com.tcveinminer.logic;
 import com.tcveinminer.TCVeinMinerClient;
 import com.tcveinminer.config.ClientConfig;
 import com.tcveinminer.config.ClientConfigManager;
-import com.tcveinminer.config.ConfigManager;
+import com.tcveinminer.engine.strategy.FilterModeManager;
 import com.tcveinminer.engine.strategy.MiningStrategy;
 import com.tcveinminer.engine.strategy.StrategyRegistry;
 import com.tcveinminer.engine.traversal.OrientationContext;
@@ -14,6 +14,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.*;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.Item;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
@@ -31,7 +32,8 @@ public class BlockHighlighter {
     private static RenderLayer cachedSolidLayer;
     private static RenderLayer cachedXrayLayer;
 
-    /** * Khởi tạo lại RenderLayer CHỈ KHI config thickness thay đổi.
+    /**
+     * Khởi tạo lại RenderLayer CHỈ KHI config thickness thay đổi.
      * Cách này giúp dynamic thickness hoạt động mà không tốn per-frame performance.
      */
     private static void updateRenderLayers(float thickness) {
@@ -77,6 +79,7 @@ public class BlockHighlighter {
     private static Direction        lastHitFace    = null;
     private static int              lastYawBucket  = Integer.MIN_VALUE;
     private static int              lastPitchBucket= Integer.MIN_VALUE;
+    private static Item             lastItem       = null; // Thêm cache cho Tool để trigger filter harvestable
     private static Set<BlockPos>    cachedHighlight = Collections.emptySet();
 
     public static void register() {
@@ -116,12 +119,14 @@ public class BlockHighlighter {
 
         int yawBucket   = (int)(player.getYaw()   / YAW_BUCKET);
         int pitchBucket = (int)(player.getPitch()  / PITCH_BUCKET);
+        Item currentItem = player.getMainHandStack().getItem();
 
         if (targetPos.equals(lastTarget)
                 && strategyId.equals(lastStrategyId)
                 && hitFace == lastHitFace
                 && yawBucket   == lastYawBucket
-                && pitchBucket == lastPitchBucket) {
+                && pitchBucket == lastPitchBucket
+                && currentItem == lastItem) {
             return cachedHighlight;
         }
 
@@ -130,6 +135,7 @@ public class BlockHighlighter {
         lastHitFace     = hitFace;
         lastYawBucket   = yawBucket;
         lastPitchBucket = pitchBucket;
+        lastItem        = currentItem;
 
         BlockState targetState = client.world.getBlockState(targetPos);
         if (targetState.isAir()) {
@@ -143,11 +149,31 @@ public class BlockHighlighter {
         );
 
         MiningStrategy strategy = StrategyRegistry.get(strategyId);
-        List<BlockPos> preview = strategy.collectBlocks(
-                client.world, targetPos, targetState,
-                ClientConfigManager.instance.getEffectiveMaxBlocks() - 1,
-                ctx
+        int maxBlocks = ClientConfigManager.instance.getEffectiveMaxBlocks() - 1;
+
+        // 1. Khởi tạo Cache và Filter cho Client Preview
+        FilterModeManager.FilterCache cache = new FilterModeManager.FilterCache();
+        FilterModeManager.BlockFilter filter;
+
+        // Chọn bộ lọc an toàn cho preview phía Client tùy theo MiningMode
+        switch (strategy.getModeType()) {
+            case TREE_CAPITATOR -> filter = FilterModeManager.Presets.TREE_CAPITATOR(maxBlocks);
+            case TUNNEL, SHAPE  -> filter = FilterModeManager.Composite.and(
+                    FilterModeManager.Presets.BASE_SAFETY,
+                    FilterModeManager.Filters.maxVisited(maxBlocks),
+                    FilterModeManager.Filters.sameBlock()
+            );
+            default -> filter = FilterModeManager.Presets.VEIN_ORE(maxBlocks);
+        }
+
+        // 2. Đóng gói MiningRequest
+        MiningStrategy.MiningRequest req = new MiningStrategy.MiningRequest(
+                client.world, player, player.getMainHandStack(),
+                targetPos, targetState, maxBlocks, ctx, filter, cache
         );
+
+        // 3. Lấy danh sách preview thông qua Filter mới
+        List<BlockPos> preview = strategy.collectBlocks(req);
 
         cachedHighlight = new HashSet<>(preview);
         cachedHighlight.add(targetPos);
@@ -160,6 +186,7 @@ public class BlockHighlighter {
         lastHitFace     = null;
         lastYawBucket   = Integer.MIN_VALUE;
         lastPitchBucket = Integer.MIN_VALUE;
+        lastItem        = null;
         cachedHighlight = Collections.emptySet();
     }
 
