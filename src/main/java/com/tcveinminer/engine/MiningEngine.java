@@ -90,7 +90,9 @@ public final class MiningEngine {
 
     public void updatePlayerConfig(String shapeId, int maxBlocks, String equation, List<String> blacklist, Map<String, Boolean> enabledTools) {
         this.playerMaxBlocks  = maxBlocks;
-        this.playerBlacklist  = new HashSet<>(blacklist);
+        this.playerBlacklist  = FilterModeManager.normalizeBlacklist(
+                blacklist == null ? Collections.emptySet() : new HashSet<>(blacklist)
+        );
         this.playerTools      = new HashMap<>(enabledTools);
         if (shapeId != null && shapeId.startsWith("custom:") && equation != null && !equation.isBlank()) {
             this.customStrategy = buildCustomStrategy(shapeId, equation);
@@ -119,7 +121,8 @@ public final class MiningEngine {
         if (!c.enabled) return;
         if (!TCVeinMinerMod.playersHoldingV.contains(player.getUuid())) return;
         if (c.requireCorrectTool && !toolOk(player, c)) return;
-        if (c.blacklistedBlocks.contains(blockId(originState)) || playerBlacklist.contains(blockId(originState))) return;
+        Set<String> activeBlacklist = mergeBlacklists(c.blacklistedBlocks, playerBlacklist);
+        if (activeBlacklist.contains(blockId(originState))) return;
         if (c.requireSneak && !player.isSneaking()) return;
         if (!checkCooldown(player.getUuid(), world.getTime(), c)) return;
 
@@ -143,23 +146,12 @@ public final class MiningEngine {
 
         // 1. Khởi tạo Cache và lựa chọn Pipeline Filter cho tác vụ nội bộ Server
         FilterModeManager.FilterCache cache = new FilterModeManager.FilterCache();
-        FilterModeManager.BlockFilter filter;
-
-        switch (strategy.getModeType()) {
-            case TREE_CAPITATOR -> filter = FilterModeManager.Presets.TREE_CAPITATOR(maxBlocksToMine);
-            case TUNNEL, SHAPE  -> filter = FilterModeManager.Composite.and(
-                    FilterModeManager.Presets.BASE_SAFETY,
-                    FilterModeManager.Filters.maxVisited(maxBlocksToMine),
-                    FilterModeManager.Filters.sameBlock(),
-                    FilterModeManager.Filters.harvestableByTool()
-            );
-            default -> filter = FilterModeManager.Presets.VEIN_ORE(maxBlocksToMine);
-        }
+        FilterModeManager.BlockFilter filter = FilterModeManager.resolveFilter(strategy.getModeType(), maxBlocksToMine);
 
         // 2. Nạp toàn bộ dữ liệu vào MiningRequest để Strategy xử lý (Contextual Injection)
         MiningStrategy.MiningRequest req = new MiningStrategy.MiningRequest(
                 world, player, player.getMainHandStack(),
-                origin, originState, maxBlocksToMine, ctx, filter, cache, playerBlacklist,
+                origin, originState, maxBlocksToMine, ctx, filter, cache, activeBlacklist,
                 c.requireCorrectTool
         );
 
@@ -291,6 +283,12 @@ public final class MiningEngine {
 
     private static String blockId(BlockState state) {
         return Registries.BLOCK.getId(state.getBlock()).toString();
+    }
+
+    private static Set<String> mergeBlacklists(Set<String> configBlacklist, Set<String> playerBlacklist) {
+        Set<String> normalized = new HashSet<>(FilterModeManager.normalizeBlacklist(configBlacklist));
+        normalized.addAll(FilterModeManager.normalizeBlacklist(playerBlacklist));
+        return normalized;
     }
 
     private static Direction approximateHitFace(PlayerEntity player) {

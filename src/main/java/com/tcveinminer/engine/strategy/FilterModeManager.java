@@ -11,17 +11,24 @@ import net.minecraft.registry.tag.BlockTags;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.tag.TagKey;
 import net.minecraft.state.property.Property;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.world.World;
 import net.minecraft.world.border.WorldBorder;
 import net.minecraft.server.network.ServerPlayerEntity;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  * Trung tâm quản lý Filter System cho VeinMiner, TreeCapitator, TunnelMiner.
@@ -30,6 +37,10 @@ import java.util.function.Supplier;
 public final class FilterModeManager {
 
     private FilterModeManager() {}
+
+    private static final int DEFAULT_SEARCH_LIMIT = 100;
+    private static List<Identifier> blockSearchCache = new ArrayList<>();
+    private static String lastBlockSearchQuery = "";
 
     // ==========================================
     // 1. CORE API & CONTEXT
@@ -64,6 +75,84 @@ public final class FilterModeManager {
 
     public enum MiningMode {
         VEIN, TUNNEL, SHAPE, TREE_CAPITATOR, EXCAVATE
+    }
+
+    public static BlockFilter resolveFilter(MiningMode mode, int maxBlocks) {
+        int safeMaxBlocks = Math.max(0, maxBlocks);
+        return switch (mode) {
+            case TREE_CAPITATOR -> Presets.TREE_CAPITATOR(safeMaxBlocks);
+            case TUNNEL, SHAPE -> Presets.SAME_BLOCK_SHAPE(safeMaxBlocks);
+            default -> Presets.VEIN_ORE(safeMaxBlocks);
+        };
+    }
+
+    public static Set<String> normalizeBlacklist(Set<String> input) {
+        if (input == null || input.isEmpty()) return Collections.emptySet();
+
+        Set<String> normalized = new HashSet<>();
+        for (String raw : input) {
+            Identifier id = validateAndParseBlock(raw);
+            if (id != null) {
+                normalized.add(id.toString());
+            }
+        }
+        return normalized;
+    }
+
+    public static Set<String> normalizeIdentifierBlacklist(Set<Identifier> input) {
+        if (input == null || input.isEmpty()) return Collections.emptySet();
+
+        Set<String> normalized = new LinkedHashSet<>();
+        for (Identifier id : input) {
+            if (id != null && Registries.BLOCK.containsId(id)) {
+                normalized.add(id.toString());
+            }
+        }
+        return normalized;
+    }
+
+    public static void updateBlockSearch(String query) {
+        searchBlocks(query, DEFAULT_SEARCH_LIMIT);
+    }
+
+    public static List<Identifier> getBlockSearchCache() {
+        return blockSearchCache;
+    }
+
+    public static List<Identifier> searchBlocks(String query, int limit) {
+        String lowerQuery = query == null ? "" : query.toLowerCase().trim();
+        if (lowerQuery.equals(lastBlockSearchQuery)) {
+            return blockSearchCache;
+        }
+        lastBlockSearchQuery = lowerQuery;
+
+        if (lowerQuery.isEmpty()) {
+            blockSearchCache = Collections.emptyList();
+            return blockSearchCache;
+        }
+
+        int safeLimit = Math.max(1, limit);
+        blockSearchCache = Registries.BLOCK.getIds().stream()
+                .filter(id -> id.toString().contains(lowerQuery) || id.getPath().contains(lowerQuery))
+                .limit(safeLimit)
+                .collect(Collectors.toList());
+        return blockSearchCache;
+    }
+
+    public static Identifier validateAndParseBlock(String input) {
+        if (input == null) return null;
+
+        String value = input.trim().toLowerCase();
+        if (value.isEmpty()) return null;
+        if (!value.contains(":")) {
+            value = "minecraft:" + value;
+        }
+
+        Identifier id = Identifier.tryParse(value);
+        if (id == null || !Registries.BLOCK.containsId(id)) return null;
+
+        Block block = Registries.BLOCK.get(id);
+        return block == net.minecraft.block.Blocks.AIR ? null : id;
     }
 
     /**
@@ -128,6 +217,7 @@ public final class FilterModeManager {
 
         public static BlockFilter blacklist(Set<String> blocked) {
             return ctx -> {
+                if (blocked == null || blocked.isEmpty()) return true;
                 String id = Registries.BLOCK.getId(ctx.currentState().getBlock()).toString();
                 return !blocked.contains(id);
             };
@@ -300,9 +390,7 @@ public final class FilterModeManager {
                 ItemStack tool = ctx.tool();
                 if (tool.isEmpty()) return false;
                 
-                // Unbreaking check: nếu tool có Unbreaking, cho phép đào tiếp tục
-                int unbreaking = tool.getEnchantmentLevel(net.minecraft.enchantment.Enchantments.UNBREAKING);
-                return unbreaking >= 0;
+                return true;
             };
         }
 
@@ -343,6 +431,15 @@ public final class FilterModeManager {
                     Filters.avoidAdjacentLiquids(), // Tránh lava chảy vào
                     Filters.harvestableByTool(),
                     Filters.durabilitySafe(5)
+            );
+        }
+
+        public static BlockFilter SAME_BLOCK_SHAPE(int maxBlocks) {
+            return Composite.and(
+                    BASE_SAFETY,
+                    Filters.maxVisited(maxBlocks),
+                    Filters.sameBlock(),
+                    Filters.harvestableByTool()
             );
         }
 

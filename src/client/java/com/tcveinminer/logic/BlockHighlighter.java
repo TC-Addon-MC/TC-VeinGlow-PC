@@ -169,25 +169,14 @@ public class BlockHighlighter {
 
         // 1. Khởi tạo Cache và Filter cho Client Preview
         FilterModeManager.FilterCache cache = new FilterModeManager.FilterCache();
-        FilterModeManager.BlockFilter filter;
-
-        // Chọn bộ lọc an toàn cho preview phía Client tùy theo MiningMode
-        switch (strategy.getModeType()) {
-            case TREE_CAPITATOR -> filter = FilterModeManager.Presets.TREE_CAPITATOR(maxBlocks);
-            case TUNNEL, SHAPE  -> filter = FilterModeManager.Composite.and(
-                    FilterModeManager.Presets.BASE_SAFETY,
-                    FilterModeManager.Filters.maxVisited(maxBlocks),
-                    FilterModeManager.Filters.sameBlock(),
-                    FilterModeManager.Filters.harvestableByTool()
-            );
-            default -> filter = FilterModeManager.Presets.VEIN_ORE(maxBlocks);
-        }
+        FilterModeManager.BlockFilter filter = FilterModeManager.resolveFilter(strategy.getModeType(), maxBlocks);
+        Set<String> blacklist = FilterModeManager.normalizeBlacklist(new HashSet<>(ClientConfigManager.instance.personalBlacklist));
 
         // 2. Đóng gói MiningRequest
         MiningStrategy.MiningRequest req = new MiningStrategy.MiningRequest(
                 client.world, player, player.getMainHandStack(),
                 targetPos, targetState, maxBlocks, ctx, filter, cache,
-                new HashSet<>(ClientConfigManager.instance.personalBlacklist),
+                blacklist,
                 ClientConfigManager.instance.requireCorrectTool
         );
 
@@ -198,7 +187,7 @@ public class BlockHighlighter {
         FilterModeManager.FilterContext fCtxTarget = new FilterModeManager.FilterContext(
                 client.world, player, player.getMainHandStack(), targetPos, targetPos,
                 targetState, targetState, Direction.UP, 0, 0, 0, strategy.getModeType(), cache,
-                new HashSet<>(ClientConfigManager.instance.personalBlacklist),
+                blacklist,
                 ClientConfigManager.instance.requireCorrectTool
         );
         isTargetInvalid = !filter.test(fCtxTarget);

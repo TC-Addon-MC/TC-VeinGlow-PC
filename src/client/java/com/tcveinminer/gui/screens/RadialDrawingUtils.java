@@ -16,8 +16,13 @@ public class RadialDrawingUtils {
         float g = (color >> 8 & 0xFF) / 255f;
         float b = (color & 0xFF) / 255f;
 
-        int segs = Math.max(4, (int) (SEGMENTS * (endRad - startRad) / (2 * Math.PI)));
-        float step = (endRad - startRad) / segs;
+        // Normalize delta to positive angle in (0, 2PI]
+        float delta = endRad - startRad;
+        while (delta <= 0f) delta += (float)(2 * Math.PI);
+        if (delta <= 1e-6f) return; // nothing to draw
+
+        int segs = Math.max(4, (int) (SEGMENTS * (delta) / (2 * Math.PI)));
+        float step = delta / segs;
 
         for (int i = 0; i < segs; i++) {
             float a0 = startRad + i * step;
@@ -25,13 +30,17 @@ public class RadialDrawingUtils {
             float cos0 = (float) Math.cos(a0), sin0 = (float) Math.sin(a0);
             float cos1 = (float) Math.cos(a1), sin1 = (float) Math.sin(a1);
 
-            buf.vertex(mat, cos0 * innerR, sin0 * innerR, 0).color(r, g, b, a);
-            buf.vertex(mat, cos0 * outerR, sin0 * outerR, 0).color(r, g, b, a);
-            buf.vertex(mat, cos1 * outerR, sin1 * outerR, 0).color(r, g, b, a);
+            try {
+                buf.vertex(mat, cos0 * innerR, sin0 * innerR, 0).color(r, g, b, a);
+                buf.vertex(mat, cos0 * outerR, sin0 * outerR, 0).color(r, g, b, a);
+                buf.vertex(mat, cos1 * outerR, sin1 * outerR, 0).color(r, g, b, a);
 
-            buf.vertex(mat, cos0 * innerR, sin0 * innerR, 0).color(r, g, b, a);
-            buf.vertex(mat, cos1 * outerR, sin1 * outerR, 0).color(r, g, b, a);
-            buf.vertex(mat, cos1 * innerR, sin1 * innerR, 0).color(r, g, b, a);
+                buf.vertex(mat, cos0 * innerR, sin0 * innerR, 0).color(r, g, b, a);
+                buf.vertex(mat, cos1 * outerR, sin1 * outerR, 0).color(r, g, b, a);
+                buf.vertex(mat, cos1 * innerR, sin1 * innerR, 0).color(r, g, b, a);
+            } catch (RuntimeException ex) {
+                throw new RuntimeException("RadialDrawingUtils.fillArc: BufferBuilder likely not begun or wrong vertex format. Call Tessellator.getInstance().begin(...) before drawing.", ex);
+            }
         }
     }
 
@@ -58,8 +67,13 @@ public class RadialDrawingUtils {
     }
 
     public static void strokeRing(BufferBuilder buf, Matrix4f mat, float r1, float r2, float startRad, float endRad, int color) {
-        int segs = Math.max(4, (int) (SEGMENTS * (endRad - startRad) / (2 * Math.PI)));
-        float step = (endRad - startRad) / segs;
+        // Normalize delta angle and compute segments from positive delta
+        float delta = endRad - startRad;
+        while (delta <= 0f) delta += (float)(2 * Math.PI);
+        if (delta <= 1e-6f) return;
+
+        int segs = Math.max(4, (int) (SEGMENTS * (delta) / (2 * Math.PI)));
+        float step = delta / segs;
         float a = (color >> 24 & 0xFF) / 255f, r = (color >> 16 & 0xFF) / 255f,
                 g = (color >> 8 & 0xFF) / 255f, b = (color & 0xFF) / 255f;
 
@@ -68,13 +82,17 @@ public class RadialDrawingUtils {
             float c0 = (float) Math.cos(a0), s0 = (float) Math.sin(a0);
             float c1 = (float) Math.cos(a1), s1 = (float) Math.sin(a1);
 
-            buf.vertex(mat, c0 * r1, s0 * r1, 0).color(r, g, b, a);
-            buf.vertex(mat, c0 * r2, s0 * r2, 0).color(r, g, b, a);
-            buf.vertex(mat, c1 * r2, s1 * r2, 0).color(r, g, b, a);
+            try {
+                buf.vertex(mat, c0 * r1, s0 * r1, 0).color(r, g, b, a);
+                buf.vertex(mat, c0 * r2, s0 * r2, 0).color(r, g, b, a);
+                buf.vertex(mat, c1 * r2, s1 * r2, 0).color(r, g, b, a);
 
-            buf.vertex(mat, c0 * r1, s0 * r1, 0).color(r, g, b, a);
-            buf.vertex(mat, c1 * r2, s1 * r2, 0).color(r, g, b, a);
-            buf.vertex(mat, c1 * r1, s1 * r1, 0).color(r, g, b, a);
+                buf.vertex(mat, c0 * r1, s0 * r1, 0).color(r, g, b, a);
+                buf.vertex(mat, c1 * r2, s1 * r2, 0).color(r, g, b, a);
+                buf.vertex(mat, c1 * r1, s1 * r1, 0).color(r, g, b, a);
+            } catch (RuntimeException ex) {
+                throw new RuntimeException("RadialDrawingUtils.strokeRing: BufferBuilder likely not begun or wrong vertex format.", ex);
+            }
         }
     }
 
