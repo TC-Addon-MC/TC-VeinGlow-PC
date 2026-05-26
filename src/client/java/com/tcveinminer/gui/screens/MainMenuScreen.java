@@ -284,4 +284,3 @@ public class MainMenuScreen extends Screen {
     @Override public boolean shouldPause() { return false; }
     @Override public void renderBackground(DrawContext c, int mx, int my, float d) {}
 }
-

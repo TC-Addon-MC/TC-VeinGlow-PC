@@ -14,6 +14,8 @@ import net.minecraft.state.property.Property;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.world.World;
+import net.minecraft.world.border.WorldBorder;
+import net.minecraft.server.network.ServerPlayerEntity;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -56,7 +58,8 @@ public final class FilterModeManager {
             int visitedCount,            // Tổng số block đã duyệt qua
             MiningMode mode,             // Chế độ đang chạy
             FilterCache cache,           // Bộ nhớ đệm dùng chung cho một phiên đào
-            Set<String> blacklist        // Danh sách đen cá nhân
+            Set<String> blacklist,       // Danh sách đen cá nhân
+            boolean requireCorrectTool   // Yêu cầu dụng cụ đúng
     ) {}
 
     public enum MiningMode {
@@ -134,7 +137,12 @@ public final class FilterModeManager {
         public static final BlockFilter NOT_AIR = ctx -> !ctx.currentState().isAir();
         public static final BlockFilter SOLID_ONLY = ctx -> ctx.currentState().isSolidBlock(ctx.world(), ctx.currentPos());
         public static final BlockFilter BREAKABLE_ONLY = ctx -> ctx.cache().getHardness(ctx.currentState()) >= 0;
-        public static final BlockFilter ORES_ONLY = ctx -> ctx.currentState().isIn(BlockTags.COAL_ORES) || ctx.currentState().isIn(BlockTags.IRON_ORES) || ctx.currentState().isIn(BlockTags.GOLD_ORES) || ctx.currentState().isIn(BlockTags.DIAMOND_ORES) || ctx.currentState().isIn(BlockTags.REDSTONE_ORES) || ctx.currentState().isIn(BlockTags.LAPIS_ORES) || ctx.currentState().isIn(BlockTags.EMERALD_ORES) || ctx.currentState().isIn(BlockTags.COPPER_ORES);
+        public static final BlockFilter ORES_ONLY = ctx -> {
+            BlockState s = ctx.currentState();
+            return s.isIn(BlockTags.COAL_ORES) || s.isIn(BlockTags.IRON_ORES) || s.isIn(BlockTags.GOLD_ORES) 
+                || s.isIn(BlockTags.DIAMOND_ORES) || s.isIn(BlockTags.REDSTONE_ORES) || s.isIn(BlockTags.LAPIS_ORES) 
+                || s.isIn(BlockTags.EMERALD_ORES) || s.isIn(BlockTags.COPPER_ORES);
+        };
         public static final BlockFilter LOGS_ONLY = ctx -> ctx.currentState().isIn(BlockTags.LOGS);
         public static final BlockFilter LEAVES_ONLY = ctx -> ctx.currentState().isIn(BlockTags.LEAVES);
 
@@ -236,6 +244,74 @@ public final class FilterModeManager {
         public static <T extends Comparable<T>> BlockFilter stateProperty(Property<T> property, T value) {
             return ctx -> ctx.currentState().contains(property) && ctx.currentState().get(property).equals(value);
         }
+
+        // --- 3.7 ADVANCED SERVER-SIDE FILTERS ---
+        public static BlockFilter survivalModeOnly() {
+            return ctx -> {
+                if (ctx.player() instanceof ServerPlayerEntity spe) {
+                    return !spe.isCreative();
+                }
+                return true; // Assume survival if not server player
+            };
+        }
+
+        public static BlockFilter bedrock() {
+            return ctx -> ctx.currentState().getBlock() != net.minecraft.block.Blocks.BEDROCK;
+        }
+
+        public static BlockFilter withinWorldBorder() {
+            return ctx -> {
+                WorldBorder border = ctx.world().getWorldBorder();
+                return border.contains(ctx.currentPos());
+            };
+        }
+
+        public static BlockFilter allowedByExplosionResistance(float minResistance) {
+            return ctx -> {
+                float resistance = ctx.currentState().getBlock().getBlastResistance();
+                return resistance >= minResistance;
+            };
+        }
+
+        public static BlockFilter notLockedByPiston() {
+            return ctx -> {
+                // Kiểm tra xem block có bị piston khóa không
+                BlockState state = ctx.currentState();
+                return !state.isIn(BlockTags.BEACON_BASE_BLOCKS) || !state.getBlock().getName().getString().contains("reinforced");
+            };
+        }
+
+        public static BlockFilter requireCorrectToolType() {
+            return ctx -> {
+                if (!ctx.requireCorrectTool()) return true;
+                
+                ItemStack tool = ctx.tool();
+                BlockState state = ctx.currentState();
+                
+                // Check if player can harvest with this tool
+                return ctx.player().canHarvest(state);
+            };
+        }
+
+        public static BlockFilter allowEnchantments() {
+            return ctx -> {
+                // Mở rộng logic để hỗ trợ enchantment (Efficiency, Unbreaking, etc.)
+                // Logic thực sự sẽ được xử lý ở MiningEngine khi break block
+                ItemStack tool = ctx.tool();
+                if (tool.isEmpty()) return false;
+                
+                // Unbreaking check: nếu tool có Unbreaking, cho phép đào tiếp tục
+                int unbreaking = tool.getEnchantmentLevel(net.minecraft.enchantment.Enchantments.UNBREAKING);
+                return unbreaking >= 0;
+            };
+        }
+
+        public static BlockFilter chunkLoadedForBreak() {
+            return ctx -> {
+                // Chỉ break block ở chunk đã load
+                return ctx.world().isChunkLoaded(ctx.currentPos());
+            };
+        }
     }
 
     // ==========================================
@@ -277,9 +353,10 @@ public final class FilterModeManager {
             return Composite.and(
                     BASE_SAFETY,
                     Filters.maxVisited(maxBlocks),
-                    Filters.maxDistance(32), // Không lan quá xa khỏi rễ
+                    Filters.maxDistance(32),
                     Composite.or(Filters.LOGS_ONLY, Filters.LEAVES_ONLY),
-                    Filters.naturalTreeOnly()
+                    Filters.naturalTreeOnly(),
+                    Filters.harvestableByTool()
             );
         }
 

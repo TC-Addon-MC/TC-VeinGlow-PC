@@ -13,7 +13,7 @@ public final class SpreadModeManager implements MiningStrategy {
 
     private static final int[][] D6  = {{1,0,0}, {-1,0,0}, {0,1,0}, {0,-1,0}, {0,0,1}, {0,0,-1}};
     private static final int[][] D18 = buildAdjacency(2);
-    private static final int[][] D26 = buildAdjacency(3);
+    private static final int[][] D26 = buildAdjacency(1, 1); // Chỉ lấy neighbors ngay gần (1 block away trên mỗi trục)
     private static final int[][] HORIZ = {{1,0,0}, {-1,0,0}, {0,0,1}, {0,0,-1}};
     private static final int TREE_LEAF_RADIUS = 6;
 
@@ -63,6 +63,21 @@ public final class SpreadModeManager implements MiningStrategy {
         return dirs.toArray(new int[0][]);
     }
 
+    private static int[][] buildAdjacency(int maxManhattan, int maxChebyshev) {
+        List<int[]> dirs = new ArrayList<>();
+        for (int dx = -maxChebyshev; dx <= maxChebyshev; dx++) {
+            for (int dy = -maxChebyshev; dy <= maxChebyshev; dy++) {
+                for (int dz = -maxChebyshev; dz <= maxChebyshev; dz++) {
+                    int manhattan = Math.abs(dx) + Math.abs(dy) + Math.abs(dz);
+                    if (manhattan > 0 && manhattan <= maxManhattan) {
+                        dirs.add(new int[]{dx, dy, dz});
+                    }
+                }
+            }
+        }
+        return dirs.toArray(new int[0][]);
+    }
+
     private List<BlockPos> executeBfs(MiningRequest req, int[][] directions, boolean isTree) {
         List<BlockPos> result = new ArrayList<>();
         Set<BlockPos> visited = new HashSet<>();
@@ -85,7 +100,7 @@ public final class SpreadModeManager implements MiningStrategy {
                 FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
                         req.world(), req.player(), req.tool(), req.origin(), nb,
                         req.targetState(), nbState, approach, cur.depth + 1, distance,
-                        result.size(), getModeType(), req.cache(), req.blacklist()
+                        result.size(), getModeType(), req.cache(), req.blacklist(), req.requireCorrectTool()
                 );
 
                 if (req.filter().test(fCtx)) {
@@ -128,7 +143,7 @@ public final class SpreadModeManager implements MiningStrategy {
                 FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
                         req.world(), req.player(), req.tool(), req.origin(), nb,
                         req.targetState(), state, Direction.fromVector(d[0], d[1], d[2]), cur.depth + 1, dist,
-                        result.size(), getModeType(), req.cache(), req.blacklist()
+                        result.size(), getModeType(), req.cache(), req.blacklist(), req.requireCorrectTool()
                 );
 
                 if (req.filter().test(fCtx)) {
@@ -160,7 +175,7 @@ public final class SpreadModeManager implements MiningStrategy {
                 FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
                         req.world(), req.player(), req.tool(), req.origin(), nb,
                         req.targetState(), state, Direction.fromVector(d[0], d[1], d[2]), cur.depth + 1, dist,
-                        result.size(), getModeType(), req.cache(), req.blacklist()
+                        result.size(), getModeType(), req.cache(), req.blacklist(), req.requireCorrectTool()
                 );
 
                 if (req.filter().test(fCtx)) {

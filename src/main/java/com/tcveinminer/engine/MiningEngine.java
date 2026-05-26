@@ -80,16 +80,18 @@ public final class MiningEngine {
     private int    playerMaxBlocks = 64;
     private MiningStrategy customStrategy = null;
     private Set<String>    playerBlacklist = new HashSet<>();
+    private Map<String, Boolean> playerTools = new HashMap<>();
 
     private MiningEngine() {}
 
     public void updatePlayerConfig(String shapeId, int maxBlocks) {
-        updatePlayerConfig(shapeId, maxBlocks, "", Collections.emptyList());
+        updatePlayerConfig(shapeId, maxBlocks, "", Collections.emptyList(), Collections.emptyMap());
     }
 
-    public void updatePlayerConfig(String shapeId, int maxBlocks, String equation, List<String> blacklist) {
+    public void updatePlayerConfig(String shapeId, int maxBlocks, String equation, List<String> blacklist, Map<String, Boolean> enabledTools) {
         this.playerMaxBlocks  = maxBlocks;
         this.playerBlacklist  = new HashSet<>(blacklist);
+        this.playerTools      = new HashMap<>(enabledTools);
         if (shapeId != null && shapeId.startsWith("custom:") && equation != null && !equation.isBlank()) {
             this.customStrategy = buildCustomStrategy(shapeId, equation);
             this.playerShape = (this.customStrategy != null) ? shapeId : "FACE";
@@ -148,7 +150,8 @@ public final class MiningEngine {
             case TUNNEL, SHAPE  -> filter = FilterModeManager.Composite.and(
                     FilterModeManager.Presets.BASE_SAFETY,
                     FilterModeManager.Filters.maxVisited(maxBlocksToMine),
-                    FilterModeManager.Filters.sameBlock() // Tunnel/Shape mặc định chỉ đào block cùng loại với block vừa phá
+                    FilterModeManager.Filters.sameBlock(),
+                    FilterModeManager.Filters.harvestableByTool()
             );
             default -> filter = FilterModeManager.Presets.VEIN_ORE(maxBlocksToMine);
         }
@@ -156,7 +159,8 @@ public final class MiningEngine {
         // 2. Nạp toàn bộ dữ liệu vào MiningRequest để Strategy xử lý (Contextual Injection)
         MiningStrategy.MiningRequest req = new MiningStrategy.MiningRequest(
                 world, player, player.getMainHandStack(),
-                origin, originState, maxBlocksToMine, ctx, filter, cache, playerBlacklist
+                origin, originState, maxBlocksToMine, ctx, filter, cache, playerBlacklist,
+                c.requireCorrectTool
         );
 
         // 3. Tiến hành thu thập khối theo Filter Mode mới
@@ -268,15 +272,21 @@ public final class MiningEngine {
         return true;
     }
 
-    private static boolean toolOk(PlayerEntity p, ModConfig c) {
+    private boolean toolOk(PlayerEntity p, ModConfig c) {
         ItemStack s = p.getMainHandStack();
-        if (s.isEmpty())                        return c.enabledTools.getOrDefault("hand",    false);
-        if (s.getItem() instanceof PickaxeItem) return c.enabledTools.getOrDefault("pickaxe", true);
-        if (s.getItem() instanceof AxeItem)     return c.enabledTools.getOrDefault("axe",     true);
-        if (s.getItem() instanceof ShovelItem)  return c.enabledTools.getOrDefault("shovel",  false);
-        if (s.getItem() instanceof SwordItem)   return c.enabledTools.getOrDefault("sword",   false);
-        if (s.getItem() instanceof HoeItem)     return c.enabledTools.getOrDefault("hoe",     false);
-        return false;
+        String type = "item";
+        if (s.isEmpty()) type = "hand";
+        else if (s.getItem() instanceof PickaxeItem) type = "pickaxe";
+        else if (s.getItem() instanceof AxeItem)     type = "axe";
+        else if (s.getItem() instanceof ShovelItem)  type = "shovel";
+        else if (s.getItem() instanceof SwordItem)   type = "sword";
+        else if (s.getItem() instanceof HoeItem)     type = "hoe";
+
+        if (playerTools.containsKey("all") && playerTools.get("all")) return true;
+        if (playerTools.containsKey(type)) return playerTools.get(type);
+
+        if (c.enabledTools.getOrDefault("all", false)) return true;
+        return c.enabledTools.getOrDefault(type, type.equals("pickaxe") || type.equals("axe"));
     }
 
     private static String blockId(BlockState state) {

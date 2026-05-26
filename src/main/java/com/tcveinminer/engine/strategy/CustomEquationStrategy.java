@@ -50,7 +50,7 @@ public final class CustomEquationStrategy implements MiningStrategy {
                     FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
                             req.world(), req.player(), req.tool(), origin, pos,
                             req.targetState(), currentState, forwardDir,
-                            Math.abs(f), distance, result.size(), getModeType(), req.cache(), req.blacklist()
+                            Math.abs(f), distance, result.size(), getModeType(), req.cache(), req.blacklist(), req.requireCorrectTool()
                     );
 
                     if (req.filter().test(fCtx)) {

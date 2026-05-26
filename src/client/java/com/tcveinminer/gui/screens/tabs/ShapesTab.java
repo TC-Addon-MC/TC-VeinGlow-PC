@@ -250,7 +250,7 @@ public class ShapesTab implements MenuTab {
     }
 
     @Override
-    public boolean mouseReleased(double mx, double my, int btn) {
+    public boolean mouseReleased(MainMenuScreen screen, double mx, double my, int btn) {
         isDraggingScroll = false;
         return false;
     }

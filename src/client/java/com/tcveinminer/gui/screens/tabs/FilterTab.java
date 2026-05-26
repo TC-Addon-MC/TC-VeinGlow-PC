@@ -39,26 +39,23 @@ public class FilterTab implements MenuTab {
         }
 
         int splitY = cy + 70;
-        int halfW = (cw - 10) / 2;
+        int inputW = (cw / 2) - 60;
 
-        // Ô NHẬP LIỆU (Tự động tra cứu Registry khi gõ)
         if (blockInput == null) {
-            blockInput = new TextFieldWidget(screen.getTextRenderer(), cx + 6, splitY + 22, halfW - 60, 16, Text.empty());
+            blockInput = new TextFieldWidget(screen.getTextRenderer(), cx + 6, splitY + 22, inputW, 16, Text.empty());
             blockInput.setMaxLength(100);
-            BlockFilterManager.updateSearch(""); // Nạp cache ban đầu
-
+            BlockFilterManager.updateSearch("");
             blockInput.setChangedListener(text -> {
                 BlockFilterManager.updateSearch(text);
                 searchScroll = 0;
                 blError = "";
             });
         } else {
-            blockInput.setX(cx + 6); blockInput.setY(splitY + 22); blockInput.setWidth(halfW - 60);
+            blockInput.setX(cx + 6); blockInput.setY(splitY + 22); blockInput.setWidth(inputW);
         }
         screen.addUIElement(blockInput);
 
-        // NÚT THÊM
-        screen.addUIElement(new AmberButton(cx + halfW - 50, splitY + 22, 44, 16, Text.literal("Thêm"), btn -> {
+        screen.addUIElement(new AmberButton(cx + (cw / 2) - 50, splitY + 22, 44, 16, Text.literal("Thêm"), btn -> {
             addBlock(screen);
         }));
 
@@ -122,61 +119,55 @@ public class FilterTab implements MenuTab {
             ctx.drawTextWithShadow(screen.getTextRenderer(), toolsInfo[i][1], bx + (btnW - screen.getTextRenderer().getWidth(toolsInfo[i][1])) / 2, by + 6, tc);
         }
 
-        // Tọa độ chia đôi
         int splitY = cy + 70;
         int splitH = ch - 70;
-        int halfW = (cw - 10) / 2;
         int listY = splitY + 44;
-        int maxItems = Math.max(1, (splitH - 44 - 6) / 18);
+        int maxItems = Math.max(1, (splitH - 44 - 6) / 20);
+
+        int halfW = (cw - 10) / 2;
         int rightX = cx + halfW + 10;
 
-        // VẼ KHUNG TRÁI (Tìm kiếm)
+        // VẼ KHUNG GỢI Ý (BÊN TRÁI)
         DrawHelper.drawCard(ctx, cx, splitY, halfW, splitH);
-        ctx.drawTextWithShadow(screen.getTextRenderer(), "TÌM KHỐI ĐỂ CẤM", cx + 8, splitY + 8, 0xFFFFFFFF);
-        if (!blError.isEmpty()) {
-            ctx.drawTextWithShadow(screen.getTextRenderer(), blError, cx + halfW - 8 - screen.getTextRenderer().getWidth(blError), splitY + 8, ThemeColors.TEXT_ERROR);
-        }
+        ctx.drawTextWithShadow(screen.getTextRenderer(), "GỢI Ý BLOCK", cx + 8, splitY + 8, 0xFFFFFFFF);
 
-        // VẼ KHUNG PHẢI (Đã cấm)
-        DrawHelper.drawCard(ctx, rightX, splitY, halfW, splitH);
-        String rightTitle = "ĐANG BỊ CẤM (" + screen.getState().blacklist.size() + ")";
-        ctx.drawTextWithShadow(screen.getTextRenderer(), rightTitle, rightX + 8, splitY + 8, 0xFFFFFFFF);
-
-        // RENDER DANH SÁCH GỢI Ý BẰNG DATA (Không dùng Button)
         List<Identifier> suggestions = BlockFilterManager.getSearchCache();
-        if (suggestions.isEmpty() && blockInput.getText().length() > 0) {
-            ctx.drawTextWithShadow(screen.getTextRenderer(), "Không tìm thấy block...", cx + 8, listY + 6, 0xFF6B7280);
+        if (suggestions.isEmpty() && !blockInput.getText().isEmpty()) {
+            ctx.drawTextWithShadow(screen.getTextRenderer(), "Không tìm thấy...", cx + 8, listY + 6, 0xFF6B7280);
         } else {
-            int startS = Math.max(0, Math.min(searchScroll, suggestions.size() - maxItems));
-            for (int i = startS; i < Math.min(suggestions.size(), startS + maxItems); i++) {
-                int ry = listY + (i - startS) * 18;
+            // Hiển thị gợi ý bên trong khung trái
+            for (int i = 0; i < Math.min(suggestions.size(), maxItems); i++) {
+                int ry = listY + i * 20;
                 Identifier id = suggestions.get(i);
-
-                // Highlight khi di chuột ngang qua dòng này
-                boolean hovered = mouseX >= cx + 4 && mouseX <= cx + halfW - 4 && mouseY >= ry && mouseY < ry + 18;
-                if (hovered) ctx.fill(cx + 4, ry, cx + halfW - 4, ry + 18, 0x33FFFFFF);
-
+                boolean hovered = mouseX >= cx + 4 && mouseX <= cx + halfW - 4 && mouseY >= ry && mouseY < ry + 20;
+                if (hovered) ctx.fill(cx + 4, ry, cx + halfW - 4, ry + 20, 0x33FFFFFF);
                 ctx.drawTextWithShadow(screen.getTextRenderer(), id.toString(), cx + 8, ry + 5, hovered ? 0xFFFFFFFF : 0xFFA0AEC0);
             }
         }
 
-        // RENDER DANH SÁCH BỊ CẤM BẰNG DATA (Không dùng Button)
+        // VẼ KHUNG BLACKLIST (BÊN PHẢI)
+        DrawHelper.drawCard(ctx, rightX, splitY, halfW, splitH);
+        String rightTitle = "ĐANG BỊ CẤM (" + screen.getState().blacklist.size() + ")";
+        ctx.drawTextWithShadow(screen.getTextRenderer(), rightTitle, rightX + 8, splitY + 8, 0xFFFFFFFF);
+        if (!blError.isEmpty()) {
+            ctx.drawTextWithShadow(screen.getTextRenderer(), blError, rightX + halfW - 8 - screen.getTextRenderer().getWidth(blError), splitY + 8, ThemeColors.TEXT_ERROR);
+        }
+
         List<Identifier> bl = new ArrayList<>(screen.getState().blacklist);
         if (bl.isEmpty()) {
             ctx.drawTextWithShadow(screen.getTextRenderer(), "Trống", rightX + 8, listY + 6, 0xFF6B7280);
         } else {
             int startBl = Math.max(0, Math.min(blScroll, bl.size() - maxItems));
             for (int i = startBl; i < Math.min(bl.size(), startBl + maxItems); i++) {
-                int ry = listY + (i - startBl) * 18;
+                int ry = listY + (i - startBl) * 20;
                 Identifier id = bl.get(i);
-
-                // Highlight đỏ khi di chuột (biểu thị nút XÓA)
-                boolean hovered = mouseX >= rightX + 4 && mouseX <= rightX + halfW - 4 && mouseY >= ry && mouseY < ry + 18;
-                if (hovered) ctx.fill(rightX + 4, ry, rightX + halfW - 4, ry + 18, 0x4DFF0000);
-
+                boolean hovered = mouseX >= rightX + 4 && mouseX <= rightX + halfW - 4 && mouseY >= ry && mouseY < ry + 20;
+                if (hovered) ctx.fill(rightX + 4, ry, rightX + halfW - 4, ry + 20, 0x4DFF0000);
                 ctx.drawTextWithShadow(screen.getTextRenderer(), id.toString(), rightX + 8, ry + 5, hovered ? 0xFFFFFFFF : 0xFFFF7171);
             }
         }
+
+
     }
 
     @Override
@@ -184,24 +175,24 @@ public class FilterTab implements MenuTab {
         int splitY = lastCy + 70;
         int listY = splitY + 44;
         int splitH = lastCh - 70;
-        int maxItems = Math.max(1, (splitH - 44 - 6) / 18);
+        int maxItems = Math.max(1, (splitH - 44 - 6) / 20);
         int halfW = (lastCw - 10) / 2;
         int rightX = lastCx + halfW + 10;
 
-        // KIỂM TRA CLICK BÊN TRÁI (Chọn Gợi Ý)
-        if (mx >= lastCx + 4 && mx <= lastCx + halfW - 4 && my >= listY && my < listY + maxItems * 18) {
-            int index = searchScroll + (int) ((my - listY) / 18);
-            List<Identifier> suggestions = BlockFilterManager.getSearchCache();
-            if (index >= 0 && index < suggestions.size()) {
-                blockInput.setText(suggestions.get(index).toString());
+        // CLICK GỢI Ý (BÊN TRÁI)
+        List<Identifier> suggestions = BlockFilterManager.getSearchCache();
+        if (mx >= lastCx + 4 && mx <= lastCx + halfW - 4 && my >= listY && my < listY + maxItems * 20) {
+            int idx = (int)((my - listY) / 20);
+            if (idx >= 0 && idx < suggestions.size()) {
+                blockInput.setText(suggestions.get(idx).toString());
                 addBlock(screen);
                 return true;
             }
         }
 
-        // KIỂM TRA CLICK BÊN PHẢI (Xóa Block)
-        if (mx >= rightX + 4 && mx <= rightX + halfW - 4 && my >= listY && my < listY + maxItems * 18) {
-            int index = blScroll + (int) ((my - listY) / 18);
+        // CLICK XÓA BLACKLIST (BÊN PHẢI)
+        if (mx >= rightX + 4 && mx <= rightX + halfW - 4 && my >= listY && my < listY + maxItems * 20) {
+            int index = blScroll + (int) ((my - listY) / 20);
             List<Identifier> bl = new ArrayList<>(screen.getState().blacklist);
             if (index >= 0 && index < bl.size()) {
                 screen.getState().blacklist.remove(bl.get(index));
@@ -217,10 +208,10 @@ public class FilterTab implements MenuTab {
         int halfW = (screen.getW() - 20 - 10) / 2;
 
         // Chỉ cập nhật Offset cuộn. KHÔNG gọi rebuildMenu() để tránh giật lag.
-        if (mx < screen.getPx() + 10 + halfW) {
+        if (false) {
             searchScroll = Math.max(0, searchScroll - (int) v);
         } else {
-            blScroll = Math.max(0, blScroll - (int) v);
+            blScroll = Math.max(0, blScroll - (int) (v * 2));
         }
         return true;
     }

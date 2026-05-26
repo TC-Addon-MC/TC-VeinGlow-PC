@@ -1,7 +1,8 @@
 package com.tcveinminer.gui.screens;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.tcveinminer.config.ConfigManager;
+import com.tcveinminer.config.ClientConfig;
+import com.tcveinminer.config.ClientConfigManager;
 import com.tcveinminer.config.ModConfig;
 import com.tcveinminer.util.ThemeColors;
 import net.minecraft.client.gui.DrawContext;
@@ -15,8 +16,6 @@ import org.joml.Matrix4f;
 
 import java.util.ArrayList;
 import java.util.List;
-import com.tcveinminer.config.ClientConfigManager;
-import com.tcveinminer.config.ClientConfig;
 
 public class RadialMenuScreen extends Screen {
 
@@ -48,6 +47,11 @@ public class RadialMenuScreen extends Screen {
     private float clickProgress = 0.0f;
     private int clickedAction = -1;
 
+    // Keyboard navigation state
+    private int keyboardSelectedIndex = -1;
+    private long lastKeyPressTime = 0;
+    private static final long KEY_REPEAT_DELAY = 100; // ms
+
     public RadialMenuScreen(Screen parent) {
         super(Text.literal("TC VeinMiner"));
         this.parent = parent;
@@ -62,6 +66,7 @@ public class RadialMenuScreen extends Screen {
         isClosing = false;
         clickProgress = 0.0f;
         sliceHoverProgress = new float[activeShapes.size() + 1];
+        keyboardSelectedIndex = 0; // Start with first shape
     }
 
     private void rebuildShapes() {
@@ -77,7 +82,7 @@ public class RadialMenuScreen extends Screen {
             if (ClientConfigManager.instance.enabledShapes.contains(entry.strategyId)
                     && !ClientConfigManager.instance.serverDisabledShapes.contains("custom")
                     && !ClientConfigManager.instance.serverDisabledShapes.contains(entry.strategyId))
-                activeShapes.add(new SliceEntry(entry.strategyId, "", entry.name));
+                activeShapes.add(new SliceEntry(entry.strategyId, "✦", entry.name));
         }
         if (activeShapes.isEmpty())
             activeShapes.add(new SliceEntry(ModConfig.MiningShape.FACE.name(),
@@ -128,7 +133,7 @@ public class RadialMenuScreen extends Screen {
         BufferBuilder buf = tess.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
         for (int i = 0; i < n; i++) {
-            boolean isHov = (!isClosing && hoveredSlice == i);
+            boolean isHov = (!isClosing && (hoveredSlice == i || keyboardSelectedIndex == i));
             boolean isAct = activeShapes.get(i).id().equals(currentActiveId);
 
             sliceHoverProgress[i] = MathHelper.lerp(delta * 0.3f, sliceHoverProgress[i], isHov ? 1.0f : 0.0f);
@@ -185,7 +190,7 @@ public class RadialMenuScreen extends Screen {
 
         renderLabels(ctx, n, angleStep, currentActiveId);
 
-        if (!isClosing && hoveredSlice >= 0 && hoveredSlice < n) {
+        if (!isClosing && (hoveredSlice >= 0 && hoveredSlice < n || keyboardSelectedIndex >= 0 && keyboardSelectedIndex < n)) {
             renderTooltip(ctx, mouseX, mouseY);
         }
     }
@@ -205,8 +210,6 @@ public class RadialMenuScreen extends Screen {
             client.setScreen(parent);
         }
     }
-
-    // ===== phần còn lại giữ nguyên =====
 
     private void renderLabels(DrawContext ctx, int n, float angleStep, String currentActiveId) {
         for (int i = 0; i < n; i++) {
@@ -238,14 +241,16 @@ public class RadialMenuScreen extends Screen {
             String icon = entry.icon();
             ctx.drawTextWithShadow(textRenderer, icon, lx - textRenderer.getWidth(icon) / 2, ly - 10, iconColor);
 
-            String name = shortenLabel(entry.label());
+            // Tính max width dựa trên vị trí label và khung màn hình
+            int maxWidth = calculateMaxWidthForLabel(lx);
+            String name = shortenLabel(entry.label(), maxWidth);
             ctx.drawTextWithShadow(textRenderer, name, lx - textRenderer.getWidth(name) / 2, ly + 1, textColor);
         }
 
         int centerAlpha = (int)(animOpen * 255);
         if (centerAlpha > 10) {
-            
-            ctx.drawTextWithShadow(textRenderer, "Settings", cx - textRenderer.getWidth("Settings") / 2, cy - 4, applyAlpha(ThemeColors.TEXT_LABEL, centerAlpha));
+            ctx.drawTextWithShadow(textRenderer, "⚙", cx - textRenderer.getWidth("⚙") / 2, cy - 9, applyAlpha(ThemeColors.BTN_TEXT, centerAlpha));
+            ctx.drawTextWithShadow(textRenderer, "Settings", cx - textRenderer.getWidth("Settings") / 2, cy + 1, applyAlpha(ThemeColors.TEXT_LABEL, centerAlpha));
         }
     }
 
@@ -254,7 +259,13 @@ public class RadialMenuScreen extends Screen {
     }
 
     private void renderTooltip(DrawContext ctx, int mouseX, int mouseY) {
-        String fullName = activeShapes.get(hoveredSlice).label();
+        int idx = (keyboardSelectedIndex >= 0 && keyboardSelectedIndex < activeShapes.size()) 
+            ? keyboardSelectedIndex 
+            : (hoveredSlice >= 0 && hoveredSlice < activeShapes.size() ? hoveredSlice : -1);
+        
+        if (idx < 0) return;
+        
+        String fullName = activeShapes.get(idx).label();
         int tw = textRenderer.getWidth(fullName) + 8;
         ctx.fill(mouseX + 6, mouseY - 14, mouseX + 6 + tw, mouseY, 0xCC000000);
         ctx.drawTextWithShadow(textRenderer, fullName, mouseX + 10, mouseY - 11, 0xFFFFFFFF);
@@ -286,11 +297,49 @@ public class RadialMenuScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        // ESC or G to close
         if (keyCode == 256 || keyCode == 71) {
             client.setScreen(parent);
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastKeyPressTime < KEY_REPEAT_DELAY) {
+            return true;
+        }
+
+        int n = activeShapes.size();
+        
+        // A/D or Left/Right to rotate
+        if (keyCode == 30 || keyCode == 32) { // A or D
+            if (keyCode == 30) { // A - rotate left
+                keyboardSelectedIndex = (keyboardSelectedIndex - 1 + n) % n;
+            } else { // D - rotate right
+                keyboardSelectedIndex = (keyboardSelectedIndex + 1) % n;
+            }
+            lastKeyPressTime = currentTime;
+            return true;
+        }
+
+        // W to go to center (settings)
+        if (keyCode == 17) { // W
+            clickedAction = -2;
+            isClosing = true;
+            lastKeyPressTime = currentTime;
+            return true;
+        }
+
+        // S to select current item
+        if (keyCode == 31) { // S
+            if (keyboardSelectedIndex >= 0 && keyboardSelectedIndex < n) {
+                clickedAction = keyboardSelectedIndex;
+                isClosing = true;
+            }
+            lastKeyPressTime = currentTime;
+            return true;
+        }
+
+        return false;
     }
 
     @Override
@@ -306,8 +355,41 @@ public class RadialMenuScreen extends Screen {
         return (int)(angle / (360f / activeShapes.size())) % activeShapes.size();
     }
 
-    private String shortenLabel(String label) {
-        if (textRenderer.getWidth(label) <= 55) return label;
-        return label.split(" ")[0];
+    // Tính max width dựa trên vị trí label và khung màn hình
+    private int calculateMaxWidthForLabel(int labelX) {
+        // Khoảng cách tối thiểu từ label đến edge của màn hình
+        int leftEdgeSpace = labelX - 10;
+        int rightEdgeSpace = width - labelX - 10;
+        int availableSpace = Math.min(leftEdgeSpace, rightEdgeSpace);
+        
+        // Max width tối thiểu là 40px
+        return Math.max(availableSpace, 40);
+    }
+    
+    // Check từng chữ cái, không check từ
+    private String shortenLabel(String label, int maxWidth) {
+        if (label == null || label.isEmpty()) return "";
+        
+        // Nếu text vừa vặn, return nguyên bản
+        if (textRenderer.getWidth(label) <= maxWidth) {
+            return label;
+        }
+        
+        // Cắt từng chữ cái từ từ
+        String result = label;
+        while (textRenderer.getWidth(result) > maxWidth && result.length() > 0) {
+            result = result.substring(0, result.length() - 1);
+        }
+        
+        // Thêm ".." nếu cắt ngắn
+        if (result.length() < label.length()) {
+            // Đảm bảo ".." vừa vặn trong max width
+            while (textRenderer.getWidth(result + "..") > maxWidth && result.length() > 0) {
+                result = result.substring(0, result.length() - 1);
+            }
+            result = result + "..";
+        }
+        
+        return result.isEmpty() ? ".." : result;
     }
 }

@@ -30,6 +30,10 @@ public class GeneralTab implements MenuTab {
             screen.getState().showOutline = !screen.getState().showOutline;
             screen.rebuildMenu();
         }));
+        screen.addUIElement(new CustomButton(cx, dY + 48, cw, 20, Text.empty(), btn -> {
+            screen.getState().requireCorrectTool = !screen.getState().requireCorrectTool;
+            screen.rebuildMenu();
+        }));
     }
 
     @Override
@@ -50,6 +54,7 @@ public class GeneralTab implements MenuTab {
         int dY = cy + 70;
         drawCheckRow(ctx, screen, cx, dY, cw, "HUD nổi", screen.getState().showHud);
         drawCheckRow(ctx, screen, cx, dY + 24, cw, "Outline", screen.getState().showOutline);
+        drawCheckRow(ctx, screen, cx, dY + 48, cw, "Yêu cầu đúng dụng cụ", screen.getState().requireCorrectTool);
     }
 
     private void drawCheckRow(DrawContext ctx, MainMenuScreen screen, int rx, int ry, int rw, String label, boolean checked) {

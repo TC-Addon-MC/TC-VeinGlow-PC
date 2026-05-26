@@ -11,5 +11,6 @@
   "tc_veinminer.mode.STAIR_DOWN": "Stair Down",
   "tc_veinminer.mode.AREA_3x3":   "3×3 Area",
   "tc_veinminer.mode.AREA_5x5":   "5×5 Area",
-  "tc_veinminer.mode.TREE_CAP":   "TreeCapitator"
+  "tc_veinminer.mode.TREE_CAP":   "TreeCapitator",
+  "gui.tcveinminer.title": "TC-VeinGlow"
 }

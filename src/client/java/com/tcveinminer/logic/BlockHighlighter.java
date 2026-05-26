@@ -76,16 +76,18 @@ public class BlockHighlighter {
     private static final float YAW_BUCKET   = 5.0f;
     private static final float PITCH_BUCKET = 5.0f;
 
-    private static BlockPos         lastTarget     = null;
-    private static String           lastStrategyId = null;
-    private static Direction        lastHitFace    = null;
-    private static int              lastYawBucket  = Integer.MIN_VALUE;
-    private static int              lastPitchBucket= Integer.MIN_VALUE;
-    private static Item             lastItem       = null; // Thêm cache cho Tool để trigger filter harvestable
-    private static int              lastCustomShapesHash = 0;
-    private static Set<BlockPos>    cachedHighlight = Collections.emptySet();
-    private static BlockPos         lockedPreviewTarget = null;
+    private static BlockPos      lastTarget = null;
+    private static String        lastStrategyId = null;
+    private static Direction     lastHitFace = null;
+    private static int           lastYawBucket = Integer.MIN_VALUE;
+    private static int           lastPitchBucket = Integer.MIN_VALUE;
+    private static Item          lastItem = null;
+    private static int           lastCustomShapesHash = 0;
 
+    private static Set<BlockPos> cachedHighlight = Collections.emptySet();
+    private static boolean       isTargetInvalid = false;
+
+    private static BlockPos lockedPreviewTarget = null;
     public static void register() {
         WorldRenderEvents.BLOCK_OUTLINE.register(BlockHighlighter::onDrawOutline);
     }
@@ -152,7 +154,8 @@ public class BlockHighlighter {
 
         BlockState targetState = client.world.getBlockState(targetPos);
         if (targetState.isAir()) {
-            cachedHighlight = Collections.emptySet();
+            isTargetInvalid = false;
+        cachedHighlight = Collections.emptySet();
             return cachedHighlight;
         }
 
@@ -174,7 +177,8 @@ public class BlockHighlighter {
             case TUNNEL, SHAPE  -> filter = FilterModeManager.Composite.and(
                     FilterModeManager.Presets.BASE_SAFETY,
                     FilterModeManager.Filters.maxVisited(maxBlocks),
-                    FilterModeManager.Filters.sameBlock()
+                    FilterModeManager.Filters.sameBlock(),
+                    FilterModeManager.Filters.harvestableByTool()
             );
             default -> filter = FilterModeManager.Presets.VEIN_ORE(maxBlocks);
         }
@@ -183,14 +187,28 @@ public class BlockHighlighter {
         MiningStrategy.MiningRequest req = new MiningStrategy.MiningRequest(
                 client.world, player, player.getMainHandStack(),
                 targetPos, targetState, maxBlocks, ctx, filter, cache,
-                new HashSet<>(ClientConfigManager.instance.personalBlacklist)
+                new HashSet<>(ClientConfigManager.instance.personalBlacklist),
+                ClientConfigManager.instance.requireCorrectTool
         );
 
         // 3. Lấy danh sách preview thông qua Filter mới
         List<BlockPos> preview = strategy.collectBlocks(req);
 
-        cachedHighlight = new HashSet<>(preview);
-        cachedHighlight.add(targetPos);
+        // Kiểm tra xem block mục tiêu có thực sự đào được không
+        FilterModeManager.FilterContext fCtxTarget = new FilterModeManager.FilterContext(
+                client.world, player, player.getMainHandStack(), targetPos, targetPos,
+                targetState, targetState, Direction.UP, 0, 0, 0, strategy.getModeType(), cache,
+                new HashSet<>(ClientConfigManager.instance.personalBlacklist),
+                ClientConfigManager.instance.requireCorrectTool
+        );
+        isTargetInvalid = !filter.test(fCtxTarget);
+
+        if (isTargetInvalid) {
+            cachedHighlight = Collections.singleton(targetPos);
+        } else {
+            cachedHighlight = new HashSet<>(preview);
+            cachedHighlight.add(targetPos);
+        }
         return cachedHighlight;
     }
 
@@ -202,6 +220,7 @@ public class BlockHighlighter {
         lastPitchBucket = Integer.MIN_VALUE;
         lastItem        = null;
         lastCustomShapesHash = 0;
+        isTargetInvalid = false;
         cachedHighlight = Collections.emptySet();
     }
 
@@ -246,7 +265,7 @@ public class BlockHighlighter {
         updateRenderLayers(cfg.outlineThickness);
 
         // Đọc màu và tính toán Alpha
-        float[] rgb = resolveColor(cfg);
+        float[] rgb = isTargetInvalid ? new float[]{0.937f, 0.267f, 0.267f} : resolveColor(cfg);
         float r = rgb[0], g = rgb[1], b = rgb[2];
         float alpha = Math.max(0f, Math.min(1f, cfg.outlineAlpha));
         float alphaXray = alpha * 0.25f; // Giảm alpha của Xray xuống để nhìn có chiều sâu hơn
@@ -263,14 +282,29 @@ public class BlockHighlighter {
 
         for (EdgeData ed : edgeCount.values()) {
             if (ed.count != 1) continue;
-
-            // Vẽ lớp Xray (xuyên tường) trước
             xray.vertex(mat, ed.ax, ed.ay, ed.az).color(r, g, b, alphaXray).normal(ed.nx, ed.ny, ed.nz);
             xray.vertex(mat, ed.bx, ed.by, ed.bz).color(r, g, b, alphaXray).normal(ed.nx, ed.ny, ed.nz);
-
-            // Vẽ lớp Solid (bị tường che) đè lên
             solid.vertex(mat, ed.ax, ed.ay, ed.az).color(r, g, b, alpha).normal(ed.nx, ed.ny, ed.nz);
             solid.vertex(mat, ed.bx, ed.by, ed.bz).color(r, g, b, alpha).normal(ed.nx, ed.ny, ed.nz);
+        }
+
+        if (isTargetInvalid) {
+            for (BlockPos pos : blockSet) {
+                var shape = client.world.getBlockState(pos).getOutlineShape(client.world, pos);
+                if (shape.isEmpty()) continue;
+                Box box = shape.getBoundingBox();
+                float x0 = (float)(pos.getX() + box.minX), x1 = (float)(pos.getX() + box.maxX);
+                float y0 = (float)(pos.getY() + box.minY), y1 = (float)(pos.getY() + box.maxY);
+                float z0 = (float)(pos.getZ() + box.minZ), z1 = (float)(pos.getZ() + box.maxZ);
+                
+                // Vẽ thanh chéo trên các mặt (Dựa theo bounding box)
+                // Mặt trên
+                xray.vertex(mat, x0, y1, z0).color(r, g, b, alphaXray).normal(0,1,0);
+                xray.vertex(mat, x1, y1, z1).color(r, g, b, alphaXray).normal(0,1,0);
+                solid.vertex(mat, x0, y1, z0).color(r, g, b, alpha).normal(0,1,0);
+                solid.vertex(mat, x1, y1, z1).color(r, g, b, alpha).normal(0,1,0);
+                // Các mặt khác nếu cần, nhưng thường mặt trên là đủ nhận diện
+            }
         }
         matrices.pop();
     }

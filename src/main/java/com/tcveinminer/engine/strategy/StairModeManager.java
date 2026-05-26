@@ -53,7 +53,7 @@ public final class StairModeManager implements MiningStrategy {
                 FilterModeManager.FilterContext ctx = new FilterModeManager.FilterContext(
                         req.world(), req.player(), req.tool(), req.origin(), p,
                         req.targetState(), state, forwardDir,
-                        stepIndex, dist, result.size(), getModeType(), req.cache(), req.blacklist()
+                        stepIndex, dist, result.size(), getModeType(), req.cache(), req.blacklist(), req.requireCorrectTool()
                 );
 
                 if (req.filter().test(ctx)) {

@@ -39,6 +39,7 @@ public interface MiningStrategy {
             OrientationContext orientCtx,
             FilterModeManager.BlockFilter filter,
             FilterModeManager.FilterCache cache,
-            Set<String> blacklist
+            Set<String> blacklist,
+            boolean requireCorrectTool
     ) {}
 }

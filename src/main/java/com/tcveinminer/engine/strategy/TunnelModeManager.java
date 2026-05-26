@@ -69,7 +69,7 @@ public final class TunnelModeManager implements MiningStrategy {
                     FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
                             req.world(), req.player(), req.tool(), req.origin(), pos,
                             req.targetState(), currentState, forwardDir,
-                            depth, distance, result.size(), getModeType(), req.cache(), req.blacklist()
+                            depth, distance, result.size(), getModeType(), req.cache(), req.blacklist(), req.requireCorrectTool()
                     );
 
                     if (req.filter().test(fCtx)) {
