@@ -7,6 +7,11 @@ import com.tcveinminer.logic.BlockHighlighter;
 import com.tcveinminer.network.HoldKeyPayload;
 import com.tcveinminer.network.ConfigSyncPayload;
 import com.tcveinminer.network.MiningStatePayload;
+import com.tcveinminer.network.ActivationRequestPayload;
+import com.tcveinminer.network.ActivationConfirmPayload;
+import com.tcveinminer.network.LookedAtBlockPayload;
+import com.tcveinminer.network.FilterResultPayload;
+import com.tcveinminer.network.HighlightBlockListPayload;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
@@ -19,6 +24,9 @@ import java.util.Map;
 import java.util.LinkedHashMap;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.math.BlockPos;
 import org.lwjgl.glfw.GLFW;
 
 public class TCVeinMinerClient implements ClientModInitializer {
@@ -43,6 +51,9 @@ public class TCVeinMinerClient implements ClientModInitializer {
     /** Để phát hiện edge "vừa nhấn" V (tránh lặp nhiều tick). */
     private static boolean lastKeyPressed = false;
     private static final java.util.Set<Integer> pressedKeys = new java.util.HashSet<>();
+
+    private static BlockPos lastTargetPos = null;
+    private static boolean lastHoldStateForActivation = false;
 
     @Override
     public void onInitializeClient() {
@@ -87,6 +98,8 @@ public class TCVeinMinerClient implements ClientModInitializer {
             lastTools      = new LinkedHashMap<>();
             toggleActive   = false;
             lastKeyPressed = false;
+            lastTargetPos  = null;
+            lastHoldStateForActivation = false;
         });
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
@@ -164,6 +177,25 @@ public class TCVeinMinerClient implements ClientModInitializer {
                         new HoldKeyPayload(holdKeyDown, currentShapeId, currentMaxBlocks, currentEquation(currentShapeId), currentBlacklist, currentTools)
                 );
             }
+
+            // Phase 1: Check target block changes and send ActivationRequestPayload
+            if (client.player != null && client.world != null) {
+                BlockPos currentTarget = null;
+                HitResult hit = client.crosshairTarget;
+                if (hit != null && hit.getType() == HitResult.Type.BLOCK) {
+                    currentTarget = ((BlockHitResult) hit).getBlockPos();
+                }
+                
+                boolean targetChanged = (currentTarget == null && lastTargetPos != null) || (currentTarget != null && !currentTarget.equals(lastTargetPos));
+                if (targetChanged || (holdKeyDown != lastHoldStateForActivation)) {
+                    lastTargetPos = currentTarget;
+                    lastHoldStateForActivation = holdKeyDown;
+                    
+                    if (ClientPlayNetworking.canSend(ActivationRequestPayload.ID)) {
+                        ClientPlayNetworking.send(new ActivationRequestPayload(holdKeyDown, java.util.Optional.ofNullable(currentTarget)));
+                    }
+                }
+            }
         });
 
                 ClientPlayNetworking.registerGlobalReceiver(ConfigSyncPayload.ID, (payload, context) -> {
@@ -181,6 +213,31 @@ public class TCVeinMinerClient implements ClientModInitializer {
                     // When mining stops, we can allow highlight recalculation again if needed.
                     // The BlockHighlighter will handle the reset of its internal state.
                 }
+            });
+        });
+
+        ClientPlayNetworking.registerGlobalReceiver(ActivationConfirmPayload.ID, (payload, context) -> {
+            context.client().execute(() -> {
+                BlockHighlighter.allowContinuous = payload.allowContinuous();
+            });
+        });
+
+        ClientPlayNetworking.registerGlobalReceiver(LookedAtBlockPayload.ID, (payload, context) -> {
+            context.client().execute(() -> {
+                BlockHighlighter.lookedAtBlock = payload.pos();
+            });
+        });
+
+        ClientPlayNetworking.registerGlobalReceiver(FilterResultPayload.ID, (payload, context) -> {
+            context.client().execute(() -> {
+                BlockHighlighter.allowHighlight = payload.allowHighlight();
+            });
+        });
+
+        ClientPlayNetworking.registerGlobalReceiver(HighlightBlockListPayload.ID, (payload, context) -> {
+            context.client().execute(() -> {
+                BlockHighlighter.highlightBlocks = new java.util.HashSet<>(payload.blocks());
+                BlockHighlighter.highlightStyle = payload.highlightStyle();
             });
         });
 

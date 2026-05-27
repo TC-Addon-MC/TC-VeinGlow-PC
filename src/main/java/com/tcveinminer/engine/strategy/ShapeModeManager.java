@@ -3,12 +3,11 @@ package com.tcveinminer.engine.strategy;
 import com.tcveinminer.engine.traversal.OrientationContext;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public final class ShapeModeManager implements MiningStrategy {
+public final class ShapeModeManager extends BaseBfsStrategy {
 
     private enum ShapeType { PLANE_2D, BOX_3D }
 
@@ -66,37 +65,18 @@ public final class ShapeModeManager implements MiningStrategy {
     @Override public FilterModeManager.MiningMode getModeType() { return FilterModeManager.MiningMode.SHAPE; }
 
     @Override
-    public List<BlockPos> collectBlocks(MiningRequest req) {
-        List<BlockPos> result = new ArrayList<>();
-        OrientationContext ctx = req.orientCtx();
-
-        // LẤY DIRECTION
-        Direction forwardDir = (ctx.hitFace == Direction.UP || ctx.hitFace == Direction.DOWN)
-                ? ctx.playerFacing
-                : ctx.hitFace.getOpposite();
-
+    protected boolean isWithinShape(BlockPos pos, BlockPos origin, OrientationContext ctx, int f, int s, int u) {
         for (int[] off : relOffsets) {
-            if (result.size() >= req.maxBlocks()) break;
-
-            BlockPos pos = (type == ShapeType.PLANE_2D)
-                    ? ctx.planeOffset(req.origin(), off[0], off[1])
-                    : ctx.offset(req.origin(), off[0], off[1], off[2]);
-
-            BlockState currentState = req.world().getBlockState(pos);
-            int distance = (int) Math.sqrt(pos.getSquaredDistance(req.origin()));
-            int depth = (type == ShapeType.BOX_3D) ? Math.abs(off[0]) : 0;
-
-            // SỬA LỖI TẠI ĐÂY: forwardDir
-            FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
-                    req.world(), req.player(), req.tool(), req.origin(), pos,
-                    req.targetState(), currentState, forwardDir,
-                    depth, distance, result.size(), getModeType(), req.cache(), req.blacklist(), req.requireCorrectTool()
-            );
-
-            if (req.filter().test(fCtx)) {
-                result.add(pos);
-            }
+            BlockPos p = (type == ShapeType.PLANE_2D)
+                    ? ctx.planeOffset(origin, off[0], off[1])
+                    : ctx.offset(origin, off[0], off[1], off[2]);
+            if (p.equals(pos)) return true;
         }
-        return result;
+        return false;
+    }
+
+    @Override
+    protected boolean shouldQueue(SearchNode node, BlockState state, MiningRequest req, int maxSolidF, int maxSolidDepth, boolean passedFilter) {
+        return true; // Biên giới của hình dáng chính là giới hạn lan truyền
     }
 }

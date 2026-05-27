@@ -4,24 +4,23 @@ package com.tcveinminer.engine.state;
  * State machine cho một mining session của một player.
  *
  * Transitions hợp lệ:
- *   IDLE       → SCANNING   (player break block + hold key)
- *   SCANNING   → QUEUEING   (scan hoàn thành, có kết quả)
- *   SCANNING   → IDLE       (không có block nào match)
- *   QUEUEING   → MINING     (queue đã build xong)
- *   MINING     → IDLE       (queue rỗng — hoàn thành)
- *   MINING     → INTERRUPTED (player thả phím / invalid state)
- *   INTERRUPTED → IDLE       (cleanup xong)
- *   * → FAILED               (lỗi bất ngờ)
+ *   IDLE          → PREVIEW        (activation valid)
+ *   PREVIEW       → LOCKED_MINING  (player breaks first block)
+ *   PREVIEW       → CANCELLED      (activation disabled)
+ *   PREVIEW       → IDLE           (reset)
+ *   LOCKED_MINING → FINISHED       (queue rỗng — hoàn thành)
+ *   LOCKED_MINING → CANCELLED      (player đổi item (nếu không allow) / lỗi)
+ *   FINISHED      → IDLE           (cleanup xong ở tick tiếp theo)
+ *   CANCELLED     → IDLE           (cleanup xong ở tick tiếp theo)
  */
 public final class MiningStateMachine {
 
     public enum State {
         IDLE,
-        SCANNING,
-        QUEUEING,
-        MINING,
-        INTERRUPTED,
-        FAILED
+        PREVIEW,
+        LOCKED_MINING,
+        FINISHED,
+        CANCELLED
     }
 
     private State current = State.IDLE;
@@ -44,12 +43,11 @@ public final class MiningStateMachine {
 
     private boolean isValidTransition(State from, State to) {
         return switch (from) {
-            case IDLE        -> to == State.SCANNING;
-            case SCANNING    -> to == State.QUEUEING || to == State.IDLE || to == State.FAILED;
-            case QUEUEING    -> to == State.MINING   || to == State.IDLE || to == State.FAILED;
-            case MINING      -> to == State.IDLE     || to == State.INTERRUPTED || to == State.FAILED;
-            case INTERRUPTED -> to == State.IDLE;
-            case FAILED      -> to == State.IDLE;
+            case IDLE          -> to == State.PREVIEW;
+            case PREVIEW       -> to == State.LOCKED_MINING || to == State.CANCELLED || to == State.IDLE;
+            case LOCKED_MINING -> to == State.FINISHED      || to == State.CANCELLED;
+            case FINISHED      -> to == State.IDLE;
+            case CANCELLED     -> to == State.IDLE;
         };
     }
 }

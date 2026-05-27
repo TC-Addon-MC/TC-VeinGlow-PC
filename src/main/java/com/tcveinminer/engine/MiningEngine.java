@@ -16,9 +16,13 @@ import com.tcveinminer.logic.HudNotifier;
 import com.tcveinminer.util.ExpressionEvaluator;
 import com.tcveinminer.util.SessionStats;
 import com.tcveinminer.network.MiningStatePayload;
+import com.tcveinminer.network.ActivationConfirmPayload;
+import com.tcveinminer.network.FilterResultPayload;
+import com.tcveinminer.network.LookedAtBlockPayload;
+import com.tcveinminer.network.HighlightBlockListPayload;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.BlockState;
-import net.minecraft.entity.EquipmentSlot;
+
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.*;
 import net.minecraft.registry.Registries;
@@ -36,14 +40,17 @@ import java.util.concurrent.ConcurrentHashMap;
  * Fixed issues:
  * [CRITICAL] Re-entry guard: isMining flag prevents AFTER break event from
  * re-triggering onBreakTrigger while engine is executing.
- * [CRITICAL] Enchantment/XP/exhaustion: uses ServerPlayerEntity.interactionManager
+ * [CRITICAL] Enchantment/XP/exhaustion: uses
+ * ServerPlayerEntity.interactionManager
  * .tryBreakBlock() which runs full vanilla break pipeline.
- * [CRITICAL] Tool check every tick: toolOk() called in onServerTick, not just trigger.
+ * [CRITICAL] Tool check every tick: toolOk() called in onServerTick, not just
+ * trigger.
  * [CRITICAL] Tool break: full vanilla pipeline handles it correctly.
- * [CRITICAL] Cooldowns/playersHoldingV never cleaned → moved to disconnect handler
+ * [CRITICAL] Cooldowns/playersHoldingV never cleaned → moved to disconnect
+ * handler
  * in TCVeinMinerMod.
  * [SECURITY] maxBlocks clamped server-side in TCVeinMinerMod packet handler.
- * [FEATURE]  Đã tích hợp FilterModeManager và MiningRequest vào quy trình BFS.
+ * [FEATURE] Đã tích hợp FilterModeManager và MiningRequest vào quy trình BFS.
  */
 public final class MiningEngine {
 
@@ -76,24 +83,27 @@ public final class MiningEngine {
 
     private int brokenCount = 0;
     private int targetCount = 0;
-    private String playerShape    = "FACE";
-    private int    playerMaxBlocks = 64;
+    private String playerShape = "FACE";
+    private int playerMaxBlocks = 64;
     private MiningStrategy customStrategy = null;
-    private Set<String>    playerBlacklist = new HashSet<>();
+    private Set<String> playerBlacklist = new HashSet<>();
     private Map<String, Boolean> playerTools = new HashMap<>();
+    private BlockState originalState = null;
+    private Item initialItem = null;
 
-    private MiningEngine() {}
+    private MiningEngine() {
+    }
 
     public void updatePlayerConfig(String shapeId, int maxBlocks) {
         updatePlayerConfig(shapeId, maxBlocks, "", Collections.emptyList(), Collections.emptyMap());
     }
 
-    public void updatePlayerConfig(String shapeId, int maxBlocks, String equation, List<String> blacklist, Map<String, Boolean> enabledTools) {
-        this.playerMaxBlocks  = maxBlocks;
-        this.playerBlacklist  = FilterModeManager.normalizeBlacklist(
-                blacklist == null ? Collections.emptySet() : new HashSet<>(blacklist)
-        );
-        this.playerTools      = new HashMap<>(enabledTools);
+    public void updatePlayerConfig(String shapeId, int maxBlocks, String equation, List<String> blacklist,
+            Map<String, Boolean> enabledTools) {
+        this.playerMaxBlocks = maxBlocks;
+        this.playerBlacklist = FilterModeManager.normalizeBlacklist(
+                blacklist == null ? Collections.emptySet() : new HashSet<>(blacklist));
+        this.playerTools = new HashMap<>(enabledTools);
         if (shapeId != null && shapeId.startsWith("custom:") && equation != null && !equation.isBlank()) {
             this.customStrategy = buildCustomStrategy(shapeId, equation);
             this.playerShape = (this.customStrategy != null) ? shapeId : "FACE";
@@ -105,39 +115,134 @@ public final class MiningEngine {
 
     private static MiningStrategy buildCustomStrategy(String id, String equation) {
         ExpressionEvaluator evaluator = new ExpressionEvaluator(equation);
-        if (!evaluator.isValid()) return null;
+        if (!evaluator.isValid())
+            return null;
         return new CustomEquationStrategy(id, evaluator);
     }
 
     // ── Public API ───────────────────────────────────────────────────────────
 
-    public void onBreakTrigger(PlayerEntity player, ServerWorld world,
-                               BlockPos origin, BlockState originState) {
-        // [CRITICAL] Re-entry guard: if we are already breaking blocks, the AFTER event
-        // fired by our own world.interactionManager.tryBreakBlock() must be ignored.
-        if (isMining || !stateMachine.is(State.IDLE)) return;
+    public void handleActivationRequest(ServerPlayerEntity spe, boolean active, BlockPos targetPos) {
+        if (!active || targetPos == null) {
+            if (stateMachine.is(State.PREVIEW)) {
+                stateMachine.force(State.IDLE);
+                renderSnapshot = Collections.emptySet();
+            }
+            ServerPlayNetworking.send(spe, new ActivationConfirmPayload(false));
+            ServerPlayNetworking.send(spe, new FilterResultPayload(false));
+            ServerPlayNetworking.send(spe, new HighlightBlockListPayload(Collections.emptyList(), "FACE"));
+            return;
+        }
+
+        // Ignore dynamic updates if already locked/finished
+        if (stateMachine.is(State.LOCKED_MINING) || stateMachine.is(State.FINISHED) || stateMachine.is(State.CANCELLED)) {
+            return;
+        }
 
         ModConfig c = ConfigManager.get();
         if (!c.enabled) return;
-        if (!TCVeinMinerMod.playersHoldingV.contains(player.getUuid())) return;
-        if (c.requireCorrectTool && !toolOk(player, c)) return;
-        Set<String> activeBlacklist = mergeBlacklists(c.blacklistedBlocks, playerBlacklist);
-        if (activeBlacklist.contains(blockId(originState))) return;
-        if (c.requireSneak && !player.isSneaking()) return;
-        if (!checkCooldown(player.getUuid(), world.getTime(), c)) return;
 
-        if (!stateMachine.is(State.IDLE)) {
+        stateMachine.force(State.PREVIEW);
+
+        ServerWorld world = spe.getServerWorld();
+        if (!world.isChunkLoaded(targetPos.getX() >> 4, targetPos.getZ() >> 4)) return;
+
+        BlockState targetState = world.getBlockState(targetPos);
+        if (targetState.isAir()) {
+            ServerPlayNetworking.send(spe, new FilterResultPayload(false));
+            return;
+        }
+
+        boolean toolOk = !c.requireCorrectTool || toolOk(spe, c);
+        Set<String> activeBlacklist = mergeBlacklists(c.blacklistedBlocks, playerBlacklist);
+        boolean isBlacklisted = activeBlacklist.contains(blockId(targetState));
+
+        if (!toolOk || isBlacklisted) {
+            ServerPlayNetworking.send(spe, new ActivationConfirmPayload(false));
+            ServerPlayNetworking.send(spe, new LookedAtBlockPayload(targetPos));
+            ServerPlayNetworking.send(spe, new FilterResultPayload(false));
+            return;
+        }
+
+        Direction hitFace = approximateHitFace(spe);
+        OrientationContext ctx = OrientationContext.of(
+                hitFace,
+                OrientationContext.facingFromYaw(spe.getYaw())
+        );
+
+        MiningStrategy strategy = (customStrategy != null)
+                ? customStrategy
+                : StrategyRegistry.get(this.playerShape);
+        int maxBlocksToMine = this.playerMaxBlocks - 1;
+
+        FilterModeManager.FilterCache cache = new FilterModeManager.FilterCache();
+        FilterModeManager.BlockFilter filter = FilterModeManager.resolveFilter(strategy.getModeType(), maxBlocksToMine);
+
+        FilterModeManager.FilterContext fCtxTarget = new FilterModeManager.FilterContext(
+                world, spe, spe.getMainHandStack(), targetPos, targetPos,
+                targetState, targetState, Direction.UP, 0, 0, 0, strategy.getModeType(), cache,
+                activeBlacklist,
+                c.requireCorrectTool
+        );
+
+        if (!filter.test(fCtxTarget)) {
+            ServerPlayNetworking.send(spe, new ActivationConfirmPayload(false));
+            ServerPlayNetworking.send(spe, new LookedAtBlockPayload(targetPos));
+            ServerPlayNetworking.send(spe, new FilterResultPayload(false));
+            return;
+        }
+
+        ServerPlayNetworking.send(spe, new ActivationConfirmPayload(true));
+        ServerPlayNetworking.send(spe, new LookedAtBlockPayload(targetPos));
+        ServerPlayNetworking.send(spe, new FilterResultPayload(true));
+
+        MiningStrategy.MiningRequest req = new MiningStrategy.MiningRequest(
+                world, spe, spe.getMainHandStack(),
+                targetPos, targetState, maxBlocksToMine, ctx, filter, cache, activeBlacklist,
+                c.requireCorrectTool, stateMachine.get(), spe.getMainHandStack().getItem(), c.allowHeldItemChange
+        );
+
+        List<BlockPos> found = strategy.collectBlocks(req);
+        if (!found.contains(targetPos)) {
+            found.add(targetPos);
+        }
+
+        ServerPlayNetworking.send(spe, new HighlightBlockListPayload(found, this.playerShape));
+    }
+
+    public void onBreakTrigger(PlayerEntity player, ServerWorld world,
+            BlockPos origin, BlockState originState) {
+        // [CRITICAL] Re-entry guard: if we are already breaking blocks, the AFTER event
+        // fired by our own world.interactionManager.tryBreakBlock() must be ignored.
+        if (isMining || (!stateMachine.is(State.IDLE) && !stateMachine.is(State.PREVIEW)))
+            return;
+
+        ModConfig c = ConfigManager.get();
+        if (!c.enabled)
+            return;
+        if (!TCVeinMinerMod.playersHoldingV.contains(player.getUuid()))
+            return;
+        if (c.requireCorrectTool && !toolOk(player, c))
+            return;
+        Set<String> activeBlacklist = mergeBlacklists(c.blacklistedBlocks, playerBlacklist);
+        if (activeBlacklist.contains(blockId(originState)))
+            return;
+        if (c.requireSneak && !player.isSneaking())
+            return;
+        if (!checkCooldown(player.getUuid(), world.getTime(), c))
+            return;
+
+        if (stateMachine.is(State.PREVIEW)) {
+            // Keep going, transition from PREVIEW -> LOCKED_MINING later
+        } else if (!stateMachine.is(State.IDLE)) {
             queue.interrupt();
             stateMachine.force(State.IDLE);
         }
 
-        stateMachine.transition(State.SCANNING);
-
         Direction hitFace = approximateHitFace(player);
         OrientationContext ctx = OrientationContext.of(
                 hitFace,
-                OrientationContext.facingFromYaw(player.getYaw())
-        );
+                OrientationContext.facingFromYaw(player.getYaw()));
 
         MiningStrategy strategy = (customStrategy != null)
                 ? customStrategy
@@ -148,12 +253,15 @@ public final class MiningEngine {
         FilterModeManager.FilterCache cache = new FilterModeManager.FilterCache();
         FilterModeManager.BlockFilter filter = FilterModeManager.resolveFilter(strategy.getModeType(), maxBlocksToMine);
 
-        // 2. Nạp toàn bộ dữ liệu vào MiningRequest để Strategy xử lý (Contextual Injection)
+        // Track initial item
+        this.initialItem = player.getMainHandStack().getItem();
+
+        // 2. Nạp toàn bộ dữ liệu vào MiningRequest để Strategy xử lý (Contextual
+        // Injection)
         MiningStrategy.MiningRequest req = new MiningStrategy.MiningRequest(
                 world, player, player.getMainHandStack(),
                 origin, originState, maxBlocksToMine, ctx, filter, cache, activeBlacklist,
-                c.requireCorrectTool
-        );
+                c.requireCorrectTool, State.LOCKED_MINING, initialItem, c.allowHeldItemChange);
 
         // 3. Tiến hành thu thập khối theo Filter Mode mới
         List<BlockPos> found = strategy.collectBlocks(req);
@@ -163,29 +271,46 @@ public final class MiningEngine {
             return;
         }
 
-        stateMachine.transition(State.QUEUEING);
+        this.originalState = originState;
+
         queue.reset();
         queue.enqueue(found, world);
         renderSnapshot = queue.snapshot();
         targetCount = queue.size();
         brokenCount = 0;
 
-        stateMachine.transition(State.MINING);
+        stateMachine.force(State.LOCKED_MINING);
         SessionStats.onVeinMineStart();
-        if (player instanceof ServerPlayerEntity spe) ServerPlayNetworking.send(spe, new MiningStatePayload(true));
+        if (player instanceof ServerPlayerEntity spe)
+            ServerPlayNetworking.send(spe, new MiningStatePayload(true));
     }
 
     public void onServerTick(PlayerEntity player, ServerWorld world) {
-        if (!stateMachine.is(State.MINING)) return;
+        if (stateMachine.is(State.FINISHED) || stateMachine.is(State.CANCELLED)) {
+            stateMachine.force(State.IDLE);
+            return;
+        }
+
+        if (!stateMachine.is(State.LOCKED_MINING))
+            return;
+
+        // [CRITICAL] Item Lock Constraint (Phase 4/5)
+        ModConfig c = ConfigManager.get();
+        if (!c.allowHeldItemChange && initialItem != null && player.getMainHandStack().getItem() != initialItem) {
+            stopMining(player);
+            return;
+        }
 
         // [CRITICAL] Check tool validity every tick, not just at trigger
-        ModConfig c = ConfigManager.get();
         if (c.requireCorrectTool && !toolOk(player, c)) {
             stopMining(player);
             return;
         }
 
-        if (queue.isEmpty()) { finalizeMining(player); return; }
+        if (queue.isEmpty()) {
+            finalizeMining(player);
+            return;
+        }
 
         if (!TCVeinMinerMod.playersHoldingV.contains(player.getUuid())) {
             stopMining(player);
@@ -199,13 +324,21 @@ public final class MiningEngine {
         isMining = true;
         try {
             for (Entry e : batch) {
-                if (!(player instanceof ServerPlayerEntity spe)) break;
+                if (!(player instanceof ServerPlayerEntity spe))
+                    break;
 
                 String id = blockId(world.getBlockState(e.pos()));
+                BlockState currentState = world.getBlockState(e.pos());
+                
+                // [CRITICAL] Phase 5 Constraint: block identity
+                if (originalState != null && currentState.getBlock() != originalState.getBlock()) {
+                    continue;
+                }
 
                 // [CRITICAL] Use tryBreakBlock for full vanilla pipeline:
                 boolean broken = spe.interactionManager.tryBreakBlock(e.pos());
-                if (!broken) continue;
+                if (!broken)
+                    continue;
 
                 SessionStats.onBlockBroken(id);
                 brokenCount++;
@@ -226,40 +359,53 @@ public final class MiningEngine {
         }
 
         renderSnapshot = queue.snapshot();
-        if (queue.isEmpty()) finalizeMining(player);
+        if (queue.isEmpty())
+            finalizeMining(player);
     }
 
-    public Set<BlockPos> getRenderSnapshot() { return renderSnapshot; }
-    public State getState()                  { return stateMachine.get(); }
+    public Set<BlockPos> getRenderSnapshot() {
+        return renderSnapshot;
+    }
+
+    public State getState() {
+        return stateMachine.get();
+    }
 
     // ── Internal ─────────────────────────────────────────────────────────────
 
     private void stopMining(PlayerEntity player) {
         isMining = false;
         queue.interrupt();
-        stateMachine.force(State.INTERRUPTED);
-        stateMachine.transition(State.IDLE);
+        stateMachine.force(State.CANCELLED);
         renderSnapshot = Collections.emptySet();
-        if (player instanceof ServerPlayerEntity spe) ServerPlayNetworking.send(spe, new MiningStatePayload(false));
+        if (player instanceof ServerPlayerEntity spe) {
+            ServerPlayNetworking.send(spe, new MiningStatePayload(false));
+            ServerPlayNetworking.send(spe, new HighlightBlockListPayload(Collections.emptyList(), "FACE"));
+        }
     }
 
     private void finalizeMining(PlayerEntity player) {
         isMining = false;
         HudNotifier.lastMined = brokenCount;
-        HudNotifier.lastMax   = targetCount;
-        HudNotifier.notifyAt  = System.currentTimeMillis() + 2500;
-        stateMachine.force(State.IDLE);
+        HudNotifier.lastMax = targetCount;
+        HudNotifier.notifyAt = System.currentTimeMillis() + 2500;
+        stateMachine.force(State.FINISHED);
         renderSnapshot = Collections.emptySet();
-        if (player instanceof ServerPlayerEntity spe) ServerPlayNetworking.send(spe, new MiningStatePayload(false));
+        if (player instanceof ServerPlayerEntity spe) {
+            ServerPlayNetworking.send(spe, new MiningStatePayload(false));
+            ServerPlayNetworking.send(spe, new HighlightBlockListPayload(Collections.emptyList(), "FACE"));
+        }
     }
 
     // Shared cooldown map — cleared in removePlayer() on disconnect
     private static final Map<UUID, Long> cooldowns = new ConcurrentHashMap<>();
 
     private static boolean checkCooldown(UUID uuid, long tick, ModConfig c) {
-        if (c.cooldownTicks <= 0) return true;
+        if (c.cooldownTicks <= 0)
+            return true;
         long avail = cooldowns.getOrDefault(uuid, 0L);
-        if (tick < avail) return false;
+        if (tick < avail)
+            return false;
         cooldowns.put(uuid, tick + c.cooldownTicks);
         return true;
     }
@@ -267,17 +413,26 @@ public final class MiningEngine {
     private boolean toolOk(PlayerEntity p, ModConfig c) {
         ItemStack s = p.getMainHandStack();
         String type = "item";
-        if (s.isEmpty()) type = "hand";
-        else if (s.getItem() instanceof PickaxeItem) type = "pickaxe";
-        else if (s.getItem() instanceof AxeItem)     type = "axe";
-        else if (s.getItem() instanceof ShovelItem)  type = "shovel";
-        else if (s.getItem() instanceof SwordItem)   type = "sword";
-        else if (s.getItem() instanceof HoeItem)     type = "hoe";
+        if (s.isEmpty())
+            type = "hand";
+        else if (s.getItem() instanceof PickaxeItem)
+            type = "pickaxe";
+        else if (s.getItem() instanceof AxeItem)
+            type = "axe";
+        else if (s.getItem() instanceof ShovelItem)
+            type = "shovel";
+        else if (s.getItem() instanceof SwordItem)
+            type = "sword";
+        else if (s.getItem() instanceof HoeItem)
+            type = "hoe";
 
-        if (playerTools.containsKey("all") && playerTools.get("all")) return true;
-        if (playerTools.containsKey(type)) return playerTools.get(type);
+        if (playerTools.containsKey("all") && playerTools.get("all"))
+            return true;
+        if (playerTools.containsKey(type))
+            return playerTools.get(type);
 
-        if (c.enabledTools.getOrDefault("all", false)) return true;
+        if (c.enabledTools.getOrDefault("all", false))
+            return true;
         return c.enabledTools.getOrDefault(type, type.equals("pickaxe") || type.equals("axe"));
     }
 
@@ -293,8 +448,10 @@ public final class MiningEngine {
 
     private static Direction approximateHitFace(PlayerEntity player) {
         float pitch = player.getPitch();
-        if (pitch > 60f)  return Direction.UP;
-        if (pitch < -60f) return Direction.DOWN;
+        if (pitch > 60f)
+            return Direction.UP;
+        if (pitch < -60f)
+            return Direction.DOWN;
         return OrientationContext.facingFromYaw(player.getYaw()).getOpposite();
     }
 }

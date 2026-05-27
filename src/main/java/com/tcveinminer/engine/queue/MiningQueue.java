@@ -52,7 +52,7 @@ public final class MiningQueue {
             polled++;
 
             // 1. Chunk check FIRST — never force-load
-            if (!world.isChunkLoaded(e.pos())) continue;
+            if (!world.isChunkLoaded(e.pos().getX() >> 4, e.pos().getZ() >> 4)) continue;
 
             // 2. Block state check after chunk is confirmed loaded
             BlockState current = world.getBlockState(e.pos());

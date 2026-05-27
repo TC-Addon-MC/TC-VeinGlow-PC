@@ -3,25 +3,13 @@ package com.tcveinminer.logic;
 import com.tcveinminer.TCVeinMinerClient;
 import com.tcveinminer.config.ClientConfig;
 import com.tcveinminer.config.ClientConfigManager;
-import com.tcveinminer.engine.strategy.CustomEquationStrategy;
-import com.tcveinminer.engine.strategy.FilterModeManager;
-import com.tcveinminer.engine.strategy.MiningStrategy;
-import com.tcveinminer.engine.strategy.StrategyRegistry;
-import com.tcveinminer.engine.traversal.OrientationContext;
-import com.tcveinminer.util.ExpressionEvaluator;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
-import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.*;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.Item;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
-import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 
@@ -33,6 +21,12 @@ public class BlockHighlighter {
     private static float lastThickness = -1f;
     private static RenderLayer cachedSolidLayer;
     private static RenderLayer cachedXrayLayer;
+
+    public static boolean allowContinuous = false;
+    public static BlockPos lookedAtBlock = null;
+    public static boolean allowHighlight = false;
+    public static Set<BlockPos> highlightBlocks = Collections.emptySet();
+    public static String highlightStyle = "FACE";
 
     /**
      * Khởi tạo lại RenderLayer CHỈ KHI config thickness thay đổi.
@@ -72,30 +66,12 @@ public class BlockHighlighter {
         }
     }
 
-    // ── Cache Logic ───────────────────────────────────────────────────────────
-    private static final float YAW_BUCKET   = 5.0f;
-    private static final float PITCH_BUCKET = 5.0f;
-
-    private static BlockPos      lastTarget = null;
-    private static String        lastStrategyId = null;
-    private static Direction     lastHitFace = null;
-    private static int           lastYawBucket = Integer.MIN_VALUE;
-    private static int           lastPitchBucket = Integer.MIN_VALUE;
-    private static Item          lastItem = null;
-    private static int           lastCustomShapesHash = 0;
-
-    private static Set<BlockPos> cachedHighlight = Collections.emptySet();
-    private static boolean       isTargetInvalid = false;
-
-    private static BlockPos lockedPreviewTarget = null;
     public static void register() {
         WorldRenderEvents.BLOCK_OUTLINE.register(BlockHighlighter::onDrawOutline);
     }
 
     private static boolean onDrawOutline(WorldRenderContext context, WorldRenderContext.BlockOutlineContext outlineCtx) {
-        if (!TCVeinMinerClient.holdKeyDown) {
-            lockedPreviewTarget = null;
-            invalidateCache();
+        if (!TCVeinMinerClient.holdKeyDown || lookedAtBlock == null) {
             return true;
         }
         if (!ClientConfigManager.instance.showOutline) return true;
@@ -103,143 +79,16 @@ public class BlockHighlighter {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.world == null || client.player == null) return true;
 
-        Set<BlockPos> toHighlight = resolveHighlightSet(client);
+        Set<BlockPos> toHighlight = allowHighlight ? highlightBlocks : Collections.singleton(lookedAtBlock);
         if (toHighlight.isEmpty()) return true;
 
-        drawOutlines(context, client, toHighlight);
+        drawOutlines(context, client, toHighlight, !allowHighlight);
         return false;
-    }
-
-    private static Set<BlockPos> resolveHighlightSet(MinecraftClient client) {
-        HitResult hit = client.crosshairTarget;
-        if (hit == null || hit.getType() != HitResult.Type.BLOCK) {
-            lockedPreviewTarget = null;
-            invalidateCache();
-            return Collections.emptySet();
-        }
-
-        BlockHitResult bhr = (BlockHitResult) hit;
-        BlockPos targetPos = bhr.getBlockPos();
-        lockedPreviewTarget = targetPos;
-        String strategyId   = ClientConfigManager.instance.currentShape;
-
-        PlayerEntity player = client.player;
-        float pitch = player.getPitch();
-        Direction hitFace = pitch > 60f  ? Direction.UP
-                : pitch < -60f ? Direction.DOWN
-                : OrientationContext.facingFromYaw(player.getYaw()).getOpposite();
-
-        int yawBucket   = (int)(player.getYaw()   / YAW_BUCKET);
-        int pitchBucket = (int)(player.getPitch()  / PITCH_BUCKET);
-        Item currentItem = player.getMainHandStack().getItem();
-        int customHash = customShapesHash();
-
-        if (targetPos.equals(lastTarget)
-                && strategyId.equals(lastStrategyId)
-                && hitFace == lastHitFace
-                && yawBucket   == lastYawBucket
-                && pitchBucket == lastPitchBucket
-                && currentItem == lastItem
-                && customHash == lastCustomShapesHash) {
-            return cachedHighlight;
-        }
-
-        lastTarget      = targetPos;
-        lastStrategyId  = strategyId;
-        lastHitFace     = hitFace;
-        lastYawBucket   = yawBucket;
-        lastPitchBucket = pitchBucket;
-        lastItem        = currentItem;
-        lastCustomShapesHash = customHash;
-
-        BlockState targetState = client.world.getBlockState(targetPos);
-        if (targetState.isAir()) {
-            isTargetInvalid = false;
-        cachedHighlight = Collections.emptySet();
-            return cachedHighlight;
-        }
-
-        OrientationContext ctx = OrientationContext.of(
-                hitFace,
-                OrientationContext.facingFromYaw(player.getYaw())
-        );
-
-        MiningStrategy strategy = resolveStrategy(strategyId);
-        int maxBlocks = ClientConfigManager.instance.getEffectiveMaxBlocks() - 1;
-
-        // 1. Khởi tạo Cache và Filter cho Client Preview
-        FilterModeManager.FilterCache cache = new FilterModeManager.FilterCache();
-        FilterModeManager.BlockFilter filter = FilterModeManager.resolveFilter(strategy.getModeType(), maxBlocks);
-        Set<String> blacklist = FilterModeManager.normalizeBlacklist(new HashSet<>(ClientConfigManager.instance.personalBlacklist));
-
-        // 2. Đóng gói MiningRequest
-        MiningStrategy.MiningRequest req = new MiningStrategy.MiningRequest(
-                client.world, player, player.getMainHandStack(),
-                targetPos, targetState, maxBlocks, ctx, filter, cache,
-                blacklist,
-                ClientConfigManager.instance.requireCorrectTool
-        );
-
-        // 3. Lấy danh sách preview thông qua Filter mới
-        List<BlockPos> preview = strategy.collectBlocks(req);
-
-        // Kiểm tra xem block mục tiêu có thực sự đào được không
-        FilterModeManager.FilterContext fCtxTarget = new FilterModeManager.FilterContext(
-                client.world, player, player.getMainHandStack(), targetPos, targetPos,
-                targetState, targetState, Direction.UP, 0, 0, 0, strategy.getModeType(), cache,
-                blacklist,
-                ClientConfigManager.instance.requireCorrectTool
-        );
-        isTargetInvalid = !filter.test(fCtxTarget);
-
-        if (isTargetInvalid) {
-            cachedHighlight = Collections.singleton(targetPos);
-        } else {
-            cachedHighlight = new HashSet<>(preview);
-            cachedHighlight.add(targetPos);
-        }
-        return cachedHighlight;
-    }
-
-    private static void invalidateCache() {
-        lastTarget      = null;
-        lastStrategyId  = null;
-        lastHitFace     = null;
-        lastYawBucket   = Integer.MIN_VALUE;
-        lastPitchBucket = Integer.MIN_VALUE;
-        lastItem        = null;
-        lastCustomShapesHash = 0;
-        isTargetInvalid = false;
-        cachedHighlight = Collections.emptySet();
-    }
-
-    private static int customShapesHash() {
-        int hash = 1;
-        for (ClientConfig.CustomShapeEntry entry : ClientConfigManager.instance.customShapes) {
-            hash = 31 * hash + Objects.hash(entry.strategyId, entry.name, entry.equation);
-        }
-        return hash;
-    }
-
-    private static MiningStrategy resolveStrategy(String strategyId) {
-        if (strategyId != null && strategyId.startsWith("custom:")) {
-            String equation = ClientConfigManager.instance.customShapes.stream()
-                    .filter(entry -> strategyId.equals(entry.strategyId))
-                    .map(entry -> entry.equation)
-                    .findFirst()
-                    .orElse("");
-            ExpressionEvaluator evaluator = new ExpressionEvaluator(equation);
-            if (evaluator.isValid()) {
-                return new CustomEquationStrategy(strategyId, evaluator);
-            }
-            return StrategyRegistry.get("FACE");
-        }
-        return StrategyRegistry.get(strategyId);
     }
 
     // ── Rendering ─────────────────────────────────────────────────────────────
 
-    private static void drawOutlines(WorldRenderContext context, MinecraftClient client, Set<BlockPos> blockSet) {
+    private static void drawOutlines(WorldRenderContext context, MinecraftClient client, Set<BlockPos> blockSet, boolean isTargetInvalid) {
         Map<Long, EdgeData> edgeCount = new HashMap<>();
         for (BlockPos pos : blockSet) {
             var shape = client.world.getBlockState(pos).getOutlineShape(client.world, pos);
@@ -292,7 +141,6 @@ public class BlockHighlighter {
                 xray.vertex(mat, x1, y1, z1).color(r, g, b, alphaXray).normal(0,1,0);
                 solid.vertex(mat, x0, y1, z0).color(r, g, b, alpha).normal(0,1,0);
                 solid.vertex(mat, x1, y1, z1).color(r, g, b, alpha).normal(0,1,0);
-                // Các mặt khác nếu cần, nhưng thường mặt trên là đủ nhận diện
             }
         }
         matrices.pop();

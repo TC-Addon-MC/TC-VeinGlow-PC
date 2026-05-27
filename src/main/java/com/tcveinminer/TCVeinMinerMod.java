@@ -6,6 +6,11 @@ import com.tcveinminer.engine.strategy.StrategyRegistry;
 import com.tcveinminer.network.HoldKeyPayload;
 import com.tcveinminer.network.ConfigSyncPayload;
 import com.tcveinminer.network.MiningStatePayload;
+import com.tcveinminer.network.ActivationRequestPayload;
+import com.tcveinminer.network.ActivationConfirmPayload;
+import com.tcveinminer.network.LookedAtBlockPayload;
+import com.tcveinminer.network.FilterResultPayload;
+import com.tcveinminer.network.HighlightBlockListPayload;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -34,6 +39,12 @@ public class TCVeinMinerMod implements ModInitializer {
         PayloadTypeRegistry.playS2C().register(ConfigSyncPayload.ID, ConfigSyncPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(MiningStatePayload.ID, MiningStatePayload.CODEC);
 
+        PayloadTypeRegistry.playC2S().register(ActivationRequestPayload.ID, ActivationRequestPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(ActivationConfirmPayload.ID, ActivationConfirmPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(LookedAtBlockPayload.ID, LookedAtBlockPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(FilterResultPayload.ID, FilterResultPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(HighlightBlockListPayload.ID, HighlightBlockListPayload.CODEC);
+
         ServerPlayNetworking.registerGlobalReceiver(HoldKeyPayload.ID, (payload, context) -> {
             UUID uuid = context.player().getUuid();
             if (payload.shapeId() == null || payload.shapeId().length() > 128) return;
@@ -59,6 +70,13 @@ public class TCVeinMinerMod implements ModInitializer {
                 } else {
                     playersHoldingV.remove(uuid);
                 }
+            });
+        });
+
+        ServerPlayNetworking.registerGlobalReceiver(ActivationRequestPayload.ID, (payload, context) -> {
+            context.server().execute(() -> {
+                MiningEngine.forPlayer(context.player().getUuid())
+                        .handleActivationRequest((net.minecraft.server.network.ServerPlayerEntity) context.player(), payload.active(), payload.targetPos().orElse(null));
             });
         });
 

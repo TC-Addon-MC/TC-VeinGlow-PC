@@ -57,6 +57,8 @@ public class ModConfig {
     public boolean showOutline  = true;
     // Màu outline: hex string hoặc "RAINBOW" hoặc "DISABLED"
     public String outlineColor  = "#D8A15B";
+    // Cho phép đổi item khi đang đào
+    public boolean allowHeldItemChange = false;
 
     // Shape hiện tại
     public MiningShape miningShape = MiningShape.FACE;

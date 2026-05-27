@@ -32,10 +32,17 @@ public final class OrientationContext {
         Vec3i planeUp;
 
         switch (hitFace) {
-            case UP, DOWN -> {
-                // Sàn/Trần: sử dụng hướng nhìn ngang của người chơi làm trục chiều sâu
-                fwd = playerFacing.getVector();
-                planeUp = playerFacing.getVector(); // Trải phẳng theo hướng người chơi nhìn
+            case UP -> {
+                // Đào xuống sàn: fwd là DOWN, up là hướng nhìn của player, right là chuẩn
+                fwd = Direction.DOWN.getVector();
+                worldUp = playerFacing.getVector();
+                planeUp = playerFacing.getVector();
+            }
+            case DOWN -> {
+                // Đào lên trần: fwd là UP, up là hướng ngược lại của player
+                fwd = Direction.UP.getVector();
+                worldUp = playerFacing.getOpposite().getVector();
+                planeUp = playerFacing.getOpposite().getVector();
             }
             default -> {
                 // Tường: hướng đi sâu vào trong lòng tường
