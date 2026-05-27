@@ -56,6 +56,10 @@ public class ColorTab implements MenuTab {
                                                 screen.getState().colorList.add(new int[]{139, 0, 255});   // Purple
                                                 screen.getState().colorDisabled = false;
                                                 screen.getState().colorRainbow = false;
+                                                screen.getState().outlineThickness = 5.0f;
+                                                screen.getState().enableFlowAnimation = true;
+                                                screen.getState().segmentLength = 1.0f;
+                                                screen.getState().colorTransitionTime = 0.5f;
                                                 screen.rebuildMenu();
                                         });
                         btnRainbow.setSelectedInstant(false);
@@ -70,6 +74,15 @@ public class ColorTab implements MenuTab {
                                         });
                         btnDisable.setSelectedInstant(screen.getState().colorDisabled);
                         screen.addUIElement(btnDisable);
+
+                        CustomButton flowBtn = new CustomButton(btnX + 76, cy + 2, 70, 18,
+                                        Text.literal("Flow: " + (screen.getState().enableFlowAnimation ? "ON" : "OFF")),
+                                        btn -> {
+                                                screen.getState().enableFlowAnimation = !screen.getState().enableFlowAnimation;
+                                                screen.rebuildMenu();
+                                        });
+                        flowBtn.setSelectedInstant(screen.getState().enableFlowAnimation);
+                        screen.addUIElement(flowBtn);
                 } else {
                         int topX = cx + PREVIEW_SIZE + 8;
                         int topY = cy + 2;
@@ -96,6 +109,10 @@ public class ColorTab implements MenuTab {
                                                 screen.getState().colorList.add(new int[]{139, 0, 255});   // Purple
                                                 screen.getState().colorDisabled = false;
                                                 screen.getState().colorRainbow = false;
+                                                screen.getState().outlineThickness = 5.0f;
+                                                screen.getState().enableFlowAnimation = true;
+                                                screen.getState().segmentLength = 1.0f;
+                                                screen.getState().colorTransitionTime = 0.5f;
                                                 screen.rebuildMenu();
                                         });
                         btnRainbow.setSelectedInstant(false);
@@ -110,6 +127,15 @@ public class ColorTab implements MenuTab {
                                         });
                         btnDisable.setSelectedInstant(screen.getState().colorDisabled);
                         screen.addUIElement(btnDisable);
+
+                        CustomButton flowBtn = new CustomButton(topX + 228, topY, 70, 18,
+                                        Text.literal("Flow: " + (screen.getState().enableFlowAnimation ? "ON" : "OFF")),
+                                        btn -> {
+                                                screen.getState().enableFlowAnimation = !screen.getState().enableFlowAnimation;
+                                                screen.rebuildMenu();
+                                        });
+                        flowBtn.setSelectedInstant(screen.getState().enableFlowAnimation);
+                        screen.addUIElement(flowBtn);
                 }
 
                 if (colorPanelOpen) {
@@ -151,15 +177,7 @@ public class ColorTab implements MenuTab {
                         @Override protected void applyValue() { updateMessage(); }
                 });
 
-                int flowBtnY = smoothSliderY + 20;
-                CustomButton flowBtn = new CustomButton(cx, flowBtnY, leftW, 14,
-                                Text.literal("Flow Animation: " + (screen.getState().enableFlowAnimation ? "ON" : "OFF")),
-                                btn -> {
-                                        screen.getState().enableFlowAnimation = !screen.getState().enableFlowAnimation;
-                                        screen.rebuildMenu();
-                                });
-                flowBtn.setSelectedInstant(screen.getState().enableFlowAnimation);
-                screen.addUIElement(flowBtn);
+
         }
 
         private void initColorPanel(MainMenuScreen screen, int panelX, int panelY) {
