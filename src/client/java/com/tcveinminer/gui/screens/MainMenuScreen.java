@@ -25,7 +25,7 @@ import net.minecraft.util.Identifier;
 public class MainMenuScreen extends Screen {
 
     private final int HDR_H     = 20;
-    private final int TAB_H     = 30; // Chiều cao tăng để nút tab thoáng giống ảnh
+    private final int TAB_H     = 24; // Chiều cao thanh điều hướng thu gọn lại
     private final int FOOTER_H  = 36;
     private final int PAD_X     = 10;
     private final int PAD_Y     = 8;
@@ -33,7 +33,13 @@ public class MainMenuScreen extends Screen {
     private long tabSwitchTime = 0;  // Thời điểm bấm chuyển tab
     private int W, H, px, py;
     private int currentTabIndex = 0;
-    private static final String[] TABS = {"BẢNG CHÍNH", "CẤU HÌNH PHỤ", "CHẾ ĐỘ ĐÀO", "BỘ LỌC", "CÀI ĐẶT MÀU"};
+    private static final String[] TAB_KEYS = {
+            "gui.tcveinminer.tab.dash",
+            "gui.tcveinminer.tab.general",
+            "gui.tcveinminer.tab.shapes",
+            "gui.tcveinminer.tab.filter",
+            "gui.tcveinminer.tab.color"
+    };
 
     private final Screen parent;
     private final MenuState state = new MenuState();
@@ -67,6 +73,7 @@ public class MainMenuScreen extends Screen {
                 state.selectedShapeId = ccfg.currentShape;
             }
             state.showOutline         = ccfg.showOutline;
+            state.outlineThickness    = ccfg.outlineThickness;
             state.colorR              = ccfg.colorR;
             state.colorG              = ccfg.colorG;
             state.colorB              = ccfg.colorB;
@@ -94,8 +101,8 @@ public class MainMenuScreen extends Screen {
         int cy = py + HDR_H + PAD_Y;
         int ch = H - HDR_H - TAB_H - FOOTER_H - PAD_Y * 2;
 
-        addDrawableChild(new AmberButton(px + W - 90, py + H - 28, 80, 20, Text.literal("LƯU CẤU HÌNH"), btn -> { save(); triggerSave(); }));
-        addDrawableChild(new AmberButton(px + W - 20, py + 2, 18, 16, Text.literal("X"), btn -> client.setScreen(parent)));
+        addDrawableChild(new AmberButton(px + W - 90, py + H - 28, 80, 20, Text.translatable("gui.tcveinminer.button.save_config"), btn -> { save(); triggerSave(); }));
+        addDrawableChild(new AmberButton(px + W - 20, py + 2, 18, 16, Text.translatable("gui.tcveinminer.button.close"), btn -> client.setScreen(parent)));
 
         tabInstances[currentTabIndex].init(this, cx, cy, cw, ch);
     }
@@ -163,13 +170,36 @@ public class MainMenuScreen extends Screen {
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         DrawHelper.drawPanel(ctx, px, py, W, H);
 
-        ctx.drawTextWithShadow(textRenderer, "TC VEINGLOW", px + W / 2 - textRenderer.getWidth("TC VEINGLOW") / 2, py + 6, ThemeColors.TEXT_TITLE);
+        String title = Text.translatable("gui.tcveinminer.title").getString();
+        int titleW = textRenderer.getWidth(title);
+        int titleX = px + W / 2 - titleW / 2;
+        int titleY = py + 6;
+
+        // Vẽ shadow tạo chiều sâu
+        ctx.drawText(textRenderer, title, titleX + 2, titleY + 2, 0xAA000000, false);
+
+        int currentX = titleX;
+        int color1 = ThemeColors.TEXT_TITLE; // Vàng nhạt
+        int color2 = ThemeColors.EMERALD_TEXT; // Xanh ngọc
+        int r1 = (color1 >> 16) & 0xFF; int g1 = (color1 >> 8) & 0xFF; int b1 = color1 & 0xFF;
+        int r2 = (color2 >> 16) & 0xFF; int g2 = (color2 >> 8) & 0xFF; int b2 = color2 & 0xFF;
+
+        for (int i = 0; i < title.length(); i++) {
+            String s = String.valueOf(title.charAt(i));
+            float ratio = (float) i / Math.max(1, title.length() - 1);
+            int r = (int) (r1 + (r2 - r1) * ratio);
+            int g = (int) (g1 + (g2 - g1) * ratio);
+            int b = (int) (b1 + (b2 - b1) * ratio);
+            int color = 0xFF000000 | (r << 16) | (g << 8) | b;
+            ctx.drawTextWithShadow(textRenderer, s, currentX, titleY, color);
+            currentX += textRenderer.getWidth(s);
+        }
 
         // --- VẼ TAB BAR VỚI HIỆU ỨNG TRƯỢT MƯỢT (LERP) ---
         int tabBarY = py + H - FOOTER_H - TAB_H;
         DrawHelper.drawSolidBorder(ctx, px + 2, tabBarY, W - 4, 1, DrawHelper.BORDER_MODERN);
 
-        int tabW = (W - 4) / TABS.length;
+        int tabW = (W - 4) / TAB_KEYS.length;
         int targetTabX = px + 2 + currentTabIndex * tabW;
 
         if (animatedTabX == -1) {
@@ -181,13 +211,22 @@ public class MainMenuScreen extends Screen {
         }
 
         // Vẽ thanh chỉ hướng màu vàng chạy dưới chân Tab hoạt động
-        ctx.fill((int) animatedTabX + 6, tabBarY + TAB_H - 2, (int) animatedTabX + tabW - 6, tabBarY + TAB_H, ThemeColors.GOLD);
+        int tx_start = (int) animatedTabX + 10;
+        int tx_end = (int) animatedTabX + tabW - 10;
+        
+        // Hiệu ứng glow mờ cho vạch dưới tab đang chọn
+        ctx.fillGradient(tx_start - 2, tabBarY + TAB_H - 3, tx_end + 2, tabBarY + TAB_H, 0x00D8A15B, 0x88D8A15B);
+        // Vạch chính sắc nét
+        ctx.fill(tx_start, tabBarY + TAB_H - 1, tx_end, tabBarY + TAB_H, ThemeColors.GOLD);
 
-        for (int i = 0; i < TABS.length; i++) {
+        for (int i = 0; i < TAB_KEYS.length; i++) {
             int tx = px + 2 + i * tabW;
-            int tc = (i == currentTabIndex) ? ThemeColors.GOLD : ThemeColors.TEXT_LABEL;
-            int tw = textRenderer.getWidth(TABS[i]);
-            ctx.drawTextWithShadow(textRenderer, TABS[i], tx + (tabW - tw) / 2, tabBarY + (TAB_H - 8) / 2, tc);
+            boolean isActive = (i == currentTabIndex);
+            int tc = isActive ? ThemeColors.GOLD : ThemeColors.TEXT_DIM;
+            String tabLabel = Text.translatable(TAB_KEYS[i]).getString();
+            int tw = textRenderer.getWidth(tabLabel);
+            // Nếu không được chọn, vẽ không bóng để làm chìm đi, nếu chọn vẽ có bóng
+            ctx.drawText(textRenderer, tabLabel, tx + (tabW - tw) / 2, tabBarY + (TAB_H - 8) / 2, tc, isActive);
         }
 
         // --- VẼ FOOTER ---
@@ -219,7 +258,7 @@ public class MainMenuScreen extends Screen {
         // Thông báo lưu thành công
         // Thông báo lưu
         if (saveNotify && System.currentTimeMillis() < saveHideAt) {
-            String msg = "LƯU THÀNH CÔNG!";
+            String msg = Text.translatable("gui.tcveinminer.notify.saved").getString();
 
             // Tính toán thời gian đã trôi qua kể từ lúc nhấn nút Lưu (hiển thị trong 2500ms)
             long startTime = saveHideAt - 2500;
@@ -241,8 +280,8 @@ public class MainMenuScreen extends Screen {
     public boolean mouseClicked(double mx, double my, int btn) {
         int tabBarY = py + H - FOOTER_H - TAB_H;
         if (my >= tabBarY && my <= tabBarY + TAB_H) {
-            int tw = (W - 4) / TABS.length;
-            for (int i = 0; i < TABS.length; i++) {
+            int tw = (W - 4) / TAB_KEYS.length;
+            for (int i = 0; i < TAB_KEYS.length; i++) {
                 int tx = px + 2 + i * tw;
                 if (mx >= tx && mx <= tx + tw) {
                     if (currentTabIndex != i) {
@@ -289,6 +328,7 @@ public class MainMenuScreen extends Screen {
 
         ClientConfig ccfg = ClientConfigManager.instance;
         ccfg.showOutline         = state.showOutline;
+        ccfg.outlineThickness    = state.outlineThickness;
         ccfg.colorR              = state.colorR;
         ccfg.colorG              = state.colorG;
         ccfg.colorB              = state.colorB;

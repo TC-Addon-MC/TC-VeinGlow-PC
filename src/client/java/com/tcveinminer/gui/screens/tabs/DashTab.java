@@ -13,10 +13,10 @@ public class DashTab implements MenuTab {
 
     private String getActivationText(int mode) {
         return switch (mode) {
-            case 0 -> Text.translatable("gui.tcveinminer.activation.hold").getString();
-            case 1 -> Text.translatable("gui.tcveinminer.activation.hold_sneak").getString();
-            case 2 -> Text.translatable("gui.tcveinminer.activation.toggle").getString();
-            case 3 -> Text.translatable("gui.tcveinminer.activation.toggle_sneak").getString();
+            case 1 -> Text.translatable("gui.tcveinminer.activation.hold").getString();
+            case 2 -> Text.translatable("gui.tcveinminer.activation.hold_sneak").getString();
+            case 3 -> Text.translatable("gui.tcveinminer.activation.toggle").getString();
+            case 4 -> Text.translatable("gui.tcveinminer.activation.toggle_sneak").getString();
             default -> Text.translatable("gui.tcveinminer.activation.unknown").getString();
         };
     }

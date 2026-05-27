@@ -10,32 +10,59 @@ import net.minecraft.text.Text;
 
 public class CustomButton extends ButtonWidget {
 
-    private boolean selected = false; // Thêm trạng thái được chọn
+    private boolean selected = false;
+    private float selectProgress = 0f;
+    private long lastRenderTime = 0;
 
     public CustomButton(int x, int y, int width, int height, Text message, PressAction onPress) {
         super(x, y, width, height, message, onPress, DEFAULT_NARRATION_SUPPLIER);
     }
 
-    // Hàm mới để thiết lập trạng thái được chọn
     public void setSelected(boolean selected) {
         this.selected = selected;
     }
 
-    // Hàm mới để kiểm tra trạng thái được chọn
+    public void setSelectedInstant(boolean selected) {
+        this.selected = selected;
+        this.selectProgress = selected ? 1f : 0f;
+    }
+
     public boolean isSelected() {
         return selected;
     }
 
     @Override
     protected void renderWidget(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        // Sử dụng ButtonDrawUtil.drawPrimary được cải tiến với trạng thái được chọn
-        ButtonDrawUtil.drawPrimary(ctx, getX(), getY(), getWidth(), getHeight(),
-                isHovered(), isSelected());
+        long now = System.currentTimeMillis();
+        if (lastRenderTime == 0) lastRenderTime = now;
+        float dt = (now - lastRenderTime) / 1000f;
+        lastRenderTime = now;
+
+        if (selected && selectProgress < 1f) selectProgress = Math.min(1f, selectProgress + dt * 8f);
+        else if (!selected && selectProgress > 0f) selectProgress = Math.max(0f, selectProgress - dt * 8f);
+
+        ButtonDrawUtil.drawPrimary(ctx, getX(), getY(), getWidth(), getHeight(), isHovered(), selectProgress);
 
         TextRenderer tr = MinecraftClient.getInstance().textRenderer;
-        // Cải thiện màu văn bản dựa trên trạng thái (isSelected > isHovered > default)
-        int color = isSelected() ? ThemeColors.TEXT_SELECTED : isHovered() ? ThemeColors.TEXT_HOVER : ThemeColors.TEXT_LABEL;
-        int tw    = tr.getWidth(getMessage());
+
+        // Chữ trắng sáng khi selected/hover để nổi bật trên nền tối
+        int color;
+        String msg = getMessage().getString().toLowerCase();
+        if (msg.equals("on") || msg.equals("bật")) {
+            // Xanh lá nổi bật
+            color = isHovered() ? ThemeColors.EMERALD_TEXT : ThemeColors.EMERALD;
+        } else if (msg.equals("off") || msg.equals("tắt")) {
+            // Đỏ nhạt
+            color = isHovered() ? ThemeColors.REDSTONE_TEXT : ThemeColors.REDSTONE;
+        } else if (isSelected()) {
+            color = ThemeColors.TEXT_SELECTED; // vàng sáng
+        } else if (isHovered()) {
+            color = 0xFFFFFFFF; // trắng tinh khi hover
+        } else {
+            color = 0xFFCDD8E8; // trắng xanh nhạt — dễ đọc trên nền navy tối
+        }
+
+        int tw = tr.getWidth(getMessage());
         ctx.drawTextWithShadow(tr, getMessage(),
                 getX() + (getWidth()  - tw) / 2,
                 getY() + (getHeight() - 8)  / 2,

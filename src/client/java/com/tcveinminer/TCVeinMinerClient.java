@@ -236,10 +236,15 @@ public class TCVeinMinerClient implements ClientModInitializer {
 
         ClientPlayNetworking.registerGlobalReceiver(MiningStatePayload.ID, (payload, context) -> {
             context.client().execute(() -> {
-                isMining = payload.isMining();
-                if (!isMining) {
-                    // When mining stops, we can allow highlight recalculation again if needed.
-                    // The BlockHighlighter will handle the reset of its internal state.
+                int state = payload.state();
+                isMining = (state == 1);
+                
+                com.tcveinminer.logic.HudNotifier.lastMined = payload.broken();
+                com.tcveinminer.logic.HudNotifier.lastMax = payload.target();
+                
+                if (state == 2 || state == 3) {
+                    com.tcveinminer.logic.HudNotifier.notifyAt = System.currentTimeMillis() + 2500;
+                    com.tcveinminer.logic.HudNotifier.lastCancelled = (state == 3);
                 }
             });
         });

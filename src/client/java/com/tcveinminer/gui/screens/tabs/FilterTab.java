@@ -22,7 +22,6 @@ public class FilterTab implements MenuTab {
     private long errorTime = 0; // Thêm biến để ghi thời điểm phát sinh lỗi để control typing animation
 
     private int lastCx, lastCy, lastCw, lastCh;
-    private boolean isHoveringBlacklist = false; // Trạng thái kiểm tra xem chuột có đang trỏ vào danh sách cấm không
 
     @Override
     public void init(MainMenuScreen screen, int cx, int cy, int cw, int ch) {
@@ -74,10 +73,9 @@ public class FilterTab implements MenuTab {
     @Override
     public void render(DrawContext ctx, MainMenuScreen screen, int cx, int cy, int cw, int ch, int mouseX, int mouseY, float delta) {
         this.lastCx = cx; this.lastCy = cy; this.lastCw = cw; this.lastCh = ch;
-        this.isHoveringBlacklist = false; // Reset trạng thái hover trước khi tính toán lại
 
         int splitY = cy + 10;
-        int splitH = ch - 70;
+        int splitH = ch - 20;
         int listY = splitY + 44;
         int maxItems = Math.max(1, (splitY + splitH - 4 - listY) / 20);
 
@@ -117,7 +115,6 @@ public class FilterTab implements MenuTab {
                 boolean hovered = mouseX >= rightX + 4 && mouseX <= rightX + halfW - 4 && mouseY >= ry && mouseY < ry + 20;
                 if (hovered) {
                     ctx.fill(rightX + 4, ry, rightX + halfW - 4, ry + 20, 0x4DFF0000);
-                    this.isHoveringBlacklist = true; // Kích hoạt hiển thị toàn bộ danh sách ở bảng phụ
                 }
                 ctx.drawTextWithShadow(screen.getTextRenderer(), id.toString(), rightX + 8, ry + 5, hovered ? 0xFFFFFFFF : 0xFFFF7171);
             }
@@ -182,46 +179,6 @@ public class FilterTab implements MenuTab {
                     }
                     ctx.drawTextWithShadow(screen.getTextRenderer(), renderTxt, ovX + 6, ry + (ovItemH - 8) / 2, hov ? 0xFFFFFFFF : 0xFFA0AEC0);
                 }
-            }
-        }
-
-        // 2. HIỂN THỊ TOÀN BỘ DANH SÁCH CẤM ĐẦY ĐỦ (BÊN NGOÀI LỀ PHẢI KHI TRỎ CHUỘT)
-        List<Identifier> bl = new ArrayList<>(screen.getState().blacklist);
-        if (this.isHoveringBlacklist && !bl.isEmpty()) {
-            int hoverY = splitY + 22;
-            // Tự động tính chiều rộng theo lề phải màn hình, tối đa 160px
-            int hoverW = Math.min(160, screen.width - (px + W) - 10);
-            if (hoverW < 50) hoverW = Math.max(50, screen.width - (px + W) - 4);
-
-            int hoverX = px + W + 4;
-            int itemH = 12;
-            int pad = 6;
-
-            // Tính số lượng dòng hiển thị tối đa dựa theo chiều cao còn lại tới đáy màn hình
-            int maxVisibleHover = Math.max(5, (screen.height - hoverY - pad * 2 - 20) / itemH);
-            int count = Math.min(bl.size(), maxVisibleHover);
-            int hoverH = pad * 2 + 14 + count * itemH;
-
-            ctx.fill(hoverX, hoverY, hoverX + hoverW, hoverY + hoverH, 0xFF12121A);
-            DrawHelper.drawSolidBorder(ctx, hoverX, hoverY, hoverW, hoverH, 0xFFFF7171);
-
-            ctx.drawTextWithShadow(screen.getTextRenderer(), Text.translatable("gui.tcveinminer.filter.full_blacklist").getString(), hoverX + 6, hoverY + 4, 0xFFFF7171);
-
-            for (int i = 0; i < count; i++) {
-                Identifier id = bl.get(i);
-                int ry = hoverY + pad + 14 + (i * itemH);
-                String txt = id.toString();
-                // Rút gọn text nếu chuỗi id block quá dài so với chiều rộng bảng phụ ngoài lề
-                if (screen.getTextRenderer().getWidth(txt) > hoverW - 12) {
-                    txt = screen.getTextRenderer().trimToWidth(txt, hoverW - 18) + "...";
-                }
-                ctx.drawTextWithShadow(screen.getTextRenderer(), txt, hoverX + 6, ry, 0xFFFFFFFF);
-            }
-
-            // Nếu danh sách quá dài không thể chứa hết trên màn hình, hiện thông báo số lượng còn lại
-            if (bl.size() > maxVisibleHover) {
-                int more = bl.size() - maxVisibleHover;
-                ctx.drawTextWithShadow(screen.getTextRenderer(), "... +" + more, hoverX + 6, hoverY + hoverH - 10, 0xFF6B7280);
             }
         }
     }
@@ -296,13 +253,17 @@ public class FilterTab implements MenuTab {
             int ovH = ovPad * 2 + 12 + Math.min(suggestions.size(), ovMaxVisible) * ovItemH;
             int ovY = splitY + 22;
             if (mx >= ovX && mx <= ovX + ovW && my >= ovY && my <= ovY + ovH) {
-                searchScroll = Math.max(0, searchScroll - (int) v);
+                int amt = (int) v;
+                if (amt == 0 && v != 0) amt = v > 0 ? 1 : -1;
+                searchScroll = Math.max(0, searchScroll - amt);
                 return true;
             }
         }
 
         // CUỘN TRONG BLACKLIST
-        blScroll = Math.max(0, blScroll - (int) (v * 2));
+        int amt = (int) (v * 2);
+        if (amt == 0 && v != 0) amt = v > 0 ? 1 : -1;
+        blScroll = Math.max(0, blScroll - amt);
         return true;
     }
 }

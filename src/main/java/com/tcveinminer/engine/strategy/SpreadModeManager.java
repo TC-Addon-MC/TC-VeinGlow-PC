@@ -95,38 +95,69 @@ public final class SpreadModeManager extends BaseBfsStrategy {
             }
         }
 
-        // Giai đoạn 2: Tìm lá từ cây (D6)
-        Set<BlockPos> visitedLeaves = new HashSet<>();
-        visitedLeaves.addAll(foundLogs);
-        visitedLeaves.add(req.origin());
-
-        queue.clear();
-        for (BlockPos log : foundLogs) queue.add(new SearchNode(log, 0, 0, 0, 0, null));
-        if (!foundLogs.contains(req.origin())) queue.add(new SearchNode(req.origin(), 0, 0, 0, 0, null));
-
-        while (!queue.isEmpty() && result.size() < req.maxBlocks()) {
-            SearchNode cur = queue.poll();
+        // Giai đoạn 2: Xác định loại lá đúng — lá tiếp xúc trực tiếp với gỗ
+        net.minecraft.block.Block canonicalLeafBlock = null;
+        outer:
+        for (BlockPos log : foundLogs) {
             for (int[] d : TraversalUtils.D6) {
-                BlockPos nb = cur.pos().add(d[0], d[1], d[2]);
-                if (!visitedLeaves.add(nb)) continue;
-
+                BlockPos nb = log.add(d[0], d[1], d[2]);
                 if (!req.world().isChunkLoaded(nb.getX() >> 4, nb.getZ() >> 4)) continue;
                 BlockState state = req.world().getBlockState(nb);
-                if (!state.isIn(BlockTags.LEAVES)) continue;
+                if (state.isIn(BlockTags.LEAVES)) {
+                    canonicalLeafBlock = state.getBlock();
+                    break outer;
+                }
+            }
+        }
+        // Cũng kiểm tra origin (gỗ ban đầu)
+        if (canonicalLeafBlock == null) {
+            for (int[] d : TraversalUtils.D6) {
+                BlockPos nb = req.origin().add(d[0], d[1], d[2]);
+                if (!req.world().isChunkLoaded(nb.getX() >> 4, nb.getZ() >> 4)) continue;
+                BlockState state = req.world().getBlockState(nb);
+                if (state.isIn(BlockTags.LEAVES)) {
+                    canonicalLeafBlock = state.getBlock();
+                    break;
+                }
+            }
+        }
 
-                int dist = Math.abs(nb.getX() - req.origin().getX()) + Math.abs(nb.getY() - req.origin().getY()) + Math.abs(nb.getZ() - req.origin().getZ());
-                // Giới hạn lá không lan quá xa gỗ (depth từ gỗ gần nhất)
-                if (cur.depth() >= 4) continue;
+        // Giai đoạn 3: Lan lá chỉ cùng loại với lá tiếp xúc gỗ
+        if (canonicalLeafBlock != null) {
+            final net.minecraft.block.Block leafBlock = canonicalLeafBlock;
+            Set<BlockPos> visitedLeaves = new HashSet<>();
+            visitedLeaves.addAll(foundLogs);
+            visitedLeaves.add(req.origin());
 
-                FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
-                        req.world(), req.player(), req.tool(), req.origin(), nb,
-                        req.targetState(), state, TraversalUtils.getApproachDirection(d[0], d[1], d[2]), cur.depth() + 1, dist,
-                        result.size(), getModeType(), req.cache(), req.blacklist(), req.requireCorrectTool()
-                );
+            queue.clear();
+            for (BlockPos log : foundLogs) queue.add(new SearchNode(log, 0, 0, 0, 0, null));
+            if (!foundLogs.contains(req.origin())) queue.add(new SearchNode(req.origin(), 0, 0, 0, 0, null));
 
-                if (req.filter().test(fCtx)) {
-                    result.add(nb);
-                    queue.add(new SearchNode(nb, cur.depth() + 1, 0, 0, 0, null));
+            while (!queue.isEmpty() && result.size() < req.maxBlocks()) {
+                SearchNode cur = queue.poll();
+                for (int[] d : TraversalUtils.D6) {
+                    BlockPos nb = cur.pos().add(d[0], d[1], d[2]);
+                    if (!visitedLeaves.add(nb)) continue;
+
+                    if (!req.world().isChunkLoaded(nb.getX() >> 4, nb.getZ() >> 4)) continue;
+                    BlockState state = req.world().getBlockState(nb);
+                    // Chỉ lấy đúng loại lá này, tránh lan sang cây khác
+                    if (state.getBlock() != leafBlock) continue;
+
+                    int dist = Math.abs(nb.getX() - req.origin().getX()) + Math.abs(nb.getY() - req.origin().getY()) + Math.abs(nb.getZ() - req.origin().getZ());
+                    // Giới hạn lá không lan quá xa gỗ (depth từ gỗ gần nhất)
+                    if (cur.depth() >= 6) continue;
+
+                    FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
+                            req.world(), req.player(), req.tool(), req.origin(), nb,
+                            req.targetState(), state, TraversalUtils.getApproachDirection(d[0], d[1], d[2]), cur.depth() + 1, dist,
+                            result.size(), getModeType(), req.cache(), req.blacklist(), req.requireCorrectTool()
+                    );
+
+                    if (req.filter().test(fCtx)) {
+                        result.add(nb);
+                        queue.add(new SearchNode(nb, cur.depth() + 1, 0, 0, 0, null));
+                    }
                 }
             }
         }

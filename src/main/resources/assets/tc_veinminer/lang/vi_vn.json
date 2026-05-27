@@ -7,6 +7,7 @@
   "tc_veinminer.mode.EDGES":      "Standard V2 (Edges)",
   "tc_veinminer.mode.CORNERS":    "Standard V3 (Corners)",
   "tc_veinminer.mode.TUNNEL_1x2": "Tunnel 1×2",
+  "tc_veinminer.mode.TUNNEL_3x3": "Tunnel 3×3",
   "tc_veinminer.mode.STAIR_UP":   "Stair Up",
   "tc_veinminer.mode.STAIR_DOWN": "Stair Down",
   "tc_veinminer.mode.AREA_3x3":   "3×3 Area",
@@ -105,5 +106,35 @@
   "gui.tcveinminer.general.floating_hud": "HUD nổi",
   "gui.tcveinminer.general.outline": "Outline",
   "gui.tcveinminer.general.require_tool": "Yêu cầu đúng dụng cụ",
-  "gui.tcveinminer.shapes.add_custom": "+ Tự thiết kế mới"
+  "gui.tcveinminer.shapes.add_custom": "+ Tự thiết kế mới",
+
+  "gui.tcveinminer.tab.dash": "Bảng chính",
+  "gui.tcveinminer.tab.general": "Cấu hình phụ",
+  "gui.tcveinminer.tab.shapes": "Chế độ đào",
+  "gui.tcveinminer.tab.filter": "Bộ lọc",
+  "gui.tcveinminer.tab.color": "Cài đặt màu",
+
+  "gui.tcveinminer.button.save_config": "Lưu cấu hình",
+  "gui.tcveinminer.button.close": "X",
+  "gui.tcveinminer.button.save_back": "Lưu & Quay lại",
+  "gui.tcveinminer.button.add_block": "Thêm block",
+  "gui.tcveinminer.button.clear_all": "Xóa tất cả",
+  "gui.tcveinminer.notify.saved": "Đã lưu!",
+
+  "gui.tcveinminer.blocklist.title": "Danh sách cấm",
+  "gui.tcveinminer.blocklist.header": "Danh sách cấm",
+  "gui.tcveinminer.blocklist.empty": "(danh sách trống)",
+  "gui.tcveinminer.blocklist.add_prompt": "Nhập ID block:",
+  "gui.tcveinminer.search": "Tìm kiếm...",
+  "gui.tcveinminer.error.invalid_block": "ID block không hợp lệ!",
+
+  "hud.tcveinminer.mining": "Đang đào... [%s/%s]  %s",
+  "hud.tcveinminer.ready": "Sẵn sàng %s  %s",
+  "hud.tcveinminer.waiting": "Chờ %s  %s",
+  "hud.tcveinminer.done": "Hoàn tất: %s/%s khối",
+  "hud.tcveinminer.cancelled": "Đã hủy: %s/%s khối",
+  "hud.tcveinminer.hint.hold": "[%s]",
+  "hud.tcveinminer.hint.hold_sneak": "[Sneak + %s]",
+  "hud.tcveinminer.hint.toggle": "[Bật/tắt %s]",
+  "hud.tcveinminer.hint.toggle_sneak": "[Bật/tắt + Sneak %s]"
 }

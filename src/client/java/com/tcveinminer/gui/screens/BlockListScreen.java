@@ -164,13 +164,13 @@ public class BlockListScreen extends Screen {
         String addStr = Text.translatable("gui.tcveinminer.button.add").getString();
         String cancelStr = Text.translatable("gui.tcveinminer.button.cancel").getString();
 
-        ButtonDrawUtil.drawPrimary(ctx, px + 10, py + 58, 60, 14, addHov, false);
+        ButtonDrawUtil.drawPrimary(ctx, px + 10, py + 58, 60, 14, addHov, 0f);
         ctx.drawTextWithShadow(textRenderer, addStr, px + 10 + (60 - textRenderer.getWidth(addStr)) / 2,
-                py + 62, ThemeColors.BTN_TEXT);
+                py + 62, addHov ? 0xFFFFFFFF : 0xFFCDD8E8);
 
-        ButtonDrawUtil.drawPrimary(ctx, px + pw - 70, py + 58, 60, 14, canHov, false);
+        ButtonDrawUtil.drawPrimary(ctx, px + pw - 70, py + 58, 60, 14, canHov, 0f);
         ctx.drawTextWithShadow(textRenderer, cancelStr, px + pw - 70 + (60 - textRenderer.getWidth(cancelStr)) / 2,
-                py + 62, ThemeColors.BTN_TEXT);
+                py + 62, canHov ? 0xFFFFFFFF : 0xFFCDD8E8);
     }
 
     @Override
@@ -233,7 +233,9 @@ public class BlockListScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        scrollOffset = Math.max(0, scrollOffset - (int) verticalAmount);
+        int amt = (int) verticalAmount;
+        if (amt == 0 && verticalAmount != 0) amt = verticalAmount > 0 ? 1 : -1;
+        scrollOffset = Math.max(0, scrollOffset - amt);
         return true;
     }
 

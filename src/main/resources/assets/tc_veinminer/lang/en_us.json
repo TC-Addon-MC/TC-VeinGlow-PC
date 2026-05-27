@@ -7,6 +7,7 @@
   "tc_veinminer.mode.EDGES":      "Standard V2 (Edges)",
   "tc_veinminer.mode.CORNERS":    "Standard V3 (Corners)",
   "tc_veinminer.mode.TUNNEL_1x2": "Tunnel 1×2",
+  "tc_veinminer.mode.TUNNEL_3x3": "Tunnel 3×3",
   "tc_veinminer.mode.STAIR_UP":   "Stair Up",
   "tc_veinminer.mode.STAIR_DOWN": "Stair Down",
   "tc_veinminer.mode.AREA_3x3":   "3×3 Area",
@@ -105,5 +106,35 @@
   "gui.tcveinminer.general.floating_hud": "Floating HUD",
   "gui.tcveinminer.general.outline": "Outline",
   "gui.tcveinminer.general.require_tool": "Require correct tool",
-  "gui.tcveinminer.shapes.add_custom": "+ New custom shape"
+  "gui.tcveinminer.shapes.add_custom": "+ New custom shape",
+
+  "gui.tcveinminer.tab.dash": "Dashboard",
+  "gui.tcveinminer.tab.general": "General",
+  "gui.tcveinminer.tab.shapes": "Mining Mode",
+  "gui.tcveinminer.tab.filter": "Filter",
+  "gui.tcveinminer.tab.color": "Colors",
+
+  "gui.tcveinminer.button.save_config": "Save Config",
+  "gui.tcveinminer.button.close": "X",
+  "gui.tcveinminer.button.save_back": "Save & Back",
+  "gui.tcveinminer.button.add_block": "Add block",
+  "gui.tcveinminer.button.clear_all": "Clear all",
+  "gui.tcveinminer.notify.saved": "Saved!",
+
+  "gui.tcveinminer.blocklist.title": "Blacklist",
+  "gui.tcveinminer.blocklist.header": "Blacklist",
+  "gui.tcveinminer.blocklist.empty": "(empty list)",
+  "gui.tcveinminer.blocklist.add_prompt": "Enter block ID:",
+  "gui.tcveinminer.search": "Search...",
+  "gui.tcveinminer.error.invalid_block": "Invalid block ID!",
+
+  "hud.tcveinminer.mining": "Mining... [%s/%s]  %s",
+  "hud.tcveinminer.ready": "Ready %s  %s",
+  "hud.tcveinminer.waiting": "Waiting %s  %s",
+  "hud.tcveinminer.done": "Done: %s/%s blocks",
+  "hud.tcveinminer.cancelled": "Cancelled: %s/%s blocks",
+  "hud.tcveinminer.hint.hold": "[%s]",
+  "hud.tcveinminer.hint.hold_sneak": "[Sneak + %s]",
+  "hud.tcveinminer.hint.toggle": "[Toggle %s]",
+  "hud.tcveinminer.hint.toggle_sneak": "[Toggle + Sneak %s]"
 }

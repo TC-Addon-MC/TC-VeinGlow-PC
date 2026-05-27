@@ -21,7 +21,14 @@ import com.tcveinminer.network.FilterResultPayload;
 import com.tcveinminer.network.LookedAtBlockPayload;
 import com.tcveinminer.network.HighlightBlockListPayload;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.block.Block;
+import net.minecraft.block.Blocks;
 import net.minecraft.block.BlockState;
+import net.minecraft.entity.ItemEntity;
+import net.minecraft.registry.tag.BlockTags;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.Box;
 
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.*;
@@ -94,6 +101,10 @@ public final class MiningEngine {
     private Set<String> playerBlacklist = new HashSet<>();
     private BlockState originalState = null;
     private Item initialItem = null;
+
+    private BlockPos treeOriginPos = null;
+    private List<BlockPos> baseLogsBroken = new ArrayList<>();
+    private BlockState treeSaplingType = null;
 
     private MiningEngine() {
     }
@@ -264,6 +275,12 @@ public final class MiningEngine {
         MiningStrategy strategy = (customStrategy != null)
                 ? customStrategy
                 : StrategyRegistry.get(this.playerShape);
+
+        // Chỉ kích hoạt TreeCapitator nếu block bị đập trực tiếp là Gỗ (Log)
+        if ("TREE_CAP".equals(strategy.getModeType()) && !originState.isIn(BlockTags.LOGS)) {
+            return;
+        }
+
         int maxBlocksToMine = this.playerMaxBlocks - 1;
 
         // 1. Khởi tạo Cache và lựa chọn Pipeline Filter cho tác vụ nội bộ Server
@@ -289,6 +306,9 @@ public final class MiningEngine {
         }
 
         this.originalState = originState;
+        this.treeOriginPos = origin;
+        this.baseLogsBroken = new ArrayList<>();
+        this.treeSaplingType = getSaplingForLog(originState.getBlock()); // lưu lại phòng khi không có lá rợt drop
 
         queue.reset();
         queue.enqueue(found, world);
@@ -300,8 +320,9 @@ public final class MiningEngine {
 
         stateMachine.force(State.LOCKED_MINING);
         SessionStats.onVeinMineStart();
-        if (player instanceof ServerPlayerEntity spe)
-            ServerPlayNetworking.send(spe, new MiningStatePayload(true));
+        if (player instanceof ServerPlayerEntity spe) {
+            ServerPlayNetworking.send(spe, new MiningStatePayload(1, 0, targetCount));
+        }
     }
 
     public void onServerTick(PlayerEntity player, ServerWorld world) {
@@ -338,6 +359,10 @@ public final class MiningEngine {
         boolean snapshotChanged = false;
         // Set guard BEFORE breaking any block so AFTER event is blocked
         isMining = true;
+        
+        if (player instanceof ServerPlayerEntity spe) {
+            ServerPlayNetworking.send(spe, new MiningStatePayload(1, brokenCount, targetCount));
+        }
         try {
             for (Entry e : batch) {
                 if (!(player instanceof ServerPlayerEntity spe))
@@ -348,15 +373,30 @@ public final class MiningEngine {
                 
                 // [CRITICAL] Phase 5 Constraint: block identity
                 if (originalState != null && currentState.getBlock() != originalState.getBlock()) {
-                    lockedSnapshot.remove(e.pos());
-                    snapshotChanged = true;
-                    continue;
+                    if ("TREE_CAP".equals(this.playerShape) && (currentState.isIn(BlockTags.LOGS) || currentState.isIn(BlockTags.LEAVES))) {
+                        // Cho phép lá và các loại gỗ khác trong cùng cái cây
+                    } else {
+                        lockedSnapshot.remove(e.pos());
+                        snapshotChanged = true;
+                        continue;
+                    }
                 }
 
                 // [CRITICAL] Use tryBreakBlock for full vanilla pipeline:
                 boolean broken = spe.interactionManager.tryBreakBlock(e.pos());
                 if (!broken)
                     continue;
+                
+                // Hiển thị hiệu ứng đập block cho chính người chơi (vì server tự đập nên client không có)
+                world.syncWorldEvent(null, 2001, e.pos(), Block.getRawIdFromState(currentState));
+                
+                if ("TREE_CAP".equals(this.playerShape) && currentState.isIn(BlockTags.LOGS)) {
+                    // Thu thập gỗ gốc (gỗ thấp nhất tiếp xúc với đất bên dưới)
+                    BlockState below = world.getBlockState(e.pos().down());
+                    if (isSoilForSapling(below)) {
+                        baseLogsBroken.add(e.pos());
+                    }
+                }
 
                 lockedSnapshot.remove(e.pos());
                 snapshotChanged = true;
@@ -408,7 +448,7 @@ public final class MiningEngine {
         lockedSnapshot.clear();
         renderSnapshot = Collections.emptySet();
         if (player instanceof ServerPlayerEntity spe) {
-            ServerPlayNetworking.send(spe, new MiningStatePayload(false));
+            ServerPlayNetworking.send(spe, new MiningStatePayload(3, brokenCount, targetCount));
             ServerPlayNetworking.send(spe, new HighlightBlockListPayload(Collections.emptyList(), "FACE"));
         }
     }
@@ -422,9 +462,141 @@ public final class MiningEngine {
         lockedSnapshot.clear();
         renderSnapshot = Collections.emptySet();
         if (player instanceof ServerPlayerEntity spe) {
-            ServerPlayNetworking.send(spe, new MiningStatePayload(false));
+            ServerPlayNetworking.send(spe, new MiningStatePayload(2, brokenCount, targetCount));
             ServerPlayNetworking.send(spe, new HighlightBlockListPayload(Collections.emptyList(), "FACE"));
         }
+
+        // Tự động trồng lại mầm cây (Auto-Replant)
+        if ("TREE_CAP".equals(this.playerShape) && !baseLogsBroken.isEmpty()) {
+            ServerWorld sw = (ServerWorld) player.getWorld();
+            autoReplant(sw, player);
+        }
+    }
+
+    /**
+     * Trồng lại cây sau khi chặt.
+     * Logic:
+     *  1. Tìm các item sapling trong vùng xưng quanh vị trí gốc cây.
+     *  2. Nếu là cây 2×2 (dark_oak / jungle), kiểm tra đủ 4 mầm mới trồng.
+     *  3. Với cây 1×1 thông thường, mỗi vị trí gốc tiêu 1 mầm.
+     */
+    private void autoReplant(ServerWorld sw, PlayerEntity player) {
+        if (baseLogsBroken.isEmpty()) return;
+
+        // Xác định loại mầm cần tìm
+        BlockState saplingState = treeSaplingType;
+        if (saplingState == null) return;
+        net.minecraft.item.Item saplingItem = saplingState.getBlock().asItem();
+        if (saplingItem == net.minecraft.item.Items.AIR) return;
+
+        // Tập trung tâm tìm kiếm quanh gốc cây
+        BlockPos searchCenter = treeOriginPos != null ? treeOriginPos : baseLogsBroken.get(0);
+        Box searchBox = new Box(searchCenter).expand(8.0);
+        List<ItemEntity> nearbyDrops = sw.getEntitiesByClass(ItemEntity.class, searchBox,
+                ent -> ent.getStack().getItem() == saplingItem);
+
+        // Đếm tổng số mầm có sẵn
+        int totalSaplings = nearbyDrops.stream().mapToInt(e -> e.getStack().getCount()).sum();
+
+        boolean isLarge = isLargeTree(saplingState);
+
+        if (isLarge) {
+            // Cây 2×2: cần đúng 4 mầm và 4 vị trí gốc 2×2
+            List<BlockPos> replantPositions = get2x2BasePositions(sw);
+            if (replantPositions.size() == 4 && totalSaplings >= 4) {
+                for (BlockPos pos : replantPositions) {
+                    if (sw.getBlockState(pos).isAir() &&
+                            isSoilForSapling(sw.getBlockState(pos.down()))) {
+                        sw.setBlockState(pos, saplingState);
+                        consumeSapling(nearbyDrops, 1);
+                    }
+                }
+            }
+        } else {
+            // Cây 1×1: mỗi vị trí gốc tiêu 1 mầm
+            for (BlockPos pos : baseLogsBroken) {
+                if (totalSaplings <= 0) break;
+                BlockState below = sw.getBlockState(pos.down());
+                if (isSoilForSapling(below) && sw.getBlockState(pos).isAir()) {
+                    sw.setBlockState(pos, saplingState);
+                    consumeSapling(nearbyDrops, 1);
+                    totalSaplings--;
+                }
+            }
+        }
+    }
+
+    /** Tiêu thụ `count` mầm từ danh sách entity drops. */
+    private void consumeSapling(List<ItemEntity> drops, int count) {
+        int remaining = count;
+        for (ItemEntity ent : drops) {
+            if (remaining <= 0) break;
+            if (ent.isRemoved()) continue;
+            int stackCount = ent.getStack().getCount();
+            if (stackCount <= remaining) {
+                remaining -= stackCount;
+                ent.discard();
+            } else {
+                ent.getStack().decrement(remaining);
+                remaining = 0;
+            }
+        }
+    }
+
+    /** Kiểm tra cây có phải loại 2×2 không (dark oak / jungle). */
+    private boolean isLargeTree(BlockState saplingState) {
+        Block b = saplingState.getBlock();
+        return b == Blocks.DARK_OAK_SAPLING || b == Blocks.JUNGLE_SAPLING;
+    }
+
+    /**
+     * Tìm 4 vị trí gốc cho cây 2×2:
+     * Lấy các gỗ gốc đã đào, nhóm thành cụm 2×2, trả về 4 vị trí góc.
+     */
+    private List<BlockPos> get2x2BasePositions(ServerWorld sw) {
+        if (baseLogsBroken.isEmpty()) return Collections.emptyList();
+        // Lấy Y nhỏ nhất (gốc cây)
+        int minY = baseLogsBroken.stream().mapToInt(BlockPos::getY).min().orElse(0);
+        List<BlockPos> baseLogs = baseLogsBroken.stream()
+                .filter(p -> p.getY() == minY)
+                .collect(java.util.stream.Collectors.toList());
+        if (baseLogs.size() < 4) return Collections.emptyList();
+
+        // Tìm minX, minZ trong các gốc
+        int minX = baseLogs.stream().mapToInt(BlockPos::getX).min().orElse(0);
+        int minZ = baseLogs.stream().mapToInt(BlockPos::getZ).min().orElse(0);
+        List<BlockPos> candidates = List.of(
+                new BlockPos(minX, minY, minZ),
+                new BlockPos(minX + 1, minY, minZ),
+                new BlockPos(minX, minY, minZ + 1),
+                new BlockPos(minX + 1, minY, minZ + 1)
+        );
+        return candidates;
+    }
+
+    /** Kiểm tra block có phải đất hợp lệ để trồng cây không. */
+    private boolean isSoilForSapling(BlockState state) {
+        Block b = state.getBlock();
+        return state.isIn(BlockTags.DIRT)
+                || b == Blocks.GRASS_BLOCK
+                || b == Blocks.PODZOL
+                || b == Blocks.MYCELIUM
+                || b == Blocks.FARMLAND
+                || b == Blocks.ROOTED_DIRT;
+    }
+
+    private BlockState getSaplingForLog(Block log) {
+        Identifier id = Registries.BLOCK.getId(log);
+        String path = id.getPath();
+        if (path.contains("oak") && !path.contains("dark_oak")) return Blocks.OAK_SAPLING.getDefaultState();
+        if (path.contains("spruce")) return Blocks.SPRUCE_SAPLING.getDefaultState();
+        if (path.contains("birch")) return Blocks.BIRCH_SAPLING.getDefaultState();
+        if (path.contains("jungle")) return Blocks.JUNGLE_SAPLING.getDefaultState();
+        if (path.contains("acacia")) return Blocks.ACACIA_SAPLING.getDefaultState();
+        if (path.contains("dark_oak")) return Blocks.DARK_OAK_SAPLING.getDefaultState();
+        if (path.contains("mangrove")) return Blocks.MANGROVE_PROPAGULE.getDefaultState();
+        if (path.contains("cherry")) return Blocks.CHERRY_SAPLING.getDefaultState();
+        return null;
     }
 
     // Shared cooldown map — cleared in removePlayer() on disconnect

@@ -3,6 +3,7 @@ package com.tcveinminer.gui.screens.tabs;
 import com.tcveinminer.gui.CustomButton;
 import com.tcveinminer.gui.screens.MainMenuScreen;
 import com.tcveinminer.gui.widgets.RGBSlider;
+import com.tcveinminer.gui.widgets.ThicknessSlider;
 import com.tcveinminer.util.DrawHelper;
 import com.tcveinminer.util.ThemeColors;
 import net.minecraft.client.gui.DrawContext;
@@ -68,6 +69,7 @@ public class ColorTab implements MenuTab {
         screen.addUIElement(new RGBSlider(cx + 40, slidersY, cw - 55, sliderH, 'R', screen.getState(), screen.getState().colorR / 255.0, dis));
         screen.addUIElement(new RGBSlider(cx + 40, slidersY + 20, cw - 55, sliderH, 'G', screen.getState(), screen.getState().colorG / 255.0, dis));
         screen.addUIElement(new RGBSlider(cx + 40, slidersY + 40, cw - 55, sliderH, 'B', screen.getState(), screen.getState().colorB / 255.0, dis));
+        screen.addUIElement(new ThicknessSlider(cx + 40, slidersY + 60, cw - 55, sliderH, screen.getState(), screen.getState().outlineThickness));
     }
 
     @Override
@@ -77,17 +79,19 @@ public class ColorTab implements MenuTab {
         int slidersY = cy + 85;
         ctx.drawTextWithShadow(screen.getTextRenderer(), Text.translatable("gui.tcveinminer.color.rgb_title").getString(), cx, slidersY - 12, 0xFFA0AEC0);
 
-        // Vẽ giá trị số bên cạnh label R, G, B
         ctx.drawTextWithShadow(screen.getTextRenderer(), "R:", cx, slidersY + 3, ThemeColors.REDSTONE_TEXT);
         ctx.drawTextWithShadow(screen.getTextRenderer(), "G:", cx, slidersY + 23, ThemeColors.EMERALD_TEXT);
         ctx.drawTextWithShadow(screen.getTextRenderer(), "B:", cx, slidersY + 43, 0xFF93C5FD);
+        ctx.drawTextWithShadow(screen.getTextRenderer(), "W:", cx, slidersY + 63, 0xFFFFFFFF);
 
         String valR = String.valueOf(screen.getState().colorR);
         String valG = String.valueOf(screen.getState().colorG);
         String valB = String.valueOf(screen.getState().colorB);
+        String valW = String.format("%.1f", screen.getState().outlineThickness);
         ctx.drawTextWithShadow(screen.getTextRenderer(), valR, cx + 25 - screen.getTextRenderer().getWidth(valR), slidersY + 3, 0xFFFFFFFF);
         ctx.drawTextWithShadow(screen.getTextRenderer(), valG, cx + 25 - screen.getTextRenderer().getWidth(valG), slidersY + 23, 0xFFFFFFFF);
         ctx.drawTextWithShadow(screen.getTextRenderer(), valB, cx + 25 - screen.getTextRenderer().getWidth(valB), slidersY + 43, 0xFFFFFFFF);
+        ctx.drawTextWithShadow(screen.getTextRenderer(), valW, cx + 25 - screen.getTextRenderer().getWidth(valW), slidersY + 63, 0xFFFFFFFF);
 
         // ==========================================
         // KHUNG XEM TRƯỚC (PREVIEW) - ĐÃ THU NHỎ

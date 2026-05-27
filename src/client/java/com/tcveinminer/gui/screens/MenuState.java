@@ -15,6 +15,7 @@ public class MenuState {
     public int activationMode;
     public boolean showHud;
     public boolean showOutline;
+    public float outlineThickness;
     public Set<String> enabledShapes = new LinkedHashSet<>();
     public Set<Identifier> blacklist = new LinkedHashSet<>();
     public int colorR, colorG, colorB;
