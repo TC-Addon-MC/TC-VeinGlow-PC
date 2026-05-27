@@ -74,8 +74,7 @@ public class ShapeAnalyzer {
 
         if (infiniteInAnyAxis) {
             type = ShapeType.INFINITE;
-            error = "Biểu thức mô tả hình vô hạn (ví dụ: x >= 0). "
-                    + "Hãy thêm ràng buộc để giới hạn vùng (ví dụ: x >= 0 && x <= 4).";
+            error = net.minecraft.text.Text.translatable("gui.tcveinminer.error.infinite_shape").getString();
             return;
         }
 

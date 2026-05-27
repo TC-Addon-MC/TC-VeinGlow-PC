@@ -90,8 +90,10 @@ public class TCVeinMinerMod implements ModInitializer {
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             for (ServerWorld world : server.getWorlds()) {
                 for (var player : world.getPlayers()) {
-                    MiningEngine.forPlayer(player.getUuid())
-                            .onServerTick(player, world);
+                    if (MiningEngine.hasEngine(player.getUuid())) {
+                        MiningEngine.forPlayer(player.getUuid())
+                                .onServerTick(player, world);
+                    }
                 }
             }
         });

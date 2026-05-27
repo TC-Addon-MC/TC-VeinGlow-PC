@@ -33,6 +33,9 @@ public class TCVeinMinerClient implements ClientModInitializer {
 
     public static KeyBinding KEY_MINE;
     public static KeyBinding KEY_MENU;
+    public static KeyBinding KEY_NEXT_SHAPE;
+    public static KeyBinding KEY_PREV_SHAPE;
+    public static final KeyBinding[] KEY_QUICK_SELECT = new KeyBinding[9];
 
     /** Trạng thái "đang kích hoạt" gửi lên server (kết quả sau khi xử lý activation mode). */
     public static boolean holdKeyDown = false;
@@ -53,6 +56,7 @@ public class TCVeinMinerClient implements ClientModInitializer {
 
     private static BlockPos lastTargetPos = null;
     private static boolean lastHoldStateForActivation = false;
+    private static long lastActivationSendTime = 0;
 
     @Override
     public void onInitializeClient() {
@@ -72,6 +76,29 @@ public class TCVeinMinerClient implements ClientModInitializer {
                 GLFW.GLFW_KEY_G,
                 "key.categories.tc_veinminer"
         ));
+
+        KEY_NEXT_SHAPE = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.tc_veinminer.next_shape",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_RIGHT,
+                "key.categories.tc_veinminer"
+        ));
+
+        KEY_PREV_SHAPE = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.tc_veinminer.prev_shape",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_LEFT,
+                "key.categories.tc_veinminer"
+        ));
+
+        for (int i = 0; i < 9; i++) {
+            KEY_QUICK_SELECT[i] = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                    "key.tc_veinminer.quick_select_" + (i + 1),
+                    InputUtil.Type.KEYSYM,
+                    GLFW.GLFW_KEY_1 + i,
+                    "key.categories.tc_veinminer"
+            ));
+        }
 
         HudRenderCallback.EVENT.register((ctx, tick) -> {
             new VeinMinerHudOverlay().onHudRender(ctx, tick);
@@ -100,15 +127,18 @@ public class TCVeinMinerClient implements ClientModInitializer {
         });
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            // Xử lý chọn nhanh chế độ qua phím (1-9, Arrow, Tab, +/-)
             if (client.player != null && client.currentScreen == null) {
-                for (int i = 48; i <= 57; i++) checkKey(client, i); // 0-9
-                for (int i = 262; i <= 265; i++) checkKey(client, i); // Arrows
-                checkKey(client, 258); // Tab
-                checkKey(client, 61);  // +
-                checkKey(client, 45);  // -
-                checkKey(client, 334); // Pad +
-                checkKey(client, 333); // Pad -
+                while (KEY_NEXT_SHAPE.wasPressed()) {
+                    cycleShape(1);
+                }
+                while (KEY_PREV_SHAPE.wasPressed()) {
+                    cycleShape(-1);
+                }
+                for (int i = 0; i < 9; i++) {
+                    while (KEY_QUICK_SELECT[i].wasPressed()) {
+                        selectShapeByIndex(i);
+                    }
+                }
             }
             
             // Mở menu radial khi bấm phím MENU
@@ -182,9 +212,12 @@ public class TCVeinMinerClient implements ClientModInitializer {
                 }
                 
                 boolean targetChanged = (currentTarget == null && lastTargetPos != null) || (currentTarget != null && !currentTarget.equals(lastTargetPos));
-                if (targetChanged || (holdKeyDown != lastHoldStateForActivation)) {
+                long now = System.currentTimeMillis();
+                boolean forceSend = (holdKeyDown != lastHoldStateForActivation);
+                if (forceSend || (targetChanged && now - lastActivationSendTime > 100)) {
                     lastTargetPos = currentTarget;
                     lastHoldStateForActivation = holdKeyDown;
+                    lastActivationSendTime = now;
                     
                     if (ClientPlayNetworking.canSend(ActivationRequestPayload.ID)) {
                         ClientPlayNetworking.send(new ActivationRequestPayload(holdKeyDown, java.util.Optional.ofNullable(currentTarget)));
@@ -239,12 +272,27 @@ public class TCVeinMinerClient implements ClientModInitializer {
         BlockHighlighter.register();
     }
 
-    private static void checkKey(net.minecraft.client.MinecraftClient client, int code) {
-        boolean down = net.minecraft.client.util.InputUtil.isKeyPressed(client.getWindow().getHandle(), code);
-        if (down && pressedKeys.add(code)) {
-            // Key press handled
-        } else if (!down) {
-            pressedKeys.remove(code);
+
+
+    private static void cycleShape(int direction) {
+        var enabledShapes = new ArrayList<>(ClientConfigManager.instance.enabledShapes);
+        if (enabledShapes.isEmpty()) return;
+        
+        int currentIndex = enabledShapes.indexOf(ClientConfigManager.instance.currentShape);
+        if (currentIndex == -1) currentIndex = 0;
+        
+        int newIndex = (currentIndex + direction) % enabledShapes.size();
+        if (newIndex < 0) newIndex += enabledShapes.size();
+        
+        ClientConfigManager.instance.currentShape = enabledShapes.get(newIndex);
+        ClientConfigManager.save();
+    }
+
+    private static void selectShapeByIndex(int index) {
+        var enabledShapes = new ArrayList<>(ClientConfigManager.instance.enabledShapes);
+        if (index >= 0 && index < enabledShapes.size()) {
+            ClientConfigManager.instance.currentShape = enabledShapes.get(index);
+            ClientConfigManager.save();
         }
     }
 

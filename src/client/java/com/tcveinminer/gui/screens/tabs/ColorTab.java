@@ -50,12 +50,12 @@ public class ColorTab implements MenuTab {
         // 2. Nút chức năng (Cầu vồng / Tắt màu) - Thu nhỏ chiều rộng
         int optX = cx + (4 * (sw + gap)) + 10;
         int optW = 60;
-        screen.addUIElement(new CustomButton(optX, startY, optW, 18, Text.literal("Cầu vồng"), btn -> {
+        screen.addUIElement(new CustomButton(optX, startY, optW, 18, Text.translatable("gui.tcveinminer.color.rainbow"), btn -> {
             screen.getState().colorRainbow = true;
             screen.getState().colorDisabled = false;
             screen.rebuildMenu();
         }));
-        screen.addUIElement(new CustomButton(optX, startY + 22, optW, 18, Text.literal("Tắt màu"), btn -> {
+        screen.addUIElement(new CustomButton(optX, startY + 22, optW, 18, Text.translatable("gui.tcveinminer.color.disable"), btn -> {
             screen.getState().colorDisabled = true;
             screen.getState().colorRainbow = false;
             screen.rebuildMenu();
@@ -72,10 +72,10 @@ public class ColorTab implements MenuTab {
 
     @Override
     public void render(DrawContext ctx, MainMenuScreen screen, int cx, int cy, int cw, int ch, int mouseX, int mouseY, float delta) {
-        ctx.drawTextWithShadow(screen.getTextRenderer(), "MÀU SẮC LỰA CHỌN NHANH", cx, cy + 6, 0xFFA0AEC0);
+        ctx.drawTextWithShadow(screen.getTextRenderer(), Text.translatable("gui.tcveinminer.color.preset_title").getString(), cx, cy + 6, 0xFFA0AEC0);
 
         int slidersY = cy + 85;
-        ctx.drawTextWithShadow(screen.getTextRenderer(), "RGB CHỈNH TAY", cx, slidersY - 12, 0xFFA0AEC0);
+        ctx.drawTextWithShadow(screen.getTextRenderer(), Text.translatable("gui.tcveinminer.color.rgb_title").getString(), cx, slidersY - 12, 0xFFA0AEC0);
 
         // Vẽ giá trị số bên cạnh label R, G, B
         ctx.drawTextWithShadow(screen.getTextRenderer(), "R:", cx, slidersY + 3, ThemeColors.REDSTONE_TEXT);
@@ -96,7 +96,7 @@ public class ColorTab implements MenuTab {
         int bpX = cx + cw - bpSize - 8;
         int bpY = cy + 18;
 
-        ctx.drawTextWithShadow(screen.getTextRenderer(), "XEM TRƯỚC", bpX - 4, bpY - 12, 0xFFA0AEC0);
+        ctx.drawTextWithShadow(screen.getTextRenderer(), Text.translatable("gui.tcveinminer.color.preview_title").getString(), bpX - 4, bpY - 12, 0xFFA0AEC0);
         DrawHelper.drawCard(ctx, bpX, bpY, bpSize, bpSize);
 
         if (screen.getState().colorDisabled) {

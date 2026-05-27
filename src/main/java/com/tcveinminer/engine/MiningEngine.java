@@ -60,6 +60,10 @@ public final class MiningEngine {
         return ENGINES.computeIfAbsent(uuid, id -> new MiningEngine());
     }
 
+    public static boolean hasEngine(UUID uuid) {
+        return ENGINES.containsKey(uuid);
+    }
+
     public static void removePlayer(UUID uuid) {
         MiningEngine engine = ENGINES.remove(uuid);
         if (engine != null) {
@@ -121,6 +125,11 @@ public final class MiningEngine {
     // ── Public API ───────────────────────────────────────────────────────────
 
     public void handleActivationRequest(ServerPlayerEntity spe, boolean active, BlockPos targetPos) {
+        // Ignore dynamic updates if already locked/finished
+        if (stateMachine.is(State.LOCKED_MINING) || stateMachine.is(State.FINISHED) || stateMachine.is(State.CANCELLED)) {
+            return;
+        }
+
         if (!active || targetPos == null) {
             if (stateMachine.is(State.PREVIEW)) {
                 stateMachine.force(State.IDLE);
@@ -130,11 +139,6 @@ public final class MiningEngine {
             ServerPlayNetworking.send(spe, new ActivationConfirmPayload(false));
             ServerPlayNetworking.send(spe, new FilterResultPayload(false));
             ServerPlayNetworking.send(spe, new HighlightBlockListPayload(Collections.emptyList(), "FACE"));
-            return;
-        }
-
-        // Ignore dynamic updates if already locked/finished
-        if (stateMachine.is(State.LOCKED_MINING) || stateMachine.is(State.FINISHED) || stateMachine.is(State.CANCELLED)) {
             return;
         }
 
@@ -344,6 +348,8 @@ public final class MiningEngine {
                 
                 // [CRITICAL] Phase 5 Constraint: block identity
                 if (originalState != null && currentState.getBlock() != originalState.getBlock()) {
+                    lockedSnapshot.remove(e.pos());
+                    snapshotChanged = true;
                     continue;
                 }
 
@@ -359,7 +365,7 @@ public final class MiningEngine {
                 brokenCount++;
 
                 // Tool may have broken inside tryBreakBlock — check
-                if (c.requireCorrectTool && player.getMainHandStack().isEmpty()) {
+                if (c.requireCorrectTool && initialItem != net.minecraft.item.Items.AIR && player.getMainHandStack().isEmpty()) {
                     stopMining(player);
                     return;
                 }

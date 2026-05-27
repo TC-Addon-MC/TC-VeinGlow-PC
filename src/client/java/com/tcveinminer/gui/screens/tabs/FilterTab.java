@@ -44,7 +44,7 @@ public class FilterTab implements MenuTab {
         }
         screen.addUIElement(blockInput);
 
-        screen.addUIElement(new AmberButton(cx + (cw / 2) - 50, splitY + 22, 44, 16, Text.literal("Thêm"), btn -> {
+        screen.addUIElement(new AmberButton(cx + (cw / 2) - 50, splitY + 22, 44, 16, Text.translatable("gui.tcveinminer.button.add"), btn -> {
             addBlock(screen);
         }));
     }
@@ -54,13 +54,13 @@ public class FilterTab implements MenuTab {
         Identifier validId = FilterModeManager.validateAndParseBlock(input);
 
         if (validId == null) {
-            blError = "Block không tồn tại!";
+            blError = Text.translatable("gui.tcveinminer.error.unknown_block").getString();
             errorTime = System.currentTimeMillis();
             return;
         }
 
         if (screen.getState().blacklist.contains(validId)) {
-            blError = "Đã có trong danh sách!";
+            blError = Text.translatable("gui.tcveinminer.error.duplicate_block").getString();
             errorTime = System.currentTimeMillis();
             return;
         }
@@ -86,14 +86,14 @@ public class FilterTab implements MenuTab {
 
         // VẼ KHUNG GỢI Ý TĨNH (BÊN TRÁI)
         DrawHelper.drawCard(ctx, cx, splitY, halfW, splitH);
-        ctx.drawTextWithShadow(screen.getTextRenderer(), "GỢI Ý BLOCK", cx + 8, splitY + 8, 0xFFFFFFFF);
+        ctx.drawTextWithShadow(screen.getTextRenderer(), Text.translatable("gui.tcveinminer.filter.suggestion_title").getString(), cx + 8, splitY + 8, 0xFFFFFFFF);
         if (blockInput.getText().isEmpty()) {
-            ctx.drawTextWithShadow(screen.getTextRenderer(), "Nhập tên block để tìm kiếm...", cx + 8, listY + 5, 0xFF6B7280);
+            ctx.drawTextWithShadow(screen.getTextRenderer(), Text.translatable("gui.tcveinminer.filter.search_prompt").getString(), cx + 8, listY + 5, 0xFF6B7280);
         }
 
         // VẼ KHUNG BLACKLIST TĨNH (BÊN PHẢI)
         DrawHelper.drawCard(ctx, rightX, splitY, halfW, splitH);
-        String rightTitle = "ĐANG BỊ CẤM (" + screen.getState().blacklist.size() + ")";
+        String rightTitle = Text.translatable("gui.tcveinminer.filter.blacklist_title").getString() + " (" + screen.getState().blacklist.size() + ")";
         ctx.drawTextWithShadow(screen.getTextRenderer(), rightTitle, rightX + 8, splitY + 8, 0xFFFFFFFF);
         if (!blError.isEmpty()) {
             long elapsed = (errorTime == 0) ? 0 : (System.currentTimeMillis() - errorTime);
@@ -108,7 +108,7 @@ public class FilterTab implements MenuTab {
 
         List<Identifier> bl = new ArrayList<>(screen.getState().blacklist);
         if (bl.isEmpty()) {
-            ctx.drawTextWithShadow(screen.getTextRenderer(), "Trống", rightX + 8, listY + 6, 0xFF6B7280);
+            ctx.drawTextWithShadow(screen.getTextRenderer(), Text.translatable("gui.tcveinminer.filter.empty").getString(), rightX + 8, listY + 6, 0xFF6B7280);
         } else {
             int startBl = Math.max(0, Math.min(blScroll, bl.size() - maxItems));
             for (int i = startBl; i < Math.min(bl.size(), startBl + maxItems); i++) {
@@ -154,10 +154,10 @@ public class FilterTab implements MenuTab {
 
             ctx.fill(ovX, ovY, ovX + ovW, ovY + ovH, 0xFF12121A);
             DrawHelper.drawSolidBorder(ctx, ovX, ovY, ovW, ovH, 0xFF6366F1);
-            ctx.drawTextWithShadow(screen.getTextRenderer(), "GỢI Ý (" + suggestions.size() + ")", ovX + 6, ovY + 4, 0xFF6366F1);
+            ctx.drawTextWithShadow(screen.getTextRenderer(), Text.translatable("gui.tcveinminer.filter.suggestion_title").getString() + " (" + suggestions.size() + ")", ovX + 6, ovY + 4, 0xFF6366F1);
 
             if (suggestions.isEmpty()) {
-                ctx.drawTextWithShadow(screen.getTextRenderer(), "Trống...", ovX + 6, ovY + ovPad + 4, 0xFF6B7280);
+                ctx.drawTextWithShadow(screen.getTextRenderer(), Text.translatable("gui.tcveinminer.filter.empty_dots").getString(), ovX + 6, ovY + ovPad + 4, 0xFF6B7280);
             } else {
                 int startIdx = Math.max(0, Math.min(searchScroll, suggestions.size() - visibleCount));
                 for (int i = 0; i < visibleCount; i++) {
@@ -205,7 +205,7 @@ public class FilterTab implements MenuTab {
             ctx.fill(hoverX, hoverY, hoverX + hoverW, hoverY + hoverH, 0xFF12121A);
             DrawHelper.drawSolidBorder(ctx, hoverX, hoverY, hoverW, hoverH, 0xFFFF7171);
 
-            ctx.drawTextWithShadow(screen.getTextRenderer(), "TOÀN BỘ DANH SÁCH CẤM", hoverX + 6, hoverY + 4, 0xFFFF7171);
+            ctx.drawTextWithShadow(screen.getTextRenderer(), Text.translatable("gui.tcveinminer.filter.full_blacklist").getString(), hoverX + 6, hoverY + 4, 0xFFFF7171);
 
             for (int i = 0; i < count; i++) {
                 Identifier id = bl.get(i);
@@ -220,7 +220,8 @@ public class FilterTab implements MenuTab {
 
             // Nếu danh sách quá dài không thể chứa hết trên màn hình, hiện thông báo số lượng còn lại
             if (bl.size() > maxVisibleHover) {
-                ctx.drawTextWithShadow(screen.getTextRenderer(), "... và " + (bl.size() - maxVisibleHover) + " block khác", hoverX + 6, hoverY + hoverH - 10, 0xFF6B7280);
+                int more = bl.size() - maxVisibleHover;
+                ctx.drawTextWithShadow(screen.getTextRenderer(), "... +" + more, hoverX + 6, hoverY + hoverH - 10, 0xFF6B7280);
             }
         }
     }

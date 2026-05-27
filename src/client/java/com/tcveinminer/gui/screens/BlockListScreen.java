@@ -35,7 +35,7 @@ public class BlockListScreen extends Screen {
     private TextFieldWidget searchField;
 
     public BlockListScreen(Screen parent) {
-        super(Text.literal("Block List"));
+        super(Text.translatable("gui.tcveinminer.blocklist.title"));
         this.parent = parent;
         blocks.addAll(ClientConfigManager.instance.personalBlacklist);
     }
@@ -47,26 +47,26 @@ public class BlockListScreen extends Screen {
 
         // Search field
         searchField = new TextFieldWidget(textRenderer, x + 10, y + HEADER_H + 8, W - 20, 16,
-                Text.literal("Tìm kiếm..."));
+                Text.translatable("gui.tcveinminer.search"));
         searchField.setMaxLength(100);
-        searchField.setPlaceholder(Text.literal("Tìm kiếm..."));
+        searchField.setPlaceholder(Text.translatable("gui.tcveinminer.search"));
         addDrawableChild(searchField);
 
         addDrawableChild(new CustomButton(x + 10, y + H - 60, 110, 16,
-                Text.literal("+ THÊM BLOCK"), btn -> {
+                Text.translatable("gui.tcveinminer.button.add_block"), btn -> {
             showAddPopup = true;
             if (addField != null) addField.setText("");
             addError = null;
         }));
 
         addDrawableChild(new CustomButton(x + 130, y + H - 60, 80, 16,
-                Text.literal("XÓA TẤT CẢ"), btn -> {
+                Text.translatable("gui.tcveinminer.button.clear_all"), btn -> {
             blocks.clear();
             scrollOffset = 0;
         }));
 
         addDrawableChild(new CustomButton(x + W / 2 - 70, y + H - 36, 140, 18,
-                Text.literal("LƯU & QUAY LẠI"), btn -> {
+                Text.translatable("gui.tcveinminer.button.save_back"), btn -> {
             ClientConfigManager.instance.personalBlacklist.clear();
             ClientConfigManager.instance.personalBlacklist.addAll(blocks);
             ClientConfigManager.save();
@@ -91,7 +91,7 @@ public class BlockListScreen extends Screen {
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         DrawHelper.drawPanel(ctx, x, y, W, H);
         DrawHelper.drawHeader(ctx, x, y, W, HEADER_H);
-        ctx.drawTextWithShadow(textRenderer, "Danh Sách Block Đen", x + 12, y + 8, ThemeColors.TEXT_TITLE);
+        ctx.drawTextWithShadow(textRenderer, Text.translatable("gui.tcveinminer.blocklist.header").getString(), x + 12, y + 8, ThemeColors.TEXT_TITLE);
 
         // List area background
         int listX = x + 10;
@@ -125,7 +125,7 @@ public class BlockListScreen extends Screen {
         ctx.disableScissor();
 
         if (filtered.isEmpty()) {
-            String empty = "Không có block nào";
+            String empty = Text.translatable("gui.tcveinminer.blocklist.empty").getString();
             ctx.drawTextWithShadow(textRenderer, empty,
                     listX + (W - 20 - textRenderer.getWidth(empty)) / 2, listY + LIST_H / 2 - 4,
                     ThemeColors.TEXT_LABEL);
@@ -145,7 +145,7 @@ public class BlockListScreen extends Screen {
         int py = y + (H - ph) / 2;
 
         DrawHelper.drawPanel(ctx, px, py, pw, ph);
-        ctx.drawTextWithShadow(textRenderer, "Nhập Block ID:", px + 12, py + 10, ThemeColors.TEXT_TITLE);
+        ctx.drawTextWithShadow(textRenderer, Text.translatable("gui.tcveinminer.blocklist.add_prompt").getString(), px + 12, py + 10, ThemeColors.TEXT_TITLE);
 
         addField.setX(px + 10);
         addField.setY(py + 25);
@@ -161,12 +161,15 @@ public class BlockListScreen extends Screen {
         boolean addHov = mouseX >= px + 10 && mouseX <= px + 70 && mouseY >= py + 58 && mouseY <= py + 72;
         boolean canHov = mouseX >= px + pw - 70 && mouseX <= px + pw - 10 && mouseY >= py + 58 && mouseY <= py + 72;
 
+        String addStr = Text.translatable("gui.tcveinminer.button.add").getString();
+        String cancelStr = Text.translatable("gui.tcveinminer.button.cancel").getString();
+
         ButtonDrawUtil.drawPrimary(ctx, px + 10, py + 58, 60, 14, addHov, false);
-        ctx.drawTextWithShadow(textRenderer, "THÊM", px + 10 + (60 - textRenderer.getWidth("THÊM")) / 2,
+        ctx.drawTextWithShadow(textRenderer, addStr, px + 10 + (60 - textRenderer.getWidth(addStr)) / 2,
                 py + 62, ThemeColors.BTN_TEXT);
 
         ButtonDrawUtil.drawPrimary(ctx, px + pw - 70, py + 58, 60, 14, canHov, false);
-        ctx.drawTextWithShadow(textRenderer, "HỦY", px + pw - 70 + (60 - textRenderer.getWidth("HỦY")) / 2,
+        ctx.drawTextWithShadow(textRenderer, cancelStr, px + pw - 70 + (60 - textRenderer.getWidth(cancelStr)) / 2,
                 py + 62, ThemeColors.BTN_TEXT);
     }
 
@@ -211,15 +214,15 @@ public class BlockListScreen extends Screen {
     }
 
     private void tryAddBlock(String id) {
-        if (id.isBlank()) { addError = "Block không hợp lệ"; return; }
+        if (id.isBlank()) { addError = Text.translatable("gui.tcveinminer.error.invalid_block").getString(); return; }
         try {
             Identifier ident = Identifier.of(id);
             if (!Registries.BLOCK.containsId(ident)) {
-                addError = "Block không tồn tại trong game";
+                addError = Text.translatable("gui.tcveinminer.error.unknown_block").getString();
                 return;
             }
         } catch (Exception e) {
-            addError = "Block không hợp lệ";
+            addError = Text.translatable("gui.tcveinminer.error.invalid_block").getString();
             return;
         }
         if (!blocks.contains(id)) blocks.add(id);

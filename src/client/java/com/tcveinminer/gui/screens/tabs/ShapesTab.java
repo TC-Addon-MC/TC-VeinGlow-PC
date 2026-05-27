@@ -31,13 +31,13 @@ public class ShapesTab implements MenuTab {
         int btnW = (cw - 6) / 2;
 
         screen.addUIElement(new CustomButton(cx, cy + 2, btnW, 20,
-                Text.literal("+ TỰ THIẾT KẾ MỚI"), btn -> {
+                Text.translatable("gui.tcveinminer.shapes.add_custom"), btn -> {
             MinecraftClient.getInstance().setScreen(
                     new CustomShapeDesignerScreen(screen, null));
         }));
 
         screen.addUIElement(new CustomButton(cx + btnW + 6, cy + 2, btnW, 20,
-                Text.literal("Khôi phục mặc định"), btn -> {
+                Text.translatable("gui.tcveinminer.button.reset_defaults"), btn -> {
             screen.getState().enabledShapes = new LinkedHashSet<>(
                     Set.of("FACE", "EDGES", "CORNERS", "TUNNEL_1x2", "AREA_3x3", "TREE_CAP"));
             screen.syncShapeStateToClientConfig();
@@ -60,7 +60,7 @@ public class ShapesTab implements MenuTab {
                 boolean on = screen.getState().enabledShapes.contains(s.name());
                 int ry = cy + 26 + visualRow * 24;
                 screen.addUIElement(new CustomButton(cx + cw - 40, ry + 2, 36, 18,
-                        Text.literal(on ? "BẬT" : "TẮT"), btn -> {
+                        Text.translatable(on ? "gui.tcveinminer.button.on" : "gui.tcveinminer.button.off"), btn -> {
                     toggleShape(screen, s.name());
                 }));
             }
@@ -77,12 +77,12 @@ public class ShapesTab implements MenuTab {
                 boolean on = screen.getState().enabledShapes.contains(entry.strategyId);
 
                 screen.addUIElement(new CustomButton(cx + cw - 84, ry + 2, 40, 18,
-                        Text.literal(on ? "BẬT" : "TẮT"), btn -> {
+                        Text.translatable(on ? "gui.tcveinminer.button.on" : "gui.tcveinminer.button.off"), btn -> {
                     toggleShape(screen, customs.get(finalCi).strategyId);
                 }));
 
                 screen.addUIElement(new CustomButton(cx + cw - 40, ry + 2, 36, 18,
-                        Text.literal("XÓA"), btn -> {
+                        Text.translatable("gui.tcveinminer.button.delete"), btn -> {
                     String deletedId = customs.get(finalCi).strategyId;
                     screen.getState().customShapes.remove(finalCi);
                     screen.getState().enabledShapes.remove(deletedId);
@@ -105,7 +105,7 @@ public class ShapesTab implements MenuTab {
         // Cảnh báo server chặn custom
         if (isCustomBlockedByServer()) {
             ctx.drawTextWithShadow(screen.getTextRenderer(),
-                    "⚠ Server đã tắt chế độ tùy chỉnh!",
+                    Text.translatable("gui.tcveinminer.error.server_blocked_custom").getString(),
                     cx, cy - 10, ThemeColors.TEXT_ERROR);
         }
 
@@ -125,7 +125,7 @@ public class ShapesTab implements MenuTab {
                 ctx.fill(cx, ry, cx + cw, ry + 22, DrawHelper.BG_CARD);
                 DrawHelper.drawSolidBorder(ctx, cx, ry, cw, 22, DrawHelper.BORDER_MODERN);
 
-                ctx.drawTextWithShadow(screen.getTextRenderer(), s.label,
+                ctx.drawTextWithShadow(screen.getTextRenderer(), Text.translatable("tc_veinminer.mode." + s.name()).getString(),
                         cx + 8, ry + 7, 0xFFA0AEC0);
             }
             rowIndex++;

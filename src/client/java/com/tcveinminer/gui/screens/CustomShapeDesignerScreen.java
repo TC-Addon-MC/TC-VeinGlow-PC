@@ -1,4 +1,3 @@
-// File 7: CustomShapeDesignerScreen.java
 package com.tcveinminer.gui.screens;
 
 import com.tcveinminer.config.ClientConfig;
@@ -23,12 +22,12 @@ public class CustomShapeDesignerScreen extends Screen {
     private final int FOOTER_H = 26;
 
     private static final String[][] QUICK_PRESETS = {
-            { "Cầu R=4",     "x^2 + y^2 + z^2 <= 16" },
-            { "Lập phương",  "abs(x) <= 3 && abs(y) <= 3 && abs(z) <= 3" },
-            { "Trụ Y",       "x^2 + z^2 <= 9 && abs(y) <= 4" },
-            { "Elipsoid",    "x^2/9 + y^2/4 + z^2/9 <= 1" },
-            { "Hình thoi",   "abs(x) + abs(y) + abs(z) <= 5" },
-            { "Nón",         "sqrt(x^2 + z^2) <= 4 - abs(y) && abs(y) <= 4" },
+            { "gui.tcveinminer.preset.sphere",     "x^2 + y^2 + z^2 <= 16" },
+            { "gui.tcveinminer.preset.cube",       "abs(x) <= 3 && abs(y) <= 3 && abs(z) <= 3" },
+            { "gui.tcveinminer.preset.cylinder",   "x^2 + z^2 <= 9 && abs(y) <= 4" },
+            { "gui.tcveinminer.preset.ellipsoid",  "x^2/9 + y^2/4 + z^2/9 <= 1" },
+            { "gui.tcveinminer.preset.diamond",    "abs(x) + abs(y) + abs(z) <= 5" },
+            { "gui.tcveinminer.preset.cone",       "sqrt(x^2 + z^2) <= 4 - abs(y) && abs(y) <= 4" },
     };
     private CustomButton[] presetButtons;
 
@@ -57,10 +56,10 @@ public class CustomShapeDesignerScreen extends Screen {
     private boolean voxelDirty = false;
 
     public CustomShapeDesignerScreen(Screen parent, ClientConfig.CustomShapeEntry editEntry) {
-        super(Text.literal("TC VEINGLOW - THIẾT KẾ PHƯƠNG TRÌNH ĐÀO"));
+        super(Text.translatable("gui.tcveinminer.designer.title"));
         this.parent = parent;
         this.editEntry = editEntry;
-        this.nameText     = (editEntry != null) ? editEntry.name     : "Hình Cầu Tùy Chỉnh";
+        this.nameText     = (editEntry != null) ? editEntry.name     : Text.translatable("gui.tcveinminer.designer.default_name").getString();
         this.equationText = (editEntry != null) ? editEntry.equation : "x^2 + y^2 + z^2 <= 4";
     }
 
@@ -71,12 +70,12 @@ public class CustomShapeDesignerScreen extends Screen {
         this.px = (this.width - this.W) / 2;
         this.py = (this.height - this.H) / 2;
 
-        addDrawableChild(new CustomButton(px + W - 70, py + 2, 60, 16, Text.literal("HỦY"), btn -> client.setScreen(parent)));
+        addDrawableChild(new CustomButton(px + W - 70, py + 2, 60, 16, Text.translatable("gui.tcveinminer.button.cancel"), btn -> client.setScreen(parent)));
 
         int cx = px + 10, cy = py + HDR_H + 10, leftW = (W - 30) / 2;
         int inputY = cy + 12;
 
-        nameField = new TextFieldWidget(textRenderer, cx + 4, inputY, leftW - 8, 16, Text.literal("Nhập tên riêng"));
+        nameField = new TextFieldWidget(textRenderer, cx + 4, inputY, leftW - 8, 16, Text.translatable("gui.tcveinminer.designer.name_prompt"));
         nameField.setMaxLength(100);
         nameField.setText(nameText);
         nameField.setChangedListener(s -> { nameText = s; nameError = null; });
@@ -94,7 +93,7 @@ public class CustomShapeDesignerScreen extends Screen {
         });
         addDrawableChild(equationField);
 
-        addDrawableChild(new AmberButton(px + W - 160, py + H - 22, 150, 16, Text.literal("LƯU PHƯƠNG TRÌNH"), btn -> trySave()));
+        addDrawableChild(new AmberButton(px + W - 160, py + H - 22, 150, 16, Text.translatable("gui.tcveinminer.button.save_equation"), btn -> trySave()));
 
         // Quick preset buttons – two columns below equation field
         presetButtons = new CustomButton[QUICK_PRESETS.length];
@@ -107,7 +106,7 @@ public class CustomShapeDesignerScreen extends Screen {
             int bx = cx + 4 + col * (btnW + 4);
             int by = btnStartY + row * 19;
             presetButtons[i] = new CustomButton(bx, by, btnW, 14,
-                    Text.literal(label),
+                    Text.translatable(label),
                     btn -> {
                         equationField.setText(preset);
                         equationText = preset;
@@ -124,10 +123,10 @@ public class CustomShapeDesignerScreen extends Screen {
 
     private void trySave() {
         nameError = null;
-        if (nameText == null || nameText.isBlank()) { nameError = "Thiếu tên."; return; }
+        if (nameText == null || nameText.isBlank()) { nameError = Text.translatable("gui.tcveinminer.error.missing_name").getString(); return; }
         if (equationError != null) return;
         if (meshCache.isEmpty() || currentShapeType == ShapeType.EMPTY) {
-            nameError = "Phương trình không tạo khối nào."; return;
+            nameError = Text.translatable("gui.tcveinminer.error.no_blocks").getString(); return;
         }
 
         // Lưu vào MenuState của MainMenuScreen (parent)
@@ -148,7 +147,7 @@ public class CustomShapeDesignerScreen extends Screen {
                 // Tạo mới: kiểm tra trùng tên
                 String newId = ClientConfig.customShapeId(nameText);
                 boolean duplicate = list.stream().anyMatch(e -> e.strategyId.equals(newId));
-                if (duplicate) { nameError = "Tên đã tồn tại!"; return; }
+                if (duplicate) { nameError = Text.translatable("gui.tcveinminer.error.duplicate_name").getString(); return; }
 
                 list.add(new ClientConfig.CustomShapeEntry(nameText, equationText));
                 mainMenu.getState().enabledShapes.add(newId);
@@ -187,7 +186,7 @@ public class CustomShapeDesignerScreen extends Screen {
         this.meshCache = GeometryGenerator.generate(analyzer, ev);
 
         if (this.currentShapeType == ShapeType.EMPTY) {
-            equationError = "Phương trình không tạo khối nào.";
+            equationError = Text.translatable("gui.tcveinminer.error.no_blocks").getString();
         }
     }
 
@@ -197,29 +196,24 @@ public class CustomShapeDesignerScreen extends Screen {
 
         DrawHelper.drawPanel(ctx, px, py, W, H);
         DrawHelper.drawHeader(ctx, px, py, W, HDR_H);
-        ctx.drawTextWithShadow(textRenderer, "TC VEINGLOW - TẠO HÌNH KHỐI", px + 10, py + 6, ThemeColors.TEXT_TITLE);
+        ctx.drawTextWithShadow(textRenderer, Text.translatable("gui.tcveinminer.designer.header").getString(), px + 10, py + 6, ThemeColors.TEXT_TITLE);
 
         int cx = px + 10, cy = py + HDR_H + 10, cw = W - 20, ch = H - HDR_H - FOOTER_H - 20;
         int leftW = (cw - 10) / 2, rightX = cx + leftW + 10, rightW = cw - leftW - 10;
 
         DrawHelper.drawCard(ctx, cx, cy, leftW, ch);
-        ctx.drawTextWithShadow(textRenderer, "TÊN CHẾ ĐỘ ĐÀO:", cx + 4, cy + 2, ThemeColors.TEXT_LABEL);
-        ctx.drawTextWithShadow(textRenderer, "PHƯƠNG TRÌNH:", cx + 4, cy + 36, ThemeColors.TEXT_LABEL);
+        ctx.drawTextWithShadow(textRenderer, Text.translatable("gui.tcveinminer.designer.label_name").getString(), cx + 4, cy + 2, ThemeColors.TEXT_LABEL);
+        ctx.drawTextWithShadow(textRenderer, Text.translatable("gui.tcveinminer.designer.label_equation").getString(), cx + 4, cy + 36, ThemeColors.TEXT_LABEL);
 
         int statusY = cy + 70;
         if (equationError != null) {
             ctx.drawTextWithShadow(textRenderer, equationError, cx + 4, statusY, ThemeColors.TEXT_ERROR);
         } else if (voxelDirty) {
-            ctx.drawTextWithShadow(textRenderer, "Đang xử lý...", cx + 4, statusY, ThemeColors.TEXT_DIM);
+            ctx.drawTextWithShadow(textRenderer, Text.translatable("gui.tcveinminer.designer.processing").getString(), cx + 4, statusY, ThemeColors.TEXT_DIM);
         } else {
             String status = currentShapeType.getDisplayName();
             ctx.drawTextWithShadow(textRenderer, status, cx + 4, statusY, (currentShapeType == ShapeType.FINITE_VOLUME) ? ThemeColors.EMERALD_TEXT : ThemeColors.GOLD);
         }
-
-        // Operator hint
-
-
-        // Preset label
 
         if (nameError != null) ctx.drawTextWithShadow(textRenderer, nameError, cx + 4, statusY + 44, ThemeColors.TEXT_ERROR);
 
@@ -233,19 +227,18 @@ public class CustomShapeDesignerScreen extends Screen {
 
         ctx.disableScissor();
 
-        String bc = "Hiển thị: " + meshCache.size();
+        String bc = Text.translatable("gui.tcveinminer.designer.display_count").getString() + meshCache.size();
         ctx.drawTextWithShadow(textRenderer, bc, rightX + rightW - 6 - textRenderer.getWidth(bc), cy + prevH - 12, ThemeColors.EMERALD_TEXT);
         int hintY = cy + prevH + 10;
-        // Vẽ hướng dẫn chi tiết dưới khun
-        ctx.drawTextWithShadow(textRenderer, "HƯỚNG DẪN CÚ PHÁP:", rightX, hintY, ThemeColors.TEXT_LABEL);
-
-        ctx.drawTextWithShadow(textRenderer, "• Biến tọa độ: x, y, z", rightX, hintY + 14, ThemeColors.TEXT_DIM);
-        ctx.drawTextWithShadow(textRenderer, "• Phép tính: + - * / ^ %", rightX, hintY + 26, ThemeColors.TEXT_DIM);
-        ctx.drawTextWithShadow(textRenderer, "• So sánh & Logic: == != < <= > >=  &&  ||  !", rightX, hintY + 38, ThemeColors.TEXT_DIM);
-        ctx.drawTextWithShadow(textRenderer, "• Hàm: abs() sqrt() sin() cos() sphere() cube()", rightX, hintY + 50, ThemeColors.TEXT_DIM);
+        
+        ctx.drawTextWithShadow(textRenderer, Text.translatable("gui.tcveinminer.designer.hint_title").getString(), rightX, hintY, ThemeColors.TEXT_LABEL);
+        ctx.drawTextWithShadow(textRenderer, Text.translatable("gui.tcveinminer.designer.hint_vars").getString(), rightX, hintY + 14, ThemeColors.TEXT_DIM);
+        ctx.drawTextWithShadow(textRenderer, Text.translatable("gui.tcveinminer.designer.hint_ops").getString(), rightX, hintY + 26, ThemeColors.TEXT_DIM);
+        ctx.drawTextWithShadow(textRenderer, Text.translatable("gui.tcveinminer.designer.hint_logic").getString(), rightX, hintY + 38, ThemeColors.TEXT_DIM);
+        ctx.drawTextWithShadow(textRenderer, Text.translatable("gui.tcveinminer.designer.hint_funcs").getString(), rightX, hintY + 50, ThemeColors.TEXT_DIM);
         int fy = py + H - FOOTER_H;
         ctx.fill(px + 2, fy, px + W - 2, py + H - 2, ThemeColors.BG_PANEL_INSET);
-        ctx.drawTextWithShadow(textRenderer, "Kéo chuột vùng 3D để xoay khối", px + 10, fy + 8, ThemeColors.TEXT_DIM);
+        ctx.drawTextWithShadow(textRenderer, Text.translatable("gui.tcveinminer.designer.drag_hint").getString(), px + 10, fy + 8, ThemeColors.TEXT_DIM);
 
         super.render(ctx, mouseX, mouseY, delta);
     }
@@ -275,4 +268,3 @@ public class CustomShapeDesignerScreen extends Screen {
     @Override public boolean shouldPause() { return false; }
     @Override public void renderBackground(DrawContext c, int mx, int my, float d) {}
 }
-

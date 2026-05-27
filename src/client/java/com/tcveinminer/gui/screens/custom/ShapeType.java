@@ -1,14 +1,16 @@
 // File: ShapeType.java
 package com.tcveinminer.gui.screens.custom;
 
-public enum ShapeType {
-    FINITE_VOLUME("Khối hữu hạn"),
-    SURFACE("Mặt"),
-    LINE("Đường"),
-    INFINITE("Vô hạn"),
-    EMPTY("Rỗng");
+import net.minecraft.text.Text;
 
-    private final String displayName;
-    ShapeType(String displayName) { this.displayName = displayName; }
-    public String getDisplayName() { return displayName; }
+public enum ShapeType {
+    FINITE_VOLUME("gui.tcveinminer.shape.finite"),
+    SURFACE("gui.tcveinminer.shape.surface"),
+    LINE("gui.tcveinminer.shape.line"),
+    INFINITE("gui.tcveinminer.shape.infinite"),
+    EMPTY("gui.tcveinminer.shape.empty");
+
+    private final String translationKey;
+    ShapeType(String translationKey) { this.translationKey = translationKey; }
+    public String getDisplayName() { return Text.translatable(translationKey).getString(); }
 }

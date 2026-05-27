@@ -39,8 +39,13 @@ public class GeneralTab implements MenuTab {
     @Override
     public void render(DrawContext ctx, MainMenuScreen screen, int cx, int cy, int cw, int ch, int mouseX, int mouseY, float delta) {
         DrawHelper.drawCard(ctx, cx, cy, cw, 64);
-        ctx.drawTextWithShadow(screen.getTextRenderer(), "CHẾ ĐỘ KÍCH HOẠT", cx + 8, cy + 5, ThemeColors.TEXT_LABEL);
-        String[] modes = {"Đè nút", "Đè + sneak", "Nhấn bật", "Nhấn + sneak"};
+        ctx.drawTextWithShadow(screen.getTextRenderer(), Text.translatable("gui.tcveinminer.general.activation_mode").getString(), cx + 8, cy + 5, ThemeColors.TEXT_LABEL);
+        String[] modes = {
+                Text.translatable("gui.tcveinminer.activation.hold_short").getString(),
+                Text.translatable("gui.tcveinminer.activation.hold_sneak_short").getString(),
+                Text.translatable("gui.tcveinminer.activation.toggle_short").getString(),
+                Text.translatable("gui.tcveinminer.activation.toggle_sneak_short").getString()
+        };
         int itemW = (cw - 8) / 2;
         for (int i = 0; i < 4; i++) {
             int rx = cx + (i % 2) * (itemW + 8);
@@ -52,9 +57,9 @@ public class GeneralTab implements MenuTab {
         }
 
         int dY = cy + 70;
-        drawCheckRow(ctx, screen, cx, dY, cw, "HUD nổi", screen.getState().showHud);
-        drawCheckRow(ctx, screen, cx, dY + 24, cw, "Outline", screen.getState().showOutline);
-        drawCheckRow(ctx, screen, cx, dY + 48, cw, "Yêu cầu đúng dụng cụ", screen.getState().requireCorrectTool);
+        drawCheckRow(ctx, screen, cx, dY, cw, Text.translatable("gui.tcveinminer.general.floating_hud").getString(), screen.getState().showHud);
+        drawCheckRow(ctx, screen, cx, dY + 24, cw, Text.translatable("gui.tcveinminer.general.outline").getString(), screen.getState().showOutline);
+        drawCheckRow(ctx, screen, cx, dY + 48, cw, Text.translatable("gui.tcveinminer.general.require_tool").getString(), screen.getState().requireCorrectTool);
     }
 
     private void drawCheckRow(DrawContext ctx, MainMenuScreen screen, int rx, int ry, int rw, String label, boolean checked) {
