@@ -96,18 +96,6 @@ public class ClientConfig {
 
     public boolean requireCorrectTool = true;
 
-    // Công cụ được phép kích hoạt mod (khớp với MenuState.enabledTools)
-    public Map<String, Boolean> enabledTools = new LinkedHashMap<>() {{
-        put("all", true);
-        put("hand", false);
-        put("item", false);
-        put("pickaxe", false);
-        put("axe", false);
-        put("shovel", false);
-        put("sword", false);
-        put("hoe", false);
-    }};
-
 
     // ==========================================
     // DỮ LIỆU ĐỒNG BỘ TỪ SERVER (KHÔNG LƯU VÀO JSON)
@@ -143,7 +131,6 @@ public class ClientConfig {
         if (enabledShapes == null) enabledShapes = new LinkedHashSet<>(List.of("FACE"));
         if (currentShape == null || currentShape.isBlank()) currentShape = "FACE";
         if (personalBlacklist == null) personalBlacklist = new ArrayList<>();
-        if (enabledTools == null) enabledTools = new LinkedHashMap<>();
         if (serverDisabledShapes == null) serverDisabledShapes = new ArrayList<>();
         if (serverBlacklist == null) serverBlacklist = new ArrayList<>();
         if (serverMaxBlocks <= 0) serverMaxBlocks = 64;

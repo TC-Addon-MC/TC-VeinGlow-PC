@@ -93,6 +93,10 @@ public abstract class BaseBfsStrategy implements MiningStrategy {
                     result.add(nb);
                     if (f > maxSolidF) maxSolidF = f;
                     if (cur.depth() + 1 > maxSolidDepth) maxSolidDepth = cur.depth() + 1;
+
+                    if (result.size() >= req.maxBlocks()) {
+                        return result;
+                    }
                 }
 
                 SearchNode nextNode = new SearchNode(nb, cur.depth() + 1, f, s, u, approach);

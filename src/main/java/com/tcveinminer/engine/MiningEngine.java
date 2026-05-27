@@ -72,6 +72,7 @@ public final class MiningEngine {
 
     private final MiningStateMachine stateMachine = new MiningStateMachine();
     private final MiningQueue queue = new MiningQueue();
+    private Set<BlockPos> lockedSnapshot = new HashSet<>();
     private volatile Set<BlockPos> renderSnapshot = Collections.emptySet();
 
     /**
@@ -87,7 +88,6 @@ public final class MiningEngine {
     private int playerMaxBlocks = 64;
     private MiningStrategy customStrategy = null;
     private Set<String> playerBlacklist = new HashSet<>();
-    private Map<String, Boolean> playerTools = new HashMap<>();
     private BlockState originalState = null;
     private Item initialItem = null;
 
@@ -95,15 +95,13 @@ public final class MiningEngine {
     }
 
     public void updatePlayerConfig(String shapeId, int maxBlocks) {
-        updatePlayerConfig(shapeId, maxBlocks, "", Collections.emptyList(), Collections.emptyMap());
+        updatePlayerConfig(shapeId, maxBlocks, "", Collections.emptyList());
     }
 
-    public void updatePlayerConfig(String shapeId, int maxBlocks, String equation, List<String> blacklist,
-            Map<String, Boolean> enabledTools) {
+    public void updatePlayerConfig(String shapeId, int maxBlocks, String equation, List<String> blacklist) {
         this.playerMaxBlocks = maxBlocks;
         this.playerBlacklist = FilterModeManager.normalizeBlacklist(
                 blacklist == null ? Collections.emptySet() : new HashSet<>(blacklist));
-        this.playerTools = new HashMap<>(enabledTools);
         if (shapeId != null && shapeId.startsWith("custom:") && equation != null && !equation.isBlank()) {
             this.customStrategy = buildCustomStrategy(shapeId, equation);
             this.playerShape = (this.customStrategy != null) ? shapeId : "FACE";
@@ -127,6 +125,7 @@ public final class MiningEngine {
             if (stateMachine.is(State.PREVIEW)) {
                 stateMachine.force(State.IDLE);
                 renderSnapshot = Collections.emptySet();
+                lockedSnapshot.clear();
             }
             ServerPlayNetworking.send(spe, new ActivationConfirmPayload(false));
             ServerPlayNetworking.send(spe, new FilterResultPayload(false));
@@ -153,11 +152,10 @@ public final class MiningEngine {
             return;
         }
 
-        boolean toolOk = !c.requireCorrectTool || toolOk(spe, c);
         Set<String> activeBlacklist = mergeBlacklists(c.blacklistedBlocks, playerBlacklist);
         boolean isBlacklisted = activeBlacklist.contains(blockId(targetState));
 
-        if (!toolOk || isBlacklisted) {
+        if (isBlacklisted) {
             ServerPlayNetworking.send(spe, new ActivationConfirmPayload(false));
             ServerPlayNetworking.send(spe, new LookedAtBlockPayload(targetPos));
             ServerPlayNetworking.send(spe, new FilterResultPayload(false));
@@ -214,15 +212,30 @@ public final class MiningEngine {
             BlockPos origin, BlockState originState) {
         // [CRITICAL] Re-entry guard: if we are already breaking blocks, the AFTER event
         // fired by our own world.interactionManager.tryBreakBlock() must be ignored.
-        if (isMining || (!stateMachine.is(State.IDLE) && !stateMachine.is(State.PREVIEW)))
+        if (isMining)
+            return;
+
+        if (stateMachine.is(State.LOCKED_MINING)) {
+            if (lockedSnapshot.contains(origin)) {
+                lockedSnapshot.remove(origin);
+                renderSnapshot = new HashSet<>(lockedSnapshot);
+                if (player instanceof ServerPlayerEntity spe) {
+                    ServerPlayNetworking.send(spe, new HighlightBlockListPayload(new ArrayList<>(renderSnapshot), this.playerShape));
+                }
+                if (queue.isEmpty() && lockedSnapshot.isEmpty()) {
+                    finalizeMining(player);
+                }
+            }
+            return;
+        }
+
+        if (!stateMachine.is(State.IDLE) && !stateMachine.is(State.PREVIEW))
             return;
 
         ModConfig c = ConfigManager.get();
         if (!c.enabled)
             return;
         if (!TCVeinMinerMod.playersHoldingV.contains(player.getUuid()))
-            return;
-        if (c.requireCorrectTool && !toolOk(player, c))
             return;
         Set<String> activeBlacklist = mergeBlacklists(c.blacklistedBlocks, playerBlacklist);
         if (activeBlacklist.contains(blockId(originState)))
@@ -275,8 +288,10 @@ public final class MiningEngine {
 
         queue.reset();
         queue.enqueue(found, world);
-        renderSnapshot = queue.snapshot();
-        targetCount = queue.size();
+        
+        lockedSnapshot = new HashSet<>(found);
+        renderSnapshot = new HashSet<>(lockedSnapshot);
+        targetCount = lockedSnapshot.size();
         brokenCount = 0;
 
         stateMachine.force(State.LOCKED_MINING);
@@ -301,25 +316,22 @@ public final class MiningEngine {
             return;
         }
 
-        // [CRITICAL] Check tool validity every tick, not just at trigger
-        if (c.requireCorrectTool && !toolOk(player, c)) {
+        if (!TCVeinMinerMod.playersHoldingV.contains(player.getUuid())) {
             stopMining(player);
             return;
         }
 
         if (queue.isEmpty()) {
-            finalizeMining(player);
-            return;
-        }
-
-        if (!TCVeinMinerMod.playersHoldingV.contains(player.getUuid())) {
-            stopMining(player);
+            if (lockedSnapshot.isEmpty()) {
+                finalizeMining(player);
+            }
             return;
         }
 
         int blocksPerTick = c.tickSliceSize > 0 ? c.tickSliceSize : 4;
         List<Entry> batch = queue.drainForTick(world, blocksPerTick);
 
+        boolean snapshotChanged = false;
         // Set guard BEFORE breaking any block so AFTER event is blocked
         isMining = true;
         try {
@@ -340,6 +352,9 @@ public final class MiningEngine {
                 if (!broken)
                     continue;
 
+                lockedSnapshot.remove(e.pos());
+                snapshotChanged = true;
+
                 SessionStats.onBlockBroken(id);
                 brokenCount++;
 
@@ -358,9 +373,16 @@ public final class MiningEngine {
             isMining = false;
         }
 
-        renderSnapshot = queue.snapshot();
-        if (queue.isEmpty())
+        if (snapshotChanged) {
+            renderSnapshot = new HashSet<>(lockedSnapshot);
+            if (player instanceof ServerPlayerEntity spe) {
+                ServerPlayNetworking.send(spe, new HighlightBlockListPayload(new ArrayList<>(renderSnapshot), this.playerShape));
+            }
+        }
+
+        if (queue.isEmpty() && lockedSnapshot.isEmpty()) {
             finalizeMining(player);
+        }
     }
 
     public Set<BlockPos> getRenderSnapshot() {
@@ -377,6 +399,7 @@ public final class MiningEngine {
         isMining = false;
         queue.interrupt();
         stateMachine.force(State.CANCELLED);
+        lockedSnapshot.clear();
         renderSnapshot = Collections.emptySet();
         if (player instanceof ServerPlayerEntity spe) {
             ServerPlayNetworking.send(spe, new MiningStatePayload(false));
@@ -390,6 +413,7 @@ public final class MiningEngine {
         HudNotifier.lastMax = targetCount;
         HudNotifier.notifyAt = System.currentTimeMillis() + 2500;
         stateMachine.force(State.FINISHED);
+        lockedSnapshot.clear();
         renderSnapshot = Collections.emptySet();
         if (player instanceof ServerPlayerEntity spe) {
             ServerPlayNetworking.send(spe, new MiningStatePayload(false));
@@ -408,32 +432,6 @@ public final class MiningEngine {
             return false;
         cooldowns.put(uuid, tick + c.cooldownTicks);
         return true;
-    }
-
-    private boolean toolOk(PlayerEntity p, ModConfig c) {
-        ItemStack s = p.getMainHandStack();
-        String type = "item";
-        if (s.isEmpty())
-            type = "hand";
-        else if (s.getItem() instanceof PickaxeItem)
-            type = "pickaxe";
-        else if (s.getItem() instanceof AxeItem)
-            type = "axe";
-        else if (s.getItem() instanceof ShovelItem)
-            type = "shovel";
-        else if (s.getItem() instanceof SwordItem)
-            type = "sword";
-        else if (s.getItem() instanceof HoeItem)
-            type = "hoe";
-
-        if (playerTools.containsKey("all") && playerTools.get("all"))
-            return true;
-        if (playerTools.containsKey(type))
-            return playerTools.get(type);
-
-        if (c.enabledTools.getOrDefault("all", false))
-            return true;
-        return c.enabledTools.getOrDefault(type, type.equals("pickaxe") || type.equals("axe"));
     }
 
     private static String blockId(BlockState state) {

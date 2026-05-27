@@ -62,7 +62,7 @@ public class TCVeinMinerMod implements ModInitializer {
             context.server().execute(() -> {
                 // [ĐÃ SỬA LỖI]: LUÔN LUÔN cập nhật chế độ đào (shape) kể cả khi thả phím.
                 // Tránh việc Client báo đổi chế độ nhưng Server phớt lờ vì đang không nhấn V.
-                MiningEngine.forPlayer(uuid).updatePlayerConfig(safeShapeId, safeMax, safeEquation, payload.blacklist(), payload.enabledTools());
+                MiningEngine.forPlayer(uuid).updatePlayerConfig(safeShapeId, safeMax, safeEquation, payload.blacklist());
 
                 // Sau đó mới cập nhật trạng thái có đang giữ phím hay không
                 if (payload.isHolding()) {

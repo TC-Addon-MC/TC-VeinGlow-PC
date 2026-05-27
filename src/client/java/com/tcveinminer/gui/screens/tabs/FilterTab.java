@@ -26,19 +26,7 @@ public class FilterTab implements MenuTab {
 
     @Override
     public void init(MainMenuScreen screen, int cx, int cy, int cw, int ch) {
-        int btnW = (cw - 21) / 4;
-        String[][] tools = {
-                {"all", "TẤT CẢ"}, {"hand", "Tay"}, {"item", "Vật"}, {"pickaxe", "Cúp"},
-                {"axe", "Rìu"}, {"shovel", "Xẻng"}, {"sword", "Kiếm"}, {"hoe", "Cuốc"}
-        };
-
-        for (int i = 0; i < 8; i++) {
-            final String key = tools[i][0];
-            int col = i % 4, row = i / 4;
-            screen.addUIElement(new CustomButton(cx + col * (btnW + 7), cy + 12 + row * 24, btnW, 20, Text.empty(), btn -> toggleTool(screen, key)));
-        }
-
-        int splitY = cy + 70;
+        int splitY = cy + 10;
         int inputW = (cw / 2) - 60;
 
         if (blockInput == null) {
@@ -83,43 +71,12 @@ public class FilterTab implements MenuTab {
         blError = "";
     }
 
-    private void toggleTool(MainMenuScreen screen, String key) {
-        var tools = screen.getState().enabledTools;
-        if ("all".equals(key)) {
-            boolean now = !tools.getOrDefault("all", false);
-            tools.put("all", now);
-            if (now) for (String k : List.of("hand", "item", "pickaxe", "axe", "shovel", "sword", "hoe")) tools.put(k, false);
-        } else {
-            tools.put(key, !tools.getOrDefault(key, false));
-            if (Boolean.TRUE.equals(tools.get(key))) tools.put("all", false);
-        }
-        screen.rebuildMenu();
-    }
-
     @Override
     public void render(DrawContext ctx, MainMenuScreen screen, int cx, int cy, int cw, int ch, int mouseX, int mouseY, float delta) {
         this.lastCx = cx; this.lastCy = cy; this.lastCw = cw; this.lastCh = ch;
         this.isHoveringBlacklist = false; // Reset trạng thái hover trước khi tính toán lại
 
-        // VẼ KHUNG CÔNG CỤ KÍCH HOẠT
-        ctx.drawTextWithShadow(screen.getTextRenderer(), "CÔNG CỤ KÍCH HOẠT QUÉT", cx, cy, 0xFFA0AEC0);
-        int btnW = (cw - 21) / 4;
-        String[][] toolsInfo = {
-                {"all", "TẤT CẢ"}, {"hand", "Tay không"}, {"item", "Vật phẩm"}, {"pickaxe", "Cúp"},
-                {"axe", "Rìu"}, {"shovel", "Xẻng"}, {"sword", "Kiếm"}, {"hoe", "Cuốc"}
-        };
-        for (int i = 0; i < 8; i++) {
-            boolean on = Boolean.TRUE.equals(screen.getState().enabledTools.get(toolsInfo[i][0]));
-            int col = i % 4, row = i / 4;
-            int bx = cx + col * (btnW + 7), by = cy + 12 + row * 24;
-
-            ctx.fill(bx, by, bx + btnW, by + 20, on ? 0x4D10B981 : DrawHelper.BG_CARD);
-            DrawHelper.drawSolidBorder(ctx, bx, by, btnW, 20, on ? 0xFF10B981 : DrawHelper.BORDER_MODERN);
-            int tc = on ? 0xFFFFFFFF : 0xFFA0AEC0;
-            ctx.drawTextWithShadow(screen.getTextRenderer(), toolsInfo[i][1], bx + (btnW - screen.getTextRenderer().getWidth(toolsInfo[i][1])) / 2, by + 6, tc);
-        }
-
-        int splitY = cy + 70;
+        int splitY = cy + 10;
         int splitH = ch - 70;
         int listY = splitY + 44;
         int maxItems = Math.max(1, (splitY + splitH - 4 - listY) / 20);
@@ -271,8 +228,8 @@ public class FilterTab implements MenuTab {
     @Override
     public boolean mouseClicked(MainMenuScreen screen, double mx, double my, int btn) {
         int px = screen.getPx();
-        int splitY = lastCy + 70;
-        int splitH = lastCh - 70;
+        int splitY = lastCy + 10;
+        int splitH = lastCh - 10;
         int listY = splitY + 44;
         int halfW = (lastCw - 10) / 2;
         int maxItems = Math.max(1, (splitY + splitH - 4 - listY) / 20);
@@ -323,7 +280,7 @@ public class FilterTab implements MenuTab {
     @Override
     public boolean mouseScrolled(MainMenuScreen screen, double mx, double my, double h, double v) {
         int px = screen.getPx();
-        int splitY = lastCy + 70;
+        int splitY = lastCy + 10;
 
         // CUỘN TRONG BẢNG GỢI Ý (Bên lề trái)
         boolean hasQuery = blockInput != null && !blockInput.getText().isEmpty();

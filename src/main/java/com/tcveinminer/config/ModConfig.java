@@ -68,16 +68,8 @@ public class ModConfig {
         List.of("FACE", "EDGES", "CORNERS", "TUNNEL_1x2", "AREA_3x3", "TREE_CAP")
     );
 
-    // Block và tool config
+    // Block config
     public Set<String>          blacklistedBlocks = new HashSet<>();
-    public Map<String, Boolean> enabledTools      = new LinkedHashMap<>(Map.of(
-            "pickaxe", true,
-            "axe",     true,
-            "shovel",  false,
-            "sword",   false,
-            "hand",    false,
-            "hoe",     false
-    ));
 
     // Convenience: lấy strategyId từ miningShape hiện tại
     public String getStrategyId() {

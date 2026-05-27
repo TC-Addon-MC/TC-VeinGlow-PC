@@ -44,7 +44,6 @@ public class TCVeinMinerClient implements ClientModInitializer {
     private static int     lastMaxBlocks  = -1;
 
     private static List<String> lastBlacklist = new ArrayList<>();
-    private static Map<String, Boolean> lastTools = new LinkedHashMap<>();
 
     /** Dùng cho TOGGLE/TOGGLE_SNEAK: trạng thái toggle hiện tại. */
     private static boolean toggleActive   = false;
@@ -84,8 +83,7 @@ public class TCVeinMinerClient implements ClientModInitializer {
             lastMaxBlocks = ClientConfigManager.instance.getEffectiveMaxBlocks();
             lastHoldState = holdKeyDown;
             lastBlacklist = new ArrayList<>(ClientConfigManager.instance.personalBlacklist);
-            lastTools = new LinkedHashMap<>(ClientConfigManager.instance.enabledTools);
-            ClientPlayNetworking.send(new HoldKeyPayload(holdKeyDown, lastShapeId, lastMaxBlocks, currentEquation(lastShapeId), lastBlacklist, lastTools));
+            ClientPlayNetworking.send(new HoldKeyPayload(holdKeyDown, lastShapeId, lastMaxBlocks, currentEquation(lastShapeId), lastBlacklist));
         });
 
         // Reset khi ngắt kết nối
@@ -95,7 +93,6 @@ public class TCVeinMinerClient implements ClientModInitializer {
             lastShapeId    = "";
             lastMaxBlocks  = -1;
             lastBlacklist  = new ArrayList<>();
-            lastTools      = new LinkedHashMap<>();
             toggleActive   = false;
             lastKeyPressed = false;
             lastTargetPos  = null;
@@ -161,10 +158,9 @@ public class TCVeinMinerClient implements ClientModInitializer {
             int currentMaxBlocks  = ClientConfigManager.instance.getEffectiveMaxBlocks();
 
             List<String> currentBlacklist = new ArrayList<>(ClientConfigManager.instance.personalBlacklist);
-            Map<String, Boolean> currentTools = new LinkedHashMap<>(ClientConfigManager.instance.enabledTools);
             boolean stateChanged = (holdKeyDown != lastHoldState)
                     || (!currentShapeId.equals(lastShapeId))
-                    || (currentMaxBlocks != lastMaxBlocks) || (!currentBlacklist.equals(lastBlacklist)) || (!currentTools.equals(lastTools));
+                    || (currentMaxBlocks != lastMaxBlocks) || (!currentBlacklist.equals(lastBlacklist));
 
             if (stateChanged && client.player != null && ClientPlayNetworking.canSend(HoldKeyPayload.ID)) {
                 lastHoldState = holdKeyDown;
@@ -172,9 +168,8 @@ public class TCVeinMinerClient implements ClientModInitializer {
                 lastMaxBlocks = currentMaxBlocks;
 
                 lastBlacklist = new ArrayList<>(currentBlacklist);
-                lastTools = new LinkedHashMap<>(currentTools);
                 ClientPlayNetworking.send(
-                        new HoldKeyPayload(holdKeyDown, currentShapeId, currentMaxBlocks, currentEquation(currentShapeId), currentBlacklist, currentTools)
+                        new HoldKeyPayload(holdKeyDown, currentShapeId, currentMaxBlocks, currentEquation(currentShapeId), currentBlacklist)
                 );
             }
 

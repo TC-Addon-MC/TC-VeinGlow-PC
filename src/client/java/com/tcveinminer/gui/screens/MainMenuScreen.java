@@ -76,7 +76,6 @@ public class MainMenuScreen extends Screen {
             state.activationMode      = ccfg.activationMode;
             state.maxBlocks           = Math.min(ccfg.clientMaxBlocks, ccfg.serverMaxBlocks);
             state.enabledShapes       = new LinkedHashSet<>(ccfg.enabledShapes);
-            state.enabledTools        = new LinkedHashMap<>(ccfg.enabledTools);
             state.blacklist           = new LinkedHashSet<>(ccfg.personalBlacklist.stream()
                     .map(Identifier::of).toList());
             state.requireCorrectTool  = ccfg.requireCorrectTool;
@@ -300,7 +299,6 @@ public class MainMenuScreen extends Screen {
         ccfg.clientMaxBlocks     = state.maxBlocks;
         ccfg.currentShape        = state.selectedShapeId;
         ccfg.enabledShapes       = state.enabledShapes;
-        ccfg.enabledTools        = state.enabledTools;
         ccfg.personalBlacklist   = new ArrayList<>(state.blacklist.stream()
                 .map(Identifier::toString).toList());
         ccfg.requireCorrectTool  = state.requireCorrectTool;
