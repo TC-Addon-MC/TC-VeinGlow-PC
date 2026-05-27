@@ -417,7 +417,6 @@ public final class FilterModeManager {
                 return ctx.world().isChunkLoaded(ctx.currentPos().getX() >> 4, ctx.currentPos().getZ() >> 4);
             };
         }
-
     }
 
     // ==========================================
