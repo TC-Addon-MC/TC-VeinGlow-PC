@@ -62,8 +62,24 @@ public class ClientConfig {
     public boolean colorRainbow = false;
     public boolean colorDisabled = false;
 
-    public float outlineAlpha = 0.8f;
+    public int outlineAlpha = 204;  // 0-255, mặc định ~80%
     public float outlineThickness = 3.0f;
+
+    /**
+     * Danh sách màu outline (hex string "RRGGBB").
+     * Nếu rỗng: dùng colorR/G/B.
+     * Nếu ≥2: nội suy gradient qua từng màu.
+     */
+    public List<String> colorList = new ArrayList<>();
+
+    /** Cho phép các màu chạy động theo viền. */
+    public boolean enableFlowAnimation = true;
+
+    public float segmentLength = 2.0f;
+    public float flowSmoothness = 0.5f;
+
+    /** Thời gian chuyển tiếp giữa các màu (giây). */
+    public float colorTransitionTime = 1.0f;
 
     public boolean showHud = true;         // Đổi từ enableHud → showHud cho khớp MenuState
     public int hudPositionX = 10;

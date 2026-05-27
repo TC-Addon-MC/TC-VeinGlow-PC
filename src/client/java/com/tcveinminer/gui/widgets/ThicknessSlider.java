@@ -8,13 +8,13 @@ public class ThicknessSlider extends SliderWidget {
     private final MenuState state;
 
     public ThicknessSlider(int x, int y, int w, int h, MenuState state, float currentThickness) {
-        super(x, y, w, h, Text.literal(String.format("%.1f", currentThickness)), (currentThickness - 1.0) / 9.0);
+        super(x, y, w, h, Text.literal(String.format("%.1f", currentThickness)), (currentThickness - 1.0) / 19.0);
         this.state = state;
     }
 
     @Override
     protected void updateMessage() {
-        float t = 1.0f + (float) (value * 9.0);
+        float t = 1.0f + (float) (value * 19.0);
         state.outlineThickness = t;
         setMessage(Text.literal(String.format("%.1f", t)));
     }

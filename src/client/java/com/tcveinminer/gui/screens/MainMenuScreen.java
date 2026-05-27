@@ -58,8 +58,8 @@ public class MainMenuScreen extends Screen {
 
     @Override
     protected void init() {
-        this.W = Math.max(320, Math.min(440, (int)(this.width * 0.65)));
-        this.H = Math.max(220, Math.min(320, (int)(this.height * 0.75)));
+        this.W = Math.max(380, Math.min(460, (int)(this.width * 0.7)));
+        this.H = Math.max(240, Math.min(320, (int)(this.height * 0.75)));
         this.px = (this.width - this.W) / 2;
         this.py = (this.height - this.H) / 2;
 
@@ -77,8 +77,22 @@ public class MainMenuScreen extends Screen {
             state.colorR              = ccfg.colorR;
             state.colorG              = ccfg.colorG;
             state.colorB              = ccfg.colorB;
+            state.outlineAlpha        = ccfg.outlineAlpha;
             state.colorRainbow        = ccfg.colorRainbow;
             state.colorDisabled       = ccfg.colorDisabled;
+            state.colorList           = new ArrayList<>();
+            if (ccfg.colorList != null) {
+                for (String hex : ccfg.colorList) {
+                    int[] rgb = com.tcveinminer.util.ColorManager.fromHex(hex);
+                    if (rgb != null) {
+                        state.colorList.add(rgb);
+                    }
+                }
+            }
+            state.enableFlowAnimation = ccfg.enableFlowAnimation;
+            state.segmentLength       = ccfg.segmentLength;
+            state.flowSmoothness      = ccfg.flowSmoothness;
+            state.colorTransitionTime = ccfg.colorTransitionTime;
             state.showHud             = ccfg.showHud;
             state.activationMode      = ccfg.activationMode;
             state.maxBlocks           = Math.min(ccfg.clientMaxBlocks, ccfg.serverMaxBlocks);
@@ -332,8 +346,19 @@ public class MainMenuScreen extends Screen {
         ccfg.colorR              = state.colorR;
         ccfg.colorG              = state.colorG;
         ccfg.colorB              = state.colorB;
+        ccfg.outlineAlpha        = state.outlineAlpha;
         ccfg.colorRainbow        = state.colorRainbow;
         ccfg.colorDisabled       = state.colorDisabled;
+        ccfg.colorList           = new ArrayList<>();
+        if (state.colorList != null) {
+            for (int[] rgb : state.colorList) {
+                ccfg.colorList.add(com.tcveinminer.util.ColorManager.toHex(rgb[0], rgb[1], rgb[2]));
+            }
+        }
+        ccfg.enableFlowAnimation = state.enableFlowAnimation;
+        ccfg.segmentLength       = state.segmentLength;
+        ccfg.flowSmoothness      = state.flowSmoothness;
+        ccfg.colorTransitionTime = state.colorTransitionTime;
         ccfg.showHud             = state.showHud;
         ccfg.activationMode      = state.activationMode;
         ccfg.clientMaxBlocks     = state.maxBlocks;

@@ -19,7 +19,21 @@ public class MenuState {
     public Set<String> enabledShapes = new LinkedHashSet<>();
     public Set<Identifier> blacklist = new LinkedHashSet<>();
     public int colorR, colorG, colorB;
+    public int outlineAlpha = 204; // 0-255, mặc định ~80%
     public boolean colorRainbow, colorDisabled;
+
+    /**
+     * Danh sách màu cho chế độ multi-color outline.
+     * Mỗi phần tử là int[3] = {R, G, B}.
+     * Empty = dùng single color (colorR/G/B).
+     */
+    public List<int[]> colorList = new ArrayList<>();
+
+    /** Nếu true: các màu chạy động theo thời gian dọc theo viền. */
+    public boolean enableFlowAnimation = true;
+    public float segmentLength = 2.0f;
+    public float flowSmoothness = 0.5f;
+    public float colorTransitionTime = 1.0f;
     public String selectedShapeId;
 
     // ---- Từ ClientConfig ----
