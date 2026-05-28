@@ -6,7 +6,7 @@ import net.minecraft.block.BlockState;
 import net.minecraft.registry.tag.BlockTags;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.item.Item;
-import com.tcveinminer.engine.state.MiningStateMachine;
+import com.tcveinminer.engine.state.EngineState;
 
 import java.util.*;
 
@@ -84,7 +84,7 @@ public final class SpreadModeManager extends BaseBfsStrategy {
                 FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
                         req.world(), req.player(), req.tool(), req.origin(), nb,
                         req.targetState(), state, TraversalUtils.getApproachDirection(d[0], d[1], d[2]), cur.depth() + 1, dist,
-                        result.size(), getModeType(), req.cache(), req.blacklist(), req.requireCorrectTool()
+                        result.size(), getModeType(), req.cache(), req.blacklist(), req.requireHarvestCapability()
                 );
 
                 if (req.filter().test(fCtx)) {
@@ -151,7 +151,7 @@ public final class SpreadModeManager extends BaseBfsStrategy {
                     FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
                             req.world(), req.player(), req.tool(), req.origin(), nb,
                             req.targetState(), state, TraversalUtils.getApproachDirection(d[0], d[1], d[2]), cur.depth() + 1, dist,
-                            result.size(), getModeType(), req.cache(), req.blacklist(), req.requireCorrectTool()
+                            result.size(), getModeType(), req.cache(), req.blacklist(), req.requireHarvestCapability()
                     );
 
                     if (req.filter().test(fCtx)) {

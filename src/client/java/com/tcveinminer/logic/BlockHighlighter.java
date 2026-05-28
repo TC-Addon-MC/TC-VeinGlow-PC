@@ -29,7 +29,7 @@ public class BlockHighlighter {
     public static boolean allowContinuous = false;
     public static BlockPos lookedAtBlock = null;
     public static boolean allowHighlight = false;
-    public static Set<BlockPos> highlightBlocks = Collections.emptySet();
+    public static Set<BlockPos> highlightBlocks = new HashSet<>();
     public static String highlightStyle = "FACE";
 
     /**
@@ -74,6 +74,29 @@ public class BlockHighlighter {
 
     public static void register() {
         WorldRenderEvents.BLOCK_OUTLINE.register(BlockHighlighter::onDrawOutline);
+        WorldRenderEvents.LAST.register(BlockHighlighter::onDrawFluidHighlight);
+    }
+
+    private static void onDrawFluidHighlight(WorldRenderContext context) {
+        if (!TCVeinMinerClient.holdKeyDown) return;
+        if (!ClientConfigManager.instance.showOutline) return;
+
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.world == null || client.player == null) return;
+        if (client.player.getMainHandStack().getItem() != net.minecraft.item.Items.BUCKET) return;
+        if (lookedAtBlock == null) return;
+
+        var fluidState = client.world.getFluidState(lookedAtBlock);
+        if (fluidState.isEmpty() || !fluidState.isStill()) return;
+
+        Set<BlockPos> toHighlight = new HashSet<>();
+        if (allowHighlight && !highlightBlocks.isEmpty()) {
+            toHighlight.addAll(highlightBlocks);
+        } else {
+            toHighlight.add(lookedAtBlock);
+        }
+
+        drawOutlines(context, client, toHighlight, !allowHighlight);
     }
 
     private static boolean onDrawOutline(WorldRenderContext context,
@@ -88,7 +111,12 @@ public class BlockHighlighter {
         if (client.world == null || client.player == null)
             return true;
 
-        Set<BlockPos> toHighlight = allowHighlight ? highlightBlocks : Collections.singleton(lookedAtBlock);
+        Set<BlockPos> toHighlight = new HashSet<>();
+        if (allowHighlight) {
+            toHighlight.addAll(highlightBlocks);
+        } else {
+            toHighlight.add(lookedAtBlock);
+        }
         if (toHighlight.isEmpty())
             return true;
 
@@ -102,7 +130,14 @@ public class BlockHighlighter {
             Set<BlockPos> blockSet, boolean isTargetInvalid) {
         Map<Long, EdgeData> edgeCount = new HashMap<>();
         for (BlockPos pos : blockSet) {
-            var shape = client.world.getBlockState(pos).getOutlineShape(client.world, pos);
+            var state = client.world.getBlockState(pos);
+            var shape = state.getOutlineShape(client.world, pos);
+            if (shape.isEmpty()) {
+                var fluidState = client.world.getFluidState(pos);
+                if (!fluidState.isEmpty()) {
+                    shape = fluidState.getShape(client.world, pos);
+                }
+            }
             if (shape.isEmpty())
                 continue;
             Box box = shape.getBoundingBox();
@@ -159,16 +194,17 @@ public class BlockHighlighter {
             float len = (float) Math.sqrt(ox * ox + oy * oy + oz * oz);
             if (len < 1e-6f)
                 continue;
-            
+
             float edgeHalfWidth = getDynamicHalfWidth(cfg.outlineThickness, mx, my, mz, camX, camY, camZ);
             float invLen = edgeHalfWidth / len;
             ox *= invLen;
             oy *= invLen;
             oz *= invLen;
 
-            float edgeLen = (float) Math.sqrt(ex*ex + ey*ey + ez*ez);
+            float edgeLen = (float) Math.sqrt(ex * ex + ey * ey + ez * ez);
             int subDivs = (int) Math.ceil(edgeLen / maxQuadLen);
-            if (subDivs < 1) subDivs = 1;
+            if (subDivs < 1)
+                subDivs = 1;
 
             float stepX = ex / subDivs;
             float stepY = ey / subDivs;
@@ -178,7 +214,7 @@ public class BlockHighlighter {
                 float ax = ed.ax + stepX * i;
                 float ay = ed.ay + stepY * i;
                 float az = ed.az + stepZ * i;
-                
+
                 float bx = ed.ax + stepX * (i + 1);
                 float by = ed.ay + stepY * (i + 1);
                 float bz = ed.az + stepZ * (i + 1);
@@ -216,7 +252,8 @@ public class BlockHighlighter {
                 float y1 = (float) (pos.getY() + box.maxY);
                 float z0 = (float) (pos.getZ() + box.minZ), z1 = (float) (pos.getZ() + box.maxZ);
 
-                float diagHalfWidth = getDynamicHalfWidth(cfg.outlineThickness, (x0 + x1) * 0.5f, y1, (z0 + z1) * 0.5f, camX, camY, camZ);
+                float diagHalfWidth = getDynamicHalfWidth(cfg.outlineThickness, (x0 + x1) * 0.5f, y1, (z0 + z1) * 0.5f,
+                        camX, camY, camZ);
 
                 // Dấu chéo trên mặt trên — vẫn dùng billboard quad logic
                 drawFlatEdgeQuad(mat, solid, xray, x0, y1, z0, x1, y1, z1,
@@ -227,7 +264,8 @@ public class BlockHighlighter {
         matrices.pop();
     }
 
-    private static float getDynamicHalfWidth(float thickness, float mx, float my, float mz, float camX, float camY, float camZ) {
+    private static float getDynamicHalfWidth(float thickness, float mx, float my, float mz, float camX, float camY,
+            float camZ) {
         float dx = camX - mx;
         float dy = camY - my;
         float dz = camZ - mz;
@@ -275,57 +313,60 @@ public class BlockHighlighter {
     // ── Color Utilities ───────────────────────────────────────────────────────
 
     private static float[] getFlowColor(float x, float y, float z, ClientConfig cfg) {
-        if (cfg.colorDisabled) return new float[]{0.5f, 0.5f, 0.5f};
-        
+        if (cfg.colorDisabled)
+            return new float[] { 0.5f, 0.5f, 0.5f };
+
         if (cfg.colorList == null || cfg.colorList.isEmpty()) {
             if (cfg.colorRainbow) {
                 float hue = (System.currentTimeMillis() % 4000) / 4000f;
                 return hsvToRgb(hue, 1f, 1f);
             }
-            return new float[]{cfg.colorR / 255f, cfg.colorG / 255f, cfg.colorB / 255f};
+            return new float[] { cfg.colorR / 255f, cfg.colorG / 255f, cfg.colorB / 255f };
         }
-        
+
         int n = cfg.colorList.size();
         if (n == 1) {
             int[] rgb = com.tcveinminer.util.ColorManager.fromHex(cfg.colorList.get(0));
-            if (rgb != null) return new float[]{rgb[0]/255f, rgb[1]/255f, rgb[2]/255f};
-            return new float[]{1f, 1f, 1f};
+            if (rgb != null)
+                return new float[] { rgb[0] / 255f, rgb[1] / 255f, rgb[2] / 255f };
+            return new float[] { 1f, 1f, 1f };
         }
-        
+
         float d = x + y + z;
         float timeOffset = 0;
         if (cfg.enableFlowAnimation) {
             float speed = 1.0f / Math.max(0.1f, cfg.colorTransitionTime);
             timeOffset = (System.currentTimeMillis() % 100000) / 1000f * speed;
         }
-        
+
         float segmentLen = Math.max(0.1f, cfg.segmentLength);
         float phase = (d / segmentLen) - timeOffset;
-        
+
         phase = (phase % n + n) % n;
-        
+
         int index1 = (int) phase;
         int index2 = (index1 + 1) % n;
-        
+
         float t = phase - index1;
         float smooth = Math.max(0.001f, Math.min(1.0f, cfg.flowSmoothness));
-        
+
         if (smooth < 1.0f) {
             float mul = 1.0f / smooth;
             t = (t - 0.5f) * mul + 0.5f;
             t = Math.max(0f, Math.min(1f, t));
         }
-        
+
         int[] rgb1 = com.tcveinminer.util.ColorManager.fromHex(cfg.colorList.get(index1));
         int[] rgb2 = com.tcveinminer.util.ColorManager.fromHex(cfg.colorList.get(index2));
-        
-        if (rgb1 == null || rgb2 == null) return new float[]{1f, 1f, 1f};
-        
+
+        if (rgb1 == null || rgb2 == null)
+            return new float[] { 1f, 1f, 1f };
+
         float r = (rgb1[0] + (rgb2[0] - rgb1[0]) * t) / 255f;
         float g = (rgb1[1] + (rgb2[1] - rgb1[1]) * t) / 255f;
         float b = (rgb1[2] + (rgb2[2] - rgb1[2]) * t) / 255f;
-        
-        return new float[]{r, g, b};
+
+        return new float[] { r, g, b };
     }
 
     private static float[] hsvToRgb(float h, float s, float v) {

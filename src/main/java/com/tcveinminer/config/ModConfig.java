@@ -44,12 +44,23 @@ public class ModConfig {
     // Cài đặt chung
     public boolean enabled            = true;
     public int     maxBlocks          = 64;
-    public boolean requireCorrectTool = true;
+    public boolean requireHarvestCapability = true;
     public boolean consumeDurability  = true;
+    public boolean consumeHunger      = true;
+    public int     blocksPerHunger    = 10;
+    public int     miningSpeed        = 3;
     public int     cooldownTicks      = 0;
     public boolean showHud            = true;
     public boolean requireSneak       = false;
     public int     tickSliceSize      = 4;
+    public boolean preventMiningNearFluids = false;
+
+    // Skill Toggles
+    public boolean enableBucketSkill      = true;
+    public boolean enableCropHarvestSkill = true;
+    public boolean enableTreeCapitatorSkill = true; // Auto replant
+    public boolean enableInteractSkill    = true; // Strip logs, path grass, etc.
+    public boolean enableBreakSkill       = true; // Core break action
 
     // Chế độ kích hoạt: 1=giữ, 2=giữ+sneak, 3=toggle, 4=toggle+sneak
     public int  activationMode  = 1;

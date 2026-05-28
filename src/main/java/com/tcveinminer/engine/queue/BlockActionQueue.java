@@ -7,26 +7,28 @@ import net.minecraft.util.math.BlockPos;
 import java.util.*;
 
 /**
- * Mining queue with deduplication, tick slicing, and interrupt support.
- *
- * FIXED: chunk loaded check happens BEFORE getBlockState() to prevent
- *        forced chunk loading (TPS killer).
+ * Action queue with deduplication, tick slicing, and interrupt support.
+ * <p>
+ * Renamed from MiningQueue — this queue serves both left-click (mining)
+ * and right-click (interact/harvest/plant) engines.
+ * <p>
+ * FIXED: chunk loaded check happens BEFORE getBlockState() in both
+ *        enqueue() and drainForTick() to prevent forced chunk loading (TPS killer).
  */
-public final class MiningQueue {
+public final class BlockActionQueue {
 
-    public record Entry(BlockPos pos, BlockState expectedState) {}
+    public record ActionEntry(BlockPos pos, BlockState expectedState) {}
 
-    private final Deque<Entry> queue  = new ArrayDeque<>();
+    private final Deque<ActionEntry> queue  = new ArrayDeque<>();
     private final Set<BlockPos> inQueue = new HashSet<>();
     private boolean interrupted = false;
 
     public void enqueue(List<BlockPos> positions, ServerWorld world) {
         for (BlockPos pos : positions) {
             if (!inQueue.contains(pos)) {
-                // Only check chunk loaded here — we already know world is loaded
-                // during scan phase, so this is safe.
+                if (!world.isChunkLoaded(pos.getX() >> 4, pos.getZ() >> 4)) continue;
                 inQueue.add(pos);
-                queue.add(new Entry(pos, world.getBlockState(pos)));
+                queue.add(new ActionEntry(pos, world.getBlockState(pos)));
             }
         }
     }
@@ -36,18 +38,15 @@ public final class MiningQueue {
      * Old code called getBlockState() before isChunkLoaded(), which force-loaded chunks.
      *
      * FIXED: pollLimit is snapshotted before the loop so stale/unloaded entries at
-     * the front of the queue don't cause early exit (old maxPerTick*4 cap was too
-     * tight when the queue had many consecutive unloaded-chunk entries).
+     * the front of the queue don't cause early exit.
      */
-    public List<Entry> drainForTick(ServerWorld world, int maxPerTick) {
-        List<Entry> batch = new ArrayList<>();
-        // Snapshot current size: we poll at most this many entries per call,
-        // which bounds the loop without the artificial maxPerTick*4 cap.
+    public List<ActionEntry> drainForTick(ServerWorld world, int maxPerTick) {
+        List<ActionEntry> batch = new ArrayList<>();
         int pollLimit = queue.size();
         int polled = 0;
 
         while (!queue.isEmpty() && batch.size() < maxPerTick && polled < pollLimit) {
-            Entry e = queue.poll();
+            ActionEntry e = queue.poll();
             inQueue.remove(e.pos());
             polled++;
 

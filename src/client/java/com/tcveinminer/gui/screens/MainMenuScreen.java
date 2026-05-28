@@ -38,13 +38,14 @@ public class MainMenuScreen extends Screen {
             "gui.tcveinminer.tab.general",
             "gui.tcveinminer.tab.shapes",
             "gui.tcveinminer.tab.filter",
-            "gui.tcveinminer.tab.color"
+            "gui.tcveinminer.tab.color",
+            "gui.tcveinminer.tab.skills"
     };
 
     private final Screen parent;
     private final MenuState state = new MenuState();
     private final MenuTab[] tabInstances = new MenuTab[] {
-            new DashTab(), new GeneralTab(), new ShapesTab(), new FilterTab(), new ColorTab()
+            new DashTab(), new GeneralTab(), new ShapesTab(), new FilterTab(), new ColorTab(), new SkillsTab()
     };
     private boolean stateLoaded;
 
@@ -66,6 +67,12 @@ public class MainMenuScreen extends Screen {
         if (!stateLoaded) {
             ModConfig cfg = ConfigManager.get();
             if (state.selectedShapeId == null) state.selectedShapeId = cfg.miningShape.name();
+            state.preventMiningNearFluids = cfg.preventMiningNearFluids;
+            state.enableBucketSkill = cfg.enableBucketSkill;
+            state.enableCropHarvestSkill = cfg.enableCropHarvestSkill;
+            state.enableTreeCapitatorSkill = cfg.enableTreeCapitatorSkill;
+            state.enableInteractSkill = cfg.enableInteractSkill;
+            state.enableBreakSkill = cfg.enableBreakSkill;
 
             // --- Load từ ClientConfig ---
             ClientConfig ccfg = ClientConfigManager.instance;
@@ -338,6 +345,12 @@ public class MainMenuScreen extends Screen {
     private void save() {
         ModConfig cfg = ConfigManager.get();
         try { cfg.miningShape = ModConfig.MiningShape.valueOf(state.selectedShapeId); } catch (Exception ignored) {}
+        cfg.preventMiningNearFluids = state.preventMiningNearFluids;
+        cfg.enableBucketSkill = state.enableBucketSkill;
+        cfg.enableCropHarvestSkill = state.enableCropHarvestSkill;
+        cfg.enableTreeCapitatorSkill = state.enableTreeCapitatorSkill;
+        cfg.enableInteractSkill = state.enableInteractSkill;
+        cfg.enableBreakSkill = state.enableBreakSkill;
         ConfigManager.save();
 
         ClientConfig ccfg = ClientConfigManager.instance;

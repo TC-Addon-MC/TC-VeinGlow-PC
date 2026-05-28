@@ -13,8 +13,14 @@ import java.util.Set;
 public class MenuState {
     public int maxBlocks;
     public int activationMode;
+    public boolean enableBucketSkill;
+    public boolean enableCropHarvestSkill;
+    public boolean enableTreeCapitatorSkill;
+    public boolean enableInteractSkill;
+    public boolean enableBreakSkill;
     public boolean showHud;
     public boolean showOutline;
+    public boolean preventMiningNearFluids;
     public float outlineThickness;
     public Set<String> enabledShapes = new LinkedHashSet<>();
     public Set<Identifier> blacklist = new LinkedHashSet<>();

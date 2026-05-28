@@ -1,7 +1,7 @@
 package com.tcveinminer.engine.strategy;
 
 import com.tcveinminer.engine.traversal.OrientationContext;
-import com.tcveinminer.engine.state.MiningStateMachine;
+import com.tcveinminer.engine.state.EngineState;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
@@ -42,8 +42,8 @@ public interface MiningStrategy {
             FilterModeManager.BlockFilter filter,
             FilterModeManager.FilterCache cache,
             Set<String> blacklist,
-            boolean requireCorrectTool,
-            MiningStateMachine.State currentStateEnum,
+            boolean requireHarvestCapability,
+            EngineState currentStateEnum,
             Item initialItem,
             boolean allowHeldItemChange
     ) {}

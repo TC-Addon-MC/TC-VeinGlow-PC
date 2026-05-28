@@ -29,7 +29,20 @@ public class ConfigManager {
         }
         try (Reader reader = Files.newBufferedReader(CONFIG_PATH)) {
             ModConfig loaded = GSON.fromJson(reader, ModConfig.class);
-            if (loaded != null) instance = loaded;
+            if (loaded != null) {
+                instance = loaded;
+                // [FIX] Cập nhật các giá trị mặc định cho version mới nếu bị Gson set false do thiếu field
+                boolean needsSave = false;
+                if (!instance.enableBreakSkill && !instance.enableInteractSkill) {
+                    instance.enableBreakSkill = true;
+                    instance.enableInteractSkill = true;
+                    instance.enableCropHarvestSkill = true;
+                    instance.enableTreeCapitatorSkill = true;
+                    instance.enableBucketSkill = true;
+                    needsSave = true;
+                }
+                if (needsSave) save();
+            }
         } catch (Exception e) {
             LOGGER.error("Failed to load tc_veinminer config, using defaults", e);
         }

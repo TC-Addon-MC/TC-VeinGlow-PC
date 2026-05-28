@@ -2,6 +2,7 @@ package com.tcveinminer;
 
 import com.tcveinminer.config.ClientConfigManager;
 import com.tcveinminer.config.ConfigManager;
+import com.tcveinminer.config.ModConfig;
 import com.tcveinminer.hud.VeinMinerHudOverlay;
 import com.tcveinminer.logic.BlockHighlighter;
 import com.tcveinminer.network.HoldKeyPayload;
@@ -22,12 +23,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.LinkedHashMap;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.text.Text;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import org.lwjgl.glfw.GLFW;
+import com.tcveinminer.network.HighlightDeltaPayload;
 
 public class TCVeinMinerClient implements ClientModInitializer {
 
@@ -35,21 +39,25 @@ public class TCVeinMinerClient implements ClientModInitializer {
     public static KeyBinding KEY_MENU;
     public static KeyBinding KEY_NEXT_SHAPE;
     public static KeyBinding KEY_PREV_SHAPE;
+    public static KeyBinding KEY_QUICK_CYCLE;
     public static final KeyBinding[] KEY_QUICK_SELECT = new KeyBinding[9];
 
-    /** Trạng thái "đang kích hoạt" gửi lên server (kết quả sau khi xử lý activation mode). */
+    /**
+     * Trạng thái "đang kích hoạt" gửi lên server (kết quả sau khi xử lý activation
+     * mode).
+     */
     public static boolean holdKeyDown = false;
     public static boolean isMining = false;
     public static boolean isRadialMenuOpen = false;
 
-    private static boolean lastHoldState  = false;
-    private static String  lastShapeId    = "";
-    private static int     lastMaxBlocks  = -1;
+    private static boolean lastHoldState = false;
+    private static String lastShapeId = "";
+    private static int lastMaxBlocks = -1;
 
     private static List<String> lastBlacklist = new ArrayList<>();
 
     /** Dùng cho TOGGLE/TOGGLE_SNEAK: trạng thái toggle hiện tại. */
-    private static boolean toggleActive   = false;
+    private static boolean toggleActive = false;
     /** Để phát hiện edge "vừa nhấn" V (tránh lặp nhiều tick). */
     private static boolean lastKeyPressed = false;
     private static final java.util.Set<Integer> pressedKeys = new java.util.HashSet<>();
@@ -67,37 +75,38 @@ public class TCVeinMinerClient implements ClientModInitializer {
                 "key.tc_veinminer.mine",
                 InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_V,
-                "key.categories.tc_veinminer"
-        ));
+                "key.categories.tc_veinminer"));
 
         KEY_MENU = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.tc_veinminer.menu",
                 InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_G,
-                "key.categories.tc_veinminer"
-        ));
+                "key.categories.tc_veinminer"));
 
         KEY_NEXT_SHAPE = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.tc_veinminer.next_shape",
                 InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_RIGHT,
-                "key.categories.tc_veinminer"
-        ));
+                "key.categories.tc_veinminer"));
 
         KEY_PREV_SHAPE = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.tc_veinminer.prev_shape",
                 InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_LEFT,
-                "key.categories.tc_veinminer"
-        ));
+                "key.categories.tc_veinminer"));
+
+        KEY_QUICK_CYCLE = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.tc_veinminer.quick_cycle",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_N,
+                "key.categories.tc_veinminer"));
 
         for (int i = 0; i < 9; i++) {
             KEY_QUICK_SELECT[i] = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                     "key.tc_veinminer.quick_select_" + (i + 1),
                     InputUtil.Type.KEYSYM,
                     GLFW.GLFW_KEY_1 + i,
-                    "key.categories.tc_veinminer"
-            ));
+                    "key.categories.tc_veinminer"));
         }
 
         HudRenderCallback.EVENT.register((ctx, tick) -> {
@@ -106,41 +115,45 @@ public class TCVeinMinerClient implements ClientModInitializer {
 
         // Đồng bộ trạng thái ngay khi join server
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-            lastShapeId   = ClientConfigManager.instance.currentShape;
+            lastShapeId = ClientConfigManager.instance.currentShape;
             lastMaxBlocks = ClientConfigManager.instance.getEffectiveMaxBlocks();
             lastHoldState = holdKeyDown;
             lastBlacklist = new ArrayList<>(ClientConfigManager.instance.personalBlacklist);
-            ClientPlayNetworking.send(new HoldKeyPayload(holdKeyDown, lastShapeId, lastMaxBlocks, currentEquation(lastShapeId), lastBlacklist));
+            ClientPlayNetworking.send(new HoldKeyPayload(holdKeyDown, lastShapeId, lastMaxBlocks,
+                    currentEquation(lastShapeId), lastBlacklist));
         });
 
         // Reset khi ngắt kết nối
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
-            holdKeyDown    = false;
-            lastHoldState  = false;
-            lastShapeId    = "";
-            lastMaxBlocks  = -1;
-            lastBlacklist  = new ArrayList<>();
-            toggleActive   = false;
+            holdKeyDown = false;
+            lastHoldState = false;
+            lastShapeId = "";
+            lastMaxBlocks = -1;
+            lastBlacklist = new ArrayList<>();
+            toggleActive = false;
             lastKeyPressed = false;
-            lastTargetPos  = null;
+            lastTargetPos = null;
             lastHoldStateForActivation = false;
         });
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.player != null && client.currentScreen == null) {
                 while (KEY_NEXT_SHAPE.wasPressed()) {
-                    cycleShape(1);
+                    cycleShape(client, 1);
                 }
                 while (KEY_PREV_SHAPE.wasPressed()) {
-                    cycleShape(-1);
+                    cycleShape(client, -1);
+                }
+                while (KEY_QUICK_CYCLE.wasPressed()) {
+                    cycleShape(client, 1);
                 }
                 for (int i = 0; i < 9; i++) {
                     while (KEY_QUICK_SELECT[i].wasPressed()) {
-                        selectShapeByIndex(i);
+                        selectShapeByIndex(client, i);
                     }
                 }
             }
-            
+
             // Mở menu radial khi bấm phím MENU
             int menuKey = KeyBindingHelper.getBoundKeyOf(KEY_MENU).getCode();
             boolean menuKeyPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), menuKey);
@@ -165,11 +178,13 @@ public class TCVeinMinerClient implements ClientModInitializer {
                     case 2 -> // HOLD_SNEAK: giữ V + sneak
                         holdKeyDown = physicallyHeld && sneaking;
                     case 3 -> { // TOGGLE: nhấn V một lần bật/tắt
-                        if (justPressed) toggleActive = !toggleActive;
+                        if (justPressed)
+                            toggleActive = !toggleActive;
                         holdKeyDown = toggleActive;
                     }
                     case 4 -> { // TOGGLE_SNEAK: sneak + nhấn V bật/tắt
-                        if (justPressed && sneaking) toggleActive = !toggleActive;
+                        if (justPressed && sneaking)
+                            toggleActive = !toggleActive;
                         holdKeyDown = toggleActive;
                     }
                     default -> holdKeyDown = physicallyHeld;
@@ -185,7 +200,7 @@ public class TCVeinMinerClient implements ClientModInitializer {
 
             // Kiểm tra và gửi packet nếu có thay đổi
             String currentShapeId = ClientConfigManager.instance.currentShape;
-            int currentMaxBlocks  = ClientConfigManager.instance.getEffectiveMaxBlocks();
+            int currentMaxBlocks = ClientConfigManager.instance.getEffectiveMaxBlocks();
 
             List<String> currentBlacklist = new ArrayList<>(ClientConfigManager.instance.personalBlacklist);
             boolean stateChanged = (holdKeyDown != lastHoldState)
@@ -194,39 +209,60 @@ public class TCVeinMinerClient implements ClientModInitializer {
 
             if (stateChanged && client.player != null && ClientPlayNetworking.canSend(HoldKeyPayload.ID)) {
                 lastHoldState = holdKeyDown;
-                lastShapeId   = currentShapeId;
+                lastShapeId = currentShapeId;
                 lastMaxBlocks = currentMaxBlocks;
 
                 lastBlacklist = new ArrayList<>(currentBlacklist);
                 ClientPlayNetworking.send(
-                        new HoldKeyPayload(holdKeyDown, currentShapeId, currentMaxBlocks, currentEquation(currentShapeId), currentBlacklist)
-                );
+                        new HoldKeyPayload(holdKeyDown, currentShapeId, currentMaxBlocks,
+                                currentEquation(currentShapeId), currentBlacklist));
             }
 
             // Phase 1: Check target block changes and send ActivationRequestPayload
             if (client.player != null && client.world != null) {
                 BlockPos currentTarget = null;
                 HitResult hit = client.crosshairTarget;
+
+                // Nếu đang cầm xô không, tự động raycast thêm chất lỏng để highlight
+                if (client.player.getMainHandStack().getItem() == net.minecraft.item.Items.BUCKET) {
+                    HitResult fluidHit = client.world.raycast(new net.minecraft.world.RaycastContext(
+                            client.player.getCameraPosVec(1.0F),
+                            client.player.getCameraPosVec(1.0F).add(client.player.getRotationVec(1.0F).multiply(5.0)),
+                            net.minecraft.world.RaycastContext.ShapeType.OUTLINE,
+                            net.minecraft.world.RaycastContext.FluidHandling.SOURCE_ONLY,
+                            client.player));
+                    if (fluidHit != null && fluidHit.getType() == HitResult.Type.BLOCK) {
+                        net.minecraft.block.BlockState fluidState = client.world
+                                .getBlockState(((BlockHitResult) fluidHit).getBlockPos());
+                        if (fluidState.getBlock() instanceof net.minecraft.block.FluidBlock
+                                && fluidState.getFluidState().isStill()) {
+                            hit = fluidHit;
+                        }
+                    }
+                }
+
                 if (hit != null && hit.getType() == HitResult.Type.BLOCK) {
                     currentTarget = ((BlockHitResult) hit).getBlockPos();
                 }
-                
-                boolean targetChanged = (currentTarget == null && lastTargetPos != null) || (currentTarget != null && !currentTarget.equals(lastTargetPos));
+
+                boolean targetChanged = (currentTarget == null && lastTargetPos != null)
+                        || (currentTarget != null && !currentTarget.equals(lastTargetPos));
                 long now = System.currentTimeMillis();
                 boolean forceSend = (holdKeyDown != lastHoldStateForActivation);
                 if (forceSend || (targetChanged && now - lastActivationSendTime > 100)) {
                     lastTargetPos = currentTarget;
                     lastHoldStateForActivation = holdKeyDown;
                     lastActivationSendTime = now;
-                    
+
                     if (ClientPlayNetworking.canSend(ActivationRequestPayload.ID)) {
-                        ClientPlayNetworking.send(new ActivationRequestPayload(holdKeyDown, java.util.Optional.ofNullable(currentTarget)));
+                        ClientPlayNetworking.send(new ActivationRequestPayload(holdKeyDown,
+                                java.util.Optional.ofNullable(currentTarget)));
                     }
                 }
             }
         });
 
-                ClientPlayNetworking.registerGlobalReceiver(ConfigSyncPayload.ID, (payload, context) -> {
+        ClientPlayNetworking.registerGlobalReceiver(ConfigSyncPayload.ID, (payload, context) -> {
             context.client().execute(() -> {
                 var ccfg = ClientConfigManager.instance;
                 ccfg.serverMaxBlocks = payload.maxBlocks();
@@ -238,10 +274,10 @@ public class TCVeinMinerClient implements ClientModInitializer {
             context.client().execute(() -> {
                 int state = payload.state();
                 isMining = (state == 1);
-                
+
                 com.tcveinminer.logic.HudNotifier.lastMined = payload.broken();
                 com.tcveinminer.logic.HudNotifier.lastMax = payload.target();
-                
+
                 if (state == 2 || state == 3) {
                     com.tcveinminer.logic.HudNotifier.notifyAt = System.currentTimeMillis() + 2500;
                     com.tcveinminer.logic.HudNotifier.lastCancelled = (state == 3);
@@ -267,9 +303,18 @@ public class TCVeinMinerClient implements ClientModInitializer {
             });
         });
 
+        ClientPlayNetworking.registerGlobalReceiver(HighlightDeltaPayload.ID, (payload, context) -> {
+            context.client().execute(() -> {
+                BlockHighlighter.highlightBlocks.removeAll(payload.removedBlocks());
+                BlockHighlighter.highlightBlocks.addAll(payload.addedBlocks());
+                BlockHighlighter.highlightStyle = payload.highlightStyle();
+            });
+        });
+
         ClientPlayNetworking.registerGlobalReceiver(HighlightBlockListPayload.ID, (payload, context) -> {
             context.client().execute(() -> {
-                BlockHighlighter.highlightBlocks = new java.util.HashSet<>(payload.blocks());
+                BlockHighlighter.highlightBlocks.clear();
+                BlockHighlighter.highlightBlocks.addAll(payload.blocks());
                 BlockHighlighter.highlightStyle = payload.highlightStyle();
             });
         });
@@ -277,32 +322,59 @@ public class TCVeinMinerClient implements ClientModInitializer {
         BlockHighlighter.register();
     }
 
-
-
-    private static void cycleShape(int direction) {
+    private static void cycleShape(MinecraftClient client, int direction) {
         var enabledShapes = new ArrayList<>(ClientConfigManager.instance.enabledShapes);
-        if (enabledShapes.isEmpty()) return;
-        
+        if (enabledShapes.isEmpty())
+            return;
+
         int currentIndex = enabledShapes.indexOf(ClientConfigManager.instance.currentShape);
-        if (currentIndex == -1) currentIndex = 0;
-        
+        if (currentIndex == -1)
+            currentIndex = 0;
+
         int newIndex = (currentIndex + direction) % enabledShapes.size();
-        if (newIndex < 0) newIndex += enabledShapes.size();
-        
-        ClientConfigManager.instance.currentShape = enabledShapes.get(newIndex);
+        if (newIndex < 0)
+            newIndex += enabledShapes.size();
+
+        String newShape = enabledShapes.get(newIndex);
+        ClientConfigManager.instance.currentShape = newShape;
         ClientConfigManager.save();
+
+        if (client.player != null) {
+            client.player.sendMessage(
+                    Text.translatable("hud.tcveinminer.cycle_notification", getShapeDisplayName(newShape)), true);
+        }
     }
 
-    private static void selectShapeByIndex(int index) {
+    private static void selectShapeByIndex(MinecraftClient client, int index) {
         var enabledShapes = new ArrayList<>(ClientConfigManager.instance.enabledShapes);
         if (index >= 0 && index < enabledShapes.size()) {
-            ClientConfigManager.instance.currentShape = enabledShapes.get(index);
+            String newShape = enabledShapes.get(index);
+            ClientConfigManager.instance.currentShape = newShape;
             ClientConfigManager.save();
+
+            if (client.player != null) {
+                client.player.sendMessage(
+                        Text.translatable("hud.tcveinminer.cycle_notification", getShapeDisplayName(newShape)), true);
+            }
+        }
+    }
+
+    private static Text getShapeDisplayName(String shapeId) {
+        try {
+            ModConfig.MiningShape shape = ModConfig.MiningShape.valueOf(shapeId);
+            return Text.translatable("tc_veinminer.mode." + shape.name());
+        } catch (IllegalArgumentException | NullPointerException ignored) {
+            return ClientConfigManager.instance.customShapes.stream()
+                    .filter(entry -> shapeId.equals(entry.strategyId))
+                    .map(entry -> Text.literal(entry.name))
+                    .findFirst()
+                    .orElse(Text.literal(shapeId));
         }
     }
 
     private static String currentEquation(String shapeId) {
-        if (shapeId == null || !shapeId.startsWith("custom:")) return "";
+        if (shapeId == null || !shapeId.startsWith("custom:"))
+            return "";
         return ClientConfigManager.instance.customShapes.stream()
                 .filter(entry -> shapeId.equals(entry.strategyId))
                 .map(entry -> entry.equation)

@@ -200,12 +200,8 @@ public class ColorTab implements MenuTab {
                 screen.addUIElement(hexInput);
 
                 // Add button to add to colorList
-                screen.addUIElement(new AmberButton(panelX + 92, panelY + 20, 32, 16,
+                screen.addUIElement(new AmberButton(panelX + 92, panelY + 20, 80, 16,
                                 Text.literal("Add"), btn -> addHex(screen)));
-
-                // Apply button to set single color
-                screen.addUIElement(new AmberButton(panelX + 128, panelY + 20, 44, 16,
-                                Text.literal("Apply"), btn -> applyHex(screen)));
 
                 // Clear button to clear colorList
                 screen.addUIElement(new AmberButton(panelX + 172, panelY + 90, 48, 12,
@@ -292,15 +288,6 @@ public class ColorTab implements MenuTab {
                 }
         }
 
-        private void applyHex(MainMenuScreen screen) {
-                int[] rgb = ColorManager.fromHex(hexInput == null ? "" : hexInput.getText());
-                if (rgb == null) {
-                        colorError = "Invalid hex";
-                        return;
-                }
-                setColor(screen, rgb[0], rgb[1], rgb[2]);
-                colorError = "";
-        }
 
         private void addHex(MainMenuScreen screen) {
                 int[] rgb = ColorManager.fromHex(hexInput == null ? "" : hexInput.getText());

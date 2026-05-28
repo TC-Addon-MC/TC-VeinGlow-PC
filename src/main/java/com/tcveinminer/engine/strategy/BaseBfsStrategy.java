@@ -7,7 +7,7 @@ import net.minecraft.registry.tag.BlockTags;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.item.Item;
-import com.tcveinminer.engine.state.MiningStateMachine;
+import com.tcveinminer.engine.state.EngineState;
 
 import java.util.*;
 
@@ -83,7 +83,7 @@ public abstract class BaseBfsStrategy implements MiningStrategy {
                 FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
                         req.world(), req.player(), req.tool(), req.origin(), nb,
                         req.targetState(), nbState, approach, cur.depth() + 1, distance,
-                        result.size(), getModeType(), req.cache(), req.blacklist(), req.requireCorrectTool()
+                        result.size(), getModeType(), req.cache(), req.blacklist(), req.requireHarvestCapability()
                 );
 
                 boolean passedFilter = false;

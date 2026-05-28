@@ -1,6 +1,7 @@
 package com.tcveinminer;
 
 import com.tcveinminer.config.ConfigManager;
+import com.tcveinminer.engine.session.ActionSessionManager;
 import com.tcveinminer.engine.MiningEngine;
 import com.tcveinminer.engine.strategy.StrategyRegistry;
 import com.tcveinminer.network.HoldKeyPayload;
@@ -11,10 +12,13 @@ import com.tcveinminer.network.ActivationConfirmPayload;
 import com.tcveinminer.network.LookedAtBlockPayload;
 import com.tcveinminer.network.FilterResultPayload;
 import com.tcveinminer.network.HighlightBlockListPayload;
+import com.tcveinminer.network.HighlightDeltaPayload;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
+import net.fabricmc.fabric.api.event.player.UseBlockCallback;
+import net.minecraft.util.ActionResult;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -30,6 +34,7 @@ public class TCVeinMinerMod implements ModInitializer {
 
     public static final Set<UUID> playersHoldingV =
             Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private static final java.util.Map<UUID, Long> activationRateLimitMap = new ConcurrentHashMap<>();
 
     @Override
     public void onInitialize() {
@@ -44,6 +49,7 @@ public class TCVeinMinerMod implements ModInitializer {
         PayloadTypeRegistry.playS2C().register(LookedAtBlockPayload.ID, LookedAtBlockPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(FilterResultPayload.ID, FilterResultPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(HighlightBlockListPayload.ID, HighlightBlockListPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(HighlightDeltaPayload.ID, HighlightDeltaPayload.CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(HoldKeyPayload.ID, (payload, context) -> {
             UUID uuid = context.player().getUuid();
@@ -74,8 +80,13 @@ public class TCVeinMinerMod implements ModInitializer {
         });
 
         ServerPlayNetworking.registerGlobalReceiver(ActivationRequestPayload.ID, (payload, context) -> {
+            UUID uuid = context.player().getUuid();
+            long now = System.currentTimeMillis();
+            if (now - activationRateLimitMap.getOrDefault(uuid, 0L) < 50) return; // Rate limit: max 20 requests per sec
+            activationRateLimitMap.put(uuid, now);
+
             context.server().execute(() -> {
-                MiningEngine.forPlayer(context.player().getUuid())
+                MiningEngine.forPlayer(uuid)
                         .handleActivationRequest((net.minecraft.server.network.ServerPlayerEntity) context.player(), payload.active(), payload.targetPos().orElse(null));
             });
         });
@@ -87,7 +98,29 @@ public class TCVeinMinerMod implements ModInitializer {
             }
         });
 
+        net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.register((player, world, hand) -> {
+            return com.tcveinminer.engine.skill.BucketSkill.onUseItem(player, world, hand);
+        });
+
+        UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
+            if (world.isClient) return ActionResult.PASS;
+            if (com.tcveinminer.engine.right.RightClickEngine.isProcessingInternal()) {
+                return ActionResult.PASS;
+            }
+            if (player instanceof net.minecraft.server.network.ServerPlayerEntity spe) {
+                if (playersHoldingV.contains(spe.getUuid())) {
+                    MiningEngine engine = MiningEngine.forPlayer(spe.getUuid());
+                    if (!engine.isWorking() && !engine.right().isProcessing()) {
+                        boolean started = engine.onInteractTrigger(spe, (ServerWorld) world, hand, hitResult);
+                        if (started) return ActionResult.SUCCESS;
+                    }
+                }
+            }
+            return ActionResult.PASS;
+        });
+
         ServerTickEvents.END_SERVER_TICK.register(server -> {
+            ActionSessionManager.checkTimeouts(System.currentTimeMillis(), 5000);
             for (ServerWorld world : server.getWorlds()) {
                 for (var player : world.getPlayers()) {
                     if (MiningEngine.hasEngine(player.getUuid())) {
@@ -108,6 +141,7 @@ public class TCVeinMinerMod implements ModInitializer {
             server.execute(() -> {
                 playersHoldingV.remove(uuid);
                 MiningEngine.removePlayer(uuid);
+                ActionSessionManager.remove(uuid);
             });
         });
     }

@@ -4,6 +4,7 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.FallingBlock;
 import net.minecraft.block.FluidBlock;
+import com.tcveinminer.config.ConfigManager;
 
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
@@ -71,7 +72,7 @@ public final class FilterModeManager {
             MiningMode mode, // Chế độ đang chạy
             FilterCache cache, // Bộ nhớ đệm dùng chung cho một phiên đào
             Set<String> blacklist, // Danh sách đen cá nhân
-            boolean requireCorrectTool // Yêu cầu dụng cụ đúng
+            boolean requireHarvestCapability // Yêu cầu dụng cụ đúng
     ) {
     }
 
@@ -168,6 +169,7 @@ public final class FilterModeManager {
     public static final class FilterCache {
         private final Map<Block, Float> hardnessCache = new HashMap<>();
         private final Map<BlockPos, Boolean> blockEntityCache = new HashMap<>();
+        public final boolean preventMiningNearFluids = ConfigManager.get().preventMiningNearFluids;
 
         public float getHardness(BlockState state) {
             return hardnessCache.computeIfAbsent(state.getBlock(), b -> state.getBlock().getHardness());
@@ -249,7 +251,20 @@ public final class FilterModeManager {
 
         // --- 3.1 BASIC FILTERS ---
         public static BlockFilter sameBlock() {
-            return ctx -> ctx.currentState().getBlock() == ctx.targetState().getBlock();
+            return ctx -> {
+                if (ctx.currentState().getBlock() != ctx.targetState().getBlock()) return false;
+                Block b = ctx.currentState().getBlock();
+                if (b instanceof net.minecraft.block.CropBlock crop) {
+                    return crop.isMature(ctx.currentState()) && crop.isMature(ctx.targetState());
+                } else if (b instanceof net.minecraft.block.NetherWartBlock) {
+                    return ctx.currentState().get(net.minecraft.state.property.Properties.AGE_3) == 3 && 
+                           ctx.targetState().get(net.minecraft.state.property.Properties.AGE_3) == 3;
+                } else if (b instanceof net.minecraft.block.CocoaBlock) {
+                    return ctx.currentState().get(net.minecraft.state.property.Properties.AGE_2) == 2 && 
+                           ctx.targetState().get(net.minecraft.state.property.Properties.AGE_2) == 2;
+                }
+                return true;
+            };
         }
 
         public static BlockFilter sameState() {
@@ -301,9 +316,13 @@ public final class FilterModeManager {
 
         public static BlockFilter avoidAdjacentLiquids() {
             return ctx -> {
+                if (!ctx.cache().preventMiningNearFluids) {
+                    return true;
+                }
                 for (Direction dir : Direction.values()) {
                     BlockPos adjPos = ctx.currentPos().offset(dir);
-                    if (!ctx.world().isChunkLoaded(adjPos.getX() >> 4, adjPos.getZ() >> 4)) {
+                    if (dir.getAxis() != Direction.Axis.Y
+                            && !ctx.world().isChunkLoaded(adjPos.getX() >> 4, adjPos.getZ() >> 4)) {
                         return false;
                     }
                     BlockState adjState = ctx.world().getBlockState(adjPos);
@@ -387,22 +406,41 @@ public final class FilterModeManager {
             };
         }
 
-        public static BlockFilter requireCorrectToolType() {
+        private static final float HAND_MINING_SPEED = 1.0F;
+
+        public static BlockFilter canHarvestBlock() {
             return ctx -> {
-                if (!ctx.requireCorrectTool())
-                    return true;
-
                 BlockState state = ctx.currentState();
+                PlayerEntity player = ctx.player();
+                ItemStack tool = ctx.tool();
 
-                // Check if player can harvest with this tool
-                return ctx.player().canHarvest(state);
+                // Nếu không cần validate tool
+                if (!ctx.requireHarvestCapability()) {
+                    return true;
+                }
+
+                // Tay không
+                if (tool.isEmpty()) {
+                    return !state.isToolRequired();
+                }
+
+                float speed = tool.getMiningSpeedMultiplier(state);
+
+                // Block yêu cầu tool thật sự
+                if (state.isToolRequired()) {
+                    return player.canHarvest(state)
+                        && (speed > HAND_MINING_SPEED || tool.isSuitableFor(state));
+                }
+
+                // Block không yêu cầu tool
+                return speed > HAND_MINING_SPEED
+                    || tool.isSuitableFor(state)
+                    || player.canHarvest(state);
             };
         }
 
         public static BlockFilter allowEnchantments() {
             return ctx -> {
-                // Mở rộng logic để hỗ trợ enchantment (Efficiency, Unbreaking, etc.)
-                // Logic thực sự sẽ được xử lý ở MiningEngine khi break block
                 ItemStack tool = ctx.tool();
                 if (tool.isEmpty())
                     return false;
@@ -413,7 +451,6 @@ public final class FilterModeManager {
 
         public static BlockFilter chunkLoadedForBreak() {
             return ctx -> {
-                // Chỉ break block ở chunk đã load
                 return ctx.world().isChunkLoaded(ctx.currentPos().getX() >> 4, ctx.currentPos().getZ() >> 4);
             };
         }
@@ -445,7 +482,7 @@ public final class FilterModeManager {
                     Filters.maxVisited(maxBlocks),
                     Filters.sameBlock(), // Hoặc sameOreFamily nếu mở rộng
                     Filters.avoidAdjacentLiquids(), // Tránh lava chảy vào
-                    Filters.harvestableByTool(),
+                    Filters.canHarvestBlock(),
                     Filters.durabilitySafe(5));
         }
 
@@ -454,7 +491,20 @@ public final class FilterModeManager {
                     BASE_SAFETY,
                     Filters.sameBlock(),
                     Filters.maxVisited(maxBlocks),
-                    Filters.harvestableByTool());
+                    Filters.canHarvestBlock());
+        }
+
+        /**
+         * Chế độ múc chất lỏng (Xô không)
+         */
+        public static BlockFilter FLUID_SCOOP(int maxBlocks) {
+            return Composite.and(
+                    Filters.chunkLoadedOnly(),
+                    Filters.maxVisited(maxBlocks),
+                    Filters.sameBlock(),
+                    ctx -> ctx.currentState().getFluidState().isStill(),
+                    ctx -> Filters.blacklist(ctx.blacklist()).test(ctx)
+            );
         }
 
         /**
@@ -467,7 +517,7 @@ public final class FilterModeManager {
                     Filters.maxDistance(32),
                     Composite.or(Filters.LOGS_ONLY, Filters.LEAVES_ONLY),
                     Filters.naturalTreeOnly(),
-                    Filters.harvestableByTool());
+                    Filters.canHarvestBlock());
         }
 
     }

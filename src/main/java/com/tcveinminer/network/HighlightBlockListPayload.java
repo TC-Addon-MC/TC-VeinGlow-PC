@@ -9,13 +9,14 @@ import net.minecraft.util.math.BlockPos;
 
 import java.util.List;
 
-public record HighlightBlockListPayload(List<BlockPos> blocks, String highlightStyle) implements CustomPayload {
+public record HighlightBlockListPayload(List<BlockPos> blocks, String highlightStyle, String source) implements CustomPayload {
     public static final Id<HighlightBlockListPayload> ID =
         new Id<>(Identifier.of("tc_veinminer", "highlight_block_list"));
 
     public static final PacketCodec<RegistryByteBuf, HighlightBlockListPayload> CODEC = PacketCodec.tuple(
             BlockPos.PACKET_CODEC.collect(PacketCodecs.toList()), HighlightBlockListPayload::blocks,
             PacketCodecs.STRING, HighlightBlockListPayload::highlightStyle,
+            PacketCodecs.STRING, HighlightBlockListPayload::source,
             HighlightBlockListPayload::new
     );
 

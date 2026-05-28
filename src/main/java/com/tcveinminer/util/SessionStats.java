@@ -13,6 +13,7 @@ public final class SessionStats {
     private static long durabilityUsed = 0;
     private static long modEnabledAt = -1;
     private static String rarestBlock = "—";
+    private static int rarestCount = Integer.MAX_VALUE;
     private static final Map<String, Integer> blockCounts = new HashMap<>();
 
     public static void onVeinMineStart() {
@@ -21,12 +22,16 @@ public final class SessionStats {
 
     public static void onBlockBroken(String blockId) {
         totalBlocks++;
-        blockCounts.merge(blockId, 1, Integer::sum);
-        // Track "rarest" = least broken block
-        blockCounts.entrySet().stream()
-            .min(Map.Entry.comparingByValue())
-            .map(Map.Entry::getKey)
-            .ifPresent(b -> rarestBlock = b);
+        int newCount = blockCounts.merge(blockId, 1, Integer::sum);
+
+        if (newCount == 1) {
+            rarestBlock = blockId;
+            rarestCount = 1;
+        } else if (blockId.equals(rarestBlock)) {
+            blockCounts.entrySet().stream()
+                .min(Map.Entry.comparingByValue())
+                .ifPresent(e -> { rarestBlock = e.getKey(); rarestCount = e.getValue(); });
+        }
     }
 
     public static void onDurabilityUsed(int amount) {
@@ -47,6 +52,7 @@ public final class SessionStats {
         durabilityUsed = 0;
         modEnabledAt = -1;
         rarestBlock = "—";
+        rarestCount = Integer.MAX_VALUE;
         blockCounts.clear();
     }
 
