@@ -1,5 +1,6 @@
 package com.tcveinminer.engine.traversal;
 
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
@@ -21,7 +22,7 @@ public final class Traversal {
 
     // 6-face adjacency
     public static final int[][] D6 = {
-        {1,0,0},{-1,0,0},{0,1,0},{0,-1,0},{0,0,1},{0,0,-1}
+            { 1, 0, 0 }, { -1, 0, 0 }, { 0, 1, 0 }, { 0, -1, 0 }, { 0, 0, 1 }, { 0, 0, -1 }
     };
 
     // 18-adjacency: face + edge (no 3D corner)
@@ -29,13 +30,17 @@ public final class Traversal {
     static {
         List<int[]> d = new ArrayList<>();
         Set<Long> seen = new HashSet<>();
-        for (int[] f : D6) { d.add(f); seen.add(dirKey(f)); }
+        for (int[] f : D6) {
+            d.add(f);
+            seen.add(dirKey(f));
+        }
         for (int dx = -1; dx <= 1; dx++)
             for (int dy = -1; dy <= 1; dy++)
                 for (int dz = -1; dz <= 1; dz++) {
                     if (Math.abs(dx) + Math.abs(dy) + Math.abs(dz) == 2) {
-                        int[] v = {dx, dy, dz};
-                        if (seen.add(dirKey(v))) d.add(v);
+                        int[] v = { dx, dy, dz };
+                        if (seen.add(dirKey(v)))
+                            d.add(v);
                     }
                 }
         D18 = d.toArray(new int[0][]);
@@ -49,12 +54,12 @@ public final class Traversal {
             for (int dy = -1; dy <= 1; dy++)
                 for (int dz = -1; dz <= 1; dz++)
                     if (dx != 0 || dy != 0 || dz != 0)
-                        d.add(new int[]{dx, dy, dz});
+                        d.add(new int[] { dx, dy, dz });
         D26 = d.toArray(new int[0][]);
     }
 
     private static long dirKey(int[] v) {
-        return ((long)(v[0]+2)*25L + (v[1]+2)*5L + (v[2]+2));
+        return ((long) (v[0] + 2) * 25L + (v[1] + 2) * 5L + (v[2] + 2));
     }
 
     /**
@@ -62,12 +67,12 @@ public final class Traversal {
      * origin is NOT included in results.
      */
     public static List<BlockPos> bfs(World world, BlockPos origin, int maxBlocks,
-                                     int[][] adjacency, BiPredicate<BlockPos, BlockState> matcher) {
+            int[][] adjacency, BiPredicate<BlockPos, BlockState> matcher) {
         List<BlockPos> result = new ArrayList<>(Math.min(maxBlocks, 256));
-        Set<BlockPos> visited = new HashSet<>();
+        LongOpenHashSet visited = new LongOpenHashSet(Math.min(maxBlocks * 4, MAX_VISITED));
         Deque<BlockPos> queue = new ArrayDeque<>();
 
-        visited.add(origin);
+        visited.add(origin.asLong());
         queue.add(origin);
         int iterations = 0;
 
@@ -75,9 +80,11 @@ public final class Traversal {
             BlockPos cur = queue.poll();
             iterations++;
             for (int[] d : adjacency) {
-                if (result.size() >= maxBlocks) break;
+                if (result.size() >= maxBlocks)
+                    break;
                 BlockPos nb = cur.add(d[0], d[1], d[2]);
-                if (!visited.add(nb)) continue;
+                if (!visited.add(nb.asLong()))
+                    continue;
                 BlockState nbState = world.getBlockState(nb);
                 if (matcher.test(nb, nbState)) {
                     result.add(nb);
@@ -93,12 +100,12 @@ public final class Traversal {
      * origin is NOT included in results.
      */
     public static List<BlockPos> dfs(World world, BlockPos origin, int maxBlocks,
-                                     int[][] adjacency, BiPredicate<BlockPos, BlockState> matcher) {
+            int[][] adjacency, BiPredicate<BlockPos, BlockState> matcher) {
         List<BlockPos> result = new ArrayList<>(Math.min(maxBlocks, 256));
-        Set<BlockPos> visited = new HashSet<>();
+        LongOpenHashSet visited = new LongOpenHashSet(Math.min(maxBlocks * 4, MAX_VISITED));
         Deque<BlockPos> stack = new ArrayDeque<>();
 
-        visited.add(origin);
+        visited.add(origin.asLong());
         stack.push(origin);
         int iterations = 0;
 
@@ -106,9 +113,11 @@ public final class Traversal {
             BlockPos cur = stack.pop();
             iterations++;
             for (int[] d : adjacency) {
-                if (result.size() >= maxBlocks) break;
+                if (result.size() >= maxBlocks)
+                    break;
                 BlockPos nb = cur.add(d[0], d[1], d[2]);
-                if (!visited.add(nb)) continue;
+                if (!visited.add(nb.asLong()))
+                    continue;
                 BlockState nbState = world.getBlockState(nb);
                 if (matcher.test(nb, nbState)) {
                     result.add(nb);
@@ -125,14 +134,16 @@ public final class Traversal {
      * Used by AreaStrategy and shape-mining modes.
      */
     public static List<BlockPos> collectBox(World world, BlockPos origin,
-                                            int[][] worldOffsets, int maxBlocks,
-                                            BiPredicate<BlockPos, BlockState> matcher) {
+            int[][] worldOffsets, int maxBlocks,
+            BiPredicate<BlockPos, BlockState> matcher) {
         List<BlockPos> result = new ArrayList<>();
         for (int[] off : worldOffsets) {
-            if (result.size() >= maxBlocks) break;
+            if (result.size() >= maxBlocks)
+                break;
             BlockPos nb = origin.add(off[0], off[1], off[2]);
             BlockState state = world.getBlockState(nb);
-            if (matcher.test(nb, state)) result.add(nb);
+            if (matcher.test(nb, state))
+                result.add(nb);
         }
         return result;
     }
@@ -161,9 +172,10 @@ public final class Traversal {
         int idx = 0;
         for (int s = -halfSide; s <= halfSide; s++) {
             for (int u = -halfSide; u <= halfSide; u++) {
-                if (s == 0 && u == 0) continue;
+                if (s == 0 && u == 0)
+                    continue;
                 BlockPos off = ctx.planeOffset(BlockPos.ORIGIN, s, u);
-                offsets[idx++] = new int[]{off.getX(), off.getY(), off.getZ()};
+                offsets[idx++] = new int[] { off.getX(), off.getY(), off.getZ() };
             }
         }
         return offsets;
@@ -174,18 +186,19 @@ public final class Traversal {
      * Center-aligned in the plane, extending along forward axis.
      */
     public static int[][] buildTunnelOffsets(OrientationContext ctx,
-                                             int halfW, int halfH, int depth) {
+            int halfW, int halfH, int depth) {
         List<int[]> offsets = new ArrayList<>();
         for (int f = 1; f <= depth; f++) {
             for (int s = -halfW; s <= halfW; s++) {
                 for (int u = -halfH; u <= halfH; u++) {
                     BlockPos off = ctx.offset(BlockPos.ORIGIN, f, s, u);
-                    offsets.add(new int[]{off.getX(), off.getY(), off.getZ()});
+                    offsets.add(new int[] { off.getX(), off.getY(), off.getZ() });
                 }
             }
         }
         return offsets.toArray(new int[0][]);
     }
 
-    private Traversal() {}
+    private Traversal() {
+    }
 }

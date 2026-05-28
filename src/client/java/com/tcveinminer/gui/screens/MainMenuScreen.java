@@ -73,6 +73,9 @@ public class MainMenuScreen extends Screen {
             state.enableTreeCapitatorSkill = cfg.enableTreeCapitatorSkill;
             state.enableInteractSkill = cfg.enableInteractSkill;
             state.enableBreakSkill = cfg.enableBreakSkill;
+            state.enableToolSwapSkill = cfg.enableToolSwapSkill;
+            state.enableToolProtectSkill = cfg.enableToolProtectSkill;
+            state.toolProtectThreshold = cfg.toolProtectThreshold;
 
             // --- Load từ ClientConfig ---
             ClientConfig ccfg = ClientConfigManager.instance;
@@ -351,6 +354,9 @@ public class MainMenuScreen extends Screen {
         cfg.enableTreeCapitatorSkill = state.enableTreeCapitatorSkill;
         cfg.enableInteractSkill = state.enableInteractSkill;
         cfg.enableBreakSkill = state.enableBreakSkill;
+        cfg.enableToolSwapSkill = state.enableToolSwapSkill;
+        cfg.enableToolProtectSkill = state.enableToolProtectSkill;
+        cfg.toolProtectThreshold = state.toolProtectThreshold;
         ConfigManager.save();
 
         ClientConfig ccfg = ClientConfigManager.instance;

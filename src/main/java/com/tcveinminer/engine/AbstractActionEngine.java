@@ -135,14 +135,27 @@ public abstract class AbstractActionEngine {
 
         // Item lock constraint
         ModConfig c = ConfigManager.get();
+        // Nếu enableToolSwapSkill bật, bỏ qua khi tay trống (tool vừa vỡ)
+        // để handleToolState xử lý việc tìm & đổi tool thay thế.
+        // Nếu không bỏ qua, stop() sẽ được gọi trước khi handleToolState kịp chạy.
         if (!c.allowHeldItemChange && session.getInitialItem() != null
             && player.getMainHandStack().getItem() != session.getInitialItem()) {
-            stop(player);
-            return;
+            boolean toolJustBroke = player.getMainHandStack().isEmpty();
+            boolean swapWillHandle = c.enableToolSwapSkill && c.requireHarvestCapability;
+            if (!(toolJustBroke && swapWillHandle)) {
+                stop(player);
+                return;
+            }
         }
 
         // Key hold check
         if (!TCVeinMinerMod.playersHoldingV.contains(player.getUuid())) {
+            stop(player);
+            return;
+        }
+
+        // Hunger constraint
+        if (c.consumeHunger && !player.isCreative() && player.getHungerManager().getFoodLevel() <= 0) {
             stop(player);
             return;
         }
@@ -220,11 +233,14 @@ public abstract class AbstractActionEngine {
                 SessionStats.onBlockBroken(blockId);
                 session.incrementProcessed();
 
-                // Tool durability check
-                if (c.requireHarvestCapability && session.getInitialItem() != Items.AIR
-                    && player.getMainHandStack().isEmpty()) {
-                    stop(player);
-                    return;
+                // Tool Management Skill
+                if (c.requireHarvestCapability && session.getInitialItem() != Items.AIR) {
+                    com.tcveinminer.engine.skill.ToolManagerSkill.ToolAction toolAction =
+                        com.tcveinminer.engine.skill.ToolManagerSkill.handleToolState(spe, c, session.getInitialItem(), session);
+                    if (toolAction == com.tcveinminer.engine.skill.ToolManagerSkill.ToolAction.STOP) {
+                        stop(player);
+                        return;
+                    }
                 }
 
                 if (c.consumeDurability) {
@@ -256,6 +272,8 @@ public abstract class AbstractActionEngine {
      * Stop/cancel the current session.
      */
     protected void stop(PlayerEntity player) {
+        List<BlockPos> removed = session != null ? new ArrayList<>(session.getRenderSnapshot()) : Collections.emptyList();
+
         if (session != null) {
             session.clear();
         }
@@ -264,7 +282,6 @@ public abstract class AbstractActionEngine {
             ServerPlayNetworking.send(spe, new MiningStatePayload(3,
                     session != null ? session.getProcessedCount() : 0,
                     session != null ? session.getTargetCount() : 0));
-            List<BlockPos> removed = session != null ? new ArrayList<>(session.getRenderSnapshot()) : Collections.emptyList();
             ServerPlayNetworking.send(spe, new HighlightDeltaPayload(
                     Collections.emptyList(), removed, "FACE", getSourceId()));
         }

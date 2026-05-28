@@ -12,6 +12,7 @@
     "client": ["com.tcveinminer.TCVeinMinerClient"],
     "modmenu": ["com.tcveinminer.ModMenuIntegration"]
   },
+  "accessWidener": "tc_veinminer.accesswidener",
   "mixins": [],
   "depends": {
     "fabricloader": ">=0.15.0",

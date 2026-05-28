@@ -12,7 +12,11 @@ public class SkillsTab implements MenuTab {
     // mouseClicked/render
     @Override
     public void init(MainMenuScreen screen, int cx, int cy, int cw, int ch) {
-        // intentionally empty — no widgets; input handled via mouseClicked override
+        int sliderWidth = 100;
+        int sliderX = cx + cw - sliderWidth - 8;
+        int sliderY = cy + ch - DESC_H - 24; // Above description panel
+        com.tcveinminer.gui.widgets.ProtectThresholdSlider slider = new com.tcveinminer.gui.widgets.ProtectThresholdSlider(sliderX, sliderY, sliderWidth, 16, screen.getState());
+        screen.addUIElement(slider);
     }
 
     // ── Dữ liệu từng skill ──────────────────────────────────────────────────
@@ -64,6 +68,22 @@ public class SkillsTab implements MenuTab {
                         () -> screen.getState().preventMiningNearFluids,
                         s -> {
                             s.getState().preventMiningNearFluids = !s.getState().preventMiningNearFluids;
+                            s.rebuildMenu();
+                        }),
+                new SkillEntry(
+                        "gui.tcveinminer.skills.tool_swap",
+                        "gui.tcveinminer.skills.tool_swap.desc",
+                        () -> screen.getState().enableToolSwapSkill,
+                        s -> {
+                            s.getState().enableToolSwapSkill = !s.getState().enableToolSwapSkill;
+                            s.rebuildMenu();
+                        }),
+                new SkillEntry(
+                        "gui.tcveinminer.skills.tool_protect",
+                        "gui.tcveinminer.skills.tool_protect.desc",
+                        () -> screen.getState().enableToolProtectSkill,
+                        s -> {
+                            s.getState().enableToolProtectSkill = !s.getState().enableToolProtectSkill;
                             s.rebuildMenu();
                         }),
         };
@@ -229,12 +249,25 @@ public class SkillsTab implements MenuTab {
             String hint = "[Click to toggle]";
             ctx.drawText(screen.getTextRenderer(), hint,
                     cx + 8, descY + DESC_H - 12, 0xFF374151, false);
+
+            if (screen.getState().enableToolSwapSkill && screen.getState().enableToolProtectSkill) {
+                String comboHint = Text.translatable("gui.tcveinminer.skills.tool_combo_hint1").getString();
+                ctx.drawText(screen.getTextRenderer(), comboHint, cx + 8 + screen.getTextRenderer().getWidth(hint) + 10, descY + DESC_H - 12, 0xFF00AAFF, false);
+            }
         } else {
             // Placeholder khi không hover
             ctx.drawText(screen.getTextRenderer(),
                     "Hover over a skill to see details",
                     cx + 8, descY + (DESC_H - 8) / 2, 0xFF374151, false);
+            if (screen.getState().enableToolSwapSkill && screen.getState().enableToolProtectSkill) {
+                String comboHint = Text.translatable("gui.tcveinminer.skills.tool_combo_hint2").getString();
+                ctx.drawText(screen.getTextRenderer(), comboHint, cx + 8, descY + DESC_H - 12, 0xFF00AAFF, false);
+            }
         }
+
+        // Threshold Label
+        String threshLabel = Text.translatable("gui.tcveinminer.skills.protect_threshold").getString();
+        ctx.drawTextWithShadow(screen.getTextRenderer(), threshLabel, cx + cw - 100 - 8 - screen.getTextRenderer().getWidth(threshLabel) - 4, cy + ch - DESC_H - 20, ThemeColors.TEXT_BRIGHT);
 
         // Scrollbar hint nếu có thể cuộn
         if (maxScroll > 0) {

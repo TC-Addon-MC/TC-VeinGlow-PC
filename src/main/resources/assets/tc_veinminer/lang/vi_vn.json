@@ -138,5 +138,17 @@
   "hud.tcveinminer.hint.toggle_sneak": "[Bật/tắt + Sneak %s]",
   "hud.tcveinminer.cycle_notification": "Đã chuyển sang chế độ: %s",
   "tc_veinminer.error.unknown_function": "Hàm không tồn tại: %s",
-  "tc_veinminer.error.invalid_argument_type": "Hàm '%s' tham số %s phải là số, không phải điều kiện."
+  "tc_veinminer.error.invalid_argument_type": "Hàm '%s' tham số %s phải là số, không phải điều kiện.",
+  "gui.tcveinminer.skills.tool_swap": "Đổi dụng cụ bị vỡ",
+  "gui.tcveinminer.skills.tool_swap.desc": "Tự động tìm dụng cụ cùng loại trong túi và đổi sang khi dụng cụ hiện tại bị vỡ.",
+  "gui.tcveinminer.skills.tool_protect": "Bảo vệ dụng cụ sắp vỡ",
+  "gui.tcveinminer.skills.tool_protect.desc": "Tự động dừng đào để bảo vệ không cho dụng cụ bị vỡ hoàn toàn.",
+  "gui.tcveinminer.skills.tool_combo_hint1": "✦ Tự động đổi trước khi vỡ",
+  "gui.tcveinminer.skills.tool_combo_hint2": "✦ Protect + Swap đang bật: Tự động đổi dụng cụ trước khi vỡ",
+  "gui.tcveinminer.skills.protect_threshold": "Ngưỡng bảo vệ:",
+  "msg.tcveinminer.tool_swap_broken": "§e⚡ Dụng cụ đã vỡ — đổi sang %s",
+  "msg.tcveinminer.tool_swap_no_tool_broken": "§c⚠ Không tìm thấy dụng cụ thay thế — dừng đào",
+  "msg.tcveinminer.tool_swap_protected": "§b🛡 Dụng cụ sắp vỡ — đổi sang %s",
+  "msg.tcveinminer.tool_swap_no_tool_protected": "§c⚠ Không tìm thấy dụng cụ thay thế — dừng để bảo vệ",
+  "msg.tcveinminer.tool_protected": "§b🛡 Đã dừng đào để bảo vệ dụng cụ"
 }

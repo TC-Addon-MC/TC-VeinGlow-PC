@@ -18,6 +18,9 @@ public class MenuState {
     public boolean enableTreeCapitatorSkill;
     public boolean enableInteractSkill;
     public boolean enableBreakSkill;
+    public boolean enableToolSwapSkill;
+    public boolean enableToolProtectSkill;
+    public int toolProtectThreshold = 10;
     public boolean showHud;
     public boolean showOutline;
     public boolean preventMiningNearFluids;

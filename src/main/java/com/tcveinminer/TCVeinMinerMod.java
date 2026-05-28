@@ -23,6 +23,12 @@ import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.command.CommandManager;
+import net.minecraft.text.Text;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.tcveinminer.config.ModConfig;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -142,7 +148,81 @@ public class TCVeinMinerMod implements ModInitializer {
                 playersHoldingV.remove(uuid);
                 MiningEngine.removePlayer(uuid);
                 ActionSessionManager.remove(uuid);
+                activationRateLimitMap.remove(uuid);
             });
+        });
+
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+            dispatcher.register(CommandManager.literal("tcveinminer")
+                .requires(source -> source.hasPermissionLevel(2))
+                .then(CommandManager.literal("config")
+                    .then(CommandManager.literal("reload")
+                        .executes(context -> {
+                            ConfigManager.load();
+                            ConfigSyncPayload payload = new ConfigSyncPayload(ConfigManager.get().maxBlocks, new ArrayList<>(ConfigManager.get().blacklistedBlocks));
+                            for (ServerPlayerEntity player : context.getSource().getServer().getPlayerManager().getPlayerList()) {
+                                ServerPlayNetworking.send(player, payload);
+                            }
+                            context.getSource().sendFeedback(() -> Text.literal("Reloaded TC Veinminer config!"), false);
+                            return 1;
+                        })
+                    )
+                    .then(CommandManager.literal("set")
+                        .then(CommandManager.argument("property", StringArgumentType.string())
+                            .suggests((context, builder) -> {
+                                java.util.List<String> properties = new java.util.ArrayList<>();
+                                for (java.lang.reflect.Field field : ModConfig.class.getFields()) {
+                                    if (!java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
+                                        properties.add(field.getName());
+                                    }
+                                }
+                                return net.minecraft.command.CommandSource.suggestMatching(properties, builder);
+                            })
+                            .then(CommandManager.argument("value", StringArgumentType.string())
+                                .suggests((context, builder) -> {
+                                    try {
+                                        String prop = StringArgumentType.getString(context, "property");
+                                        java.lang.reflect.Field field = ModConfig.class.getField(prop);
+                                        if (field.getType() == boolean.class) {
+                                            return net.minecraft.command.CommandSource.suggestMatching(java.util.List.of("true", "false"), builder);
+                                        }
+                                    } catch (Exception e) {}
+                                    return builder.buildFuture();
+                                })
+                                .executes(context -> {
+                                    String prop = StringArgumentType.getString(context, "property");
+                                    String val = StringArgumentType.getString(context, "value");
+                                    try {
+                                        java.lang.reflect.Field field = ModConfig.class.getField(prop);
+                                        if (field.getType() == int.class) {
+                                            field.setInt(ConfigManager.get(), Integer.parseInt(val));
+                                        } else if (field.getType() == boolean.class) {
+                                            field.setBoolean(ConfigManager.get(), Boolean.parseBoolean(val));
+                                        } else if (field.getType() == String.class) {
+                                            field.set(ConfigManager.get(), val);
+                                        } else {
+                                            context.getSource().sendError(Text.literal("Unsupported property type."));
+                                            return 0;
+                                        }
+                                        ConfigManager.save();
+                                        ConfigSyncPayload payload = new ConfigSyncPayload(ConfigManager.get().maxBlocks, new ArrayList<>(ConfigManager.get().blacklistedBlocks));
+                                        for (ServerPlayerEntity player : context.getSource().getServer().getPlayerManager().getPlayerList()) {
+                                            ServerPlayNetworking.send(player, payload);
+                                        }
+                                        context.getSource().sendFeedback(() -> Text.literal("Set config " + prop + " to " + val), true);
+                                        return 1;
+                                    } catch (NoSuchFieldException e) {
+                                        context.getSource().sendError(Text.literal("Property not found."));
+                                    } catch (Exception e) {
+                                        context.getSource().sendError(Text.literal("Invalid value or error setting property."));
+                                    }
+                                    return 0;
+                                })
+                            )
+                        )
+                    )
+                )
+            );
         });
     }
 }

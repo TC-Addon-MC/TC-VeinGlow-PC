@@ -138,5 +138,17 @@
   "hud.tcveinminer.hint.toggle_sneak": "[Toggle + Sneak %s]",
   "hud.tcveinminer.cycle_notification": "Mode switched to: %s",
   "tc_veinminer.error.unknown_function": "Unknown function: %s",
-  "tc_veinminer.error.invalid_argument_type": "Function '%s' argument %s must be a number, not a condition."
+  "tc_veinminer.error.invalid_argument_type": "Function '%s' argument %s must be a number, not a condition.",
+  "gui.tcveinminer.skills.tool_swap": "Auto Swap Broken Tool",
+  "gui.tcveinminer.skills.tool_swap.desc": "Automatically find and equip a replacement tool when your current one breaks.",
+  "gui.tcveinminer.skills.tool_protect": "Protect Near-broken Tool",
+  "gui.tcveinminer.skills.tool_protect.desc": "Stop mining automatically when your tool is about to break.",
+  "gui.tcveinminer.skills.tool_combo_hint1": "✦ Auto-swap before breaking",
+  "gui.tcveinminer.skills.tool_combo_hint2": "✦ Protect + Swap enabled: auto-swap before breaking",
+  "gui.tcveinminer.skills.protect_threshold": "Protect Threshold:",
+  "msg.tcveinminer.tool_swap_broken": "§e⚡ Tool broken — switched to %s",
+  "msg.tcveinminer.tool_swap_no_tool_broken": "§c⚠ No replacement tool found — mining stopped",
+  "msg.tcveinminer.tool_swap_protected": "§b🛡 Tool near breaking — switched to %s",
+  "msg.tcveinminer.tool_swap_no_tool_protected": "§c⚠ No replacement tool found — mining stopped to protect",
+  "msg.tcveinminer.tool_protected": "§b🛡 Mining stopped to protect your tool"
 }

@@ -45,12 +45,7 @@ public class GeneralTab implements MenuTab {
         btnOutline.setSelectedInstant(screen.getState().showOutline);
         screen.addUIElement(btnOutline);
 
-        CustomButton btnTool = new CustomButton(cx, dY + 48, cw, 20, Text.empty(), btn -> {
-            screen.getState().requireCorrectTool = !screen.getState().requireCorrectTool;
-            screen.rebuildMenu();
-        });
-        btnTool.setSelectedInstant(screen.getState().requireCorrectTool);
-        screen.addUIElement(btnTool);
+        // Removed require_tool button
     }
 
     @Override
@@ -61,7 +56,7 @@ public class GeneralTab implements MenuTab {
         int dY = cy + 70;
         drawCheckRow(ctx, screen, cx, dY, cw, Text.translatable("gui.tcveinminer.general.floating_hud").getString(), screen.getState().showHud);
         drawCheckRow(ctx, screen, cx, dY + 24, cw, Text.translatable("gui.tcveinminer.general.outline").getString(), screen.getState().showOutline);
-        drawCheckRow(ctx, screen, cx, dY + 48, cw, Text.translatable("gui.tcveinminer.general.require_tool").getString(), screen.getState().requireCorrectTool);
+        // Removed require_tool rendering
     }
 
     private void drawCheckRow(DrawContext ctx, MainMenuScreen screen, int rx, int ry, int rw, String label, boolean checked) {

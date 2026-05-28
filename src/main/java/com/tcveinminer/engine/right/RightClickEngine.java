@@ -92,8 +92,6 @@ public final class RightClickEngine extends AbstractActionEngine {
         BlockPos origin = hitResult.getBlockPos();
         BlockState originState = world.getBlockState(origin);
 
-        Set<String> activeBlacklist = mergedBlacklist;
-        if (activeBlacklist.contains(blockId(originState))) return false;
         if (c.requireSneak && !player.isSneaking()) return false;
         if (!checkCooldown(player.getUuid(), world.getTime(), c)) return false;
 
@@ -108,6 +106,9 @@ public final class RightClickEngine extends AbstractActionEngine {
 
         // Validate
         if (!validateTrigger(player, world, origin, originState, c)) return false;
+
+        Set<String> activeBlacklist = mergedBlacklist;
+        if (activeBlacklist.contains(blockId(originState))) return false;
 
         // Check skill toggle
         if (!isSkillEnabled(actionType, c)) return false;
@@ -172,6 +173,7 @@ public final class RightClickEngine extends AbstractActionEngine {
         session.setActionType(actionType);
         session.setActionContext(actionContext);
         session.setInitialItem(initialItem);
+        session.setInitialEnchantSig(com.tcveinminer.engine.skill.ToolManagerSkill.getSpecialEnchantSig(heldItem));
         session.getQueue().reset();
         session.getQueue().enqueue(found, world);
         session.initSnapshot(new HashSet<>(found));
@@ -225,6 +227,8 @@ public final class RightClickEngine extends AbstractActionEngine {
                                        BlockPos origin, BlockState state, ModConfig config) {
         // Block TREE_CAP shape from vein-stripping logs
         if ("TREE_CAP".equals(playerShape) && state.isIn(BlockTags.LOGS)) return false;
+        if (config.consumeHunger && !player.isCreative() && player.getHungerManager().getFoodLevel() <= 0)
+            return false;
         return true;
     }
 

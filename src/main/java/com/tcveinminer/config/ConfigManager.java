@@ -41,6 +41,13 @@ public class ConfigManager {
                     instance.enableBucketSkill = true;
                     needsSave = true;
                 }
+                
+                // [AUTO-UPDATE VERSION]
+                if (instance.version == null || !instance.version.equals(ModConfig.CURRENT_VERSION)) {
+                    instance.version = ModConfig.CURRENT_VERSION;
+                    needsSave = true;
+                }
+
                 if (needsSave) save();
             }
         } catch (Exception e) {

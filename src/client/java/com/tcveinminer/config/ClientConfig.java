@@ -110,7 +110,7 @@ public class ClientConfig {
 
     public List<String> personalBlacklist = new ArrayList<>();
 
-    public boolean requireCorrectTool = true;
+    public boolean requireCorrectTool = false;
 
 
     // ==========================================

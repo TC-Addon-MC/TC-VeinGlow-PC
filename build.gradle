@@ -16,6 +16,7 @@ repositories {
 }
 
 loom {
+    accessWidenerPath = file("src/main/resources/tc_veinminer.accesswidener")
     splitEnvironmentSourceSets()
     mods {
         "tc_veinminer" {

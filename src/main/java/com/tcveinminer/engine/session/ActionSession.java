@@ -35,6 +35,8 @@ public final class ActionSession {
     private ActionType actionType;
     private ActionContext actionContext;
     private Item initialItem;
+    /** Chữ ký enchant đặc biệt của tool ban đầu (ví dụ: "fortune:3", "silk_touch:1", hoặc ""). */
+    private String initialEnchantSig = "";
 
     // ── Getters ───────────────────────────────────────────────────────────
 
@@ -48,12 +50,14 @@ public final class ActionSession {
     public ActionType getActionType() { return actionType; }
     public ActionContext getActionContext() { return actionContext; }
     public Item getInitialItem() { return initialItem; }
+    public String getInitialEnchantSig() { return initialEnchantSig; }
 
     // ── Setters ───────────────────────────────────────────────────────────
 
     public void setActionType(ActionType type) { this.actionType = type; }
     public void setActionContext(ActionContext ctx) { this.actionContext = ctx; }
     public void setInitialItem(Item item) { this.initialItem = item; }
+    public void setInitialEnchantSig(String sig) { this.initialEnchantSig = sig != null ? sig : ""; }
     public void updateTime() { this.lastUpdateTime = System.currentTimeMillis(); }
 
     // ── Processing guard ──────────────────────────────────────────────────
@@ -97,6 +101,7 @@ public final class ActionSession {
         actionType = null;
         actionContext = null;
         initialItem = null;
+        initialEnchantSig = "";
     }
 
     /**

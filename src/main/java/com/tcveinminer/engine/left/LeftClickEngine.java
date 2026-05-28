@@ -84,15 +84,16 @@ public final class LeftClickEngine extends AbstractActionEngine {
         if (!TCVeinMinerMod.playersHoldingV.contains(player.getUuid()))
             return;
 
-        Set<String> activeBlacklist = mergedBlacklist;
-        if (activeBlacklist.contains(blockId(originState)))
-            return;
         if (c.requireSneak && !player.isSneaking())
             return;
         if (!checkCooldown(player.getUuid(), world.getTime(), c))
             return;
 
         if (!validateTrigger(player, world, origin, originState, c))
+            return;
+
+        Set<String> activeBlacklist = mergedBlacklist;
+        if (activeBlacklist.contains(blockId(originState)))
             return;
 
         if (stateMachine.is(EngineState.PREVIEW)) {
@@ -160,6 +161,7 @@ public final class LeftClickEngine extends AbstractActionEngine {
         session.setActionType(actionType);
         session.setActionContext(actionContext);
         session.setInitialItem(initialItem);
+        session.setInitialEnchantSig(com.tcveinminer.engine.skill.ToolManagerSkill.getSpecialEnchantSig(player.getMainHandStack()));
         session.getQueue().reset();
         session.getQueue().enqueue(found, world);
         session.initSnapshot(new HashSet<>(found));
@@ -210,6 +212,8 @@ public final class LeftClickEngine extends AbstractActionEngine {
         if ("TREE_CAP".equals(playerShape) && !state.isIn(BlockTags.LOGS))
             return false;
         if (!config.enableBreakSkill)
+            return false;
+        if (config.consumeHunger && !player.isCreative() && player.getHungerManager().getFoodLevel() <= 0)
             return false;
         return true;
     }

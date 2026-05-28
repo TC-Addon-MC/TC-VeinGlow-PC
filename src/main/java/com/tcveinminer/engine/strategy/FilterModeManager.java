@@ -41,8 +41,8 @@ public final class FilterModeManager {
     }
 
     private static final int DEFAULT_SEARCH_LIMIT = 100;
-    private static List<Identifier> blockSearchCache = new ArrayList<>();
-    private static String lastBlockSearchQuery = "";
+    private static volatile List<Identifier> blockSearchCache = new ArrayList<>();
+    private static volatile String lastBlockSearchQuery = "";
 
     // ==========================================
     // 1. CORE API & CONTEXT
@@ -124,7 +124,7 @@ public final class FilterModeManager {
         return blockSearchCache;
     }
 
-    public static List<Identifier> searchBlocks(String query, int limit) {
+    public static synchronized List<Identifier> searchBlocks(String query, int limit) {
         String lowerQuery = query == null ? "" : query.toLowerCase().trim();
         if (lowerQuery.equals(lastBlockSearchQuery)) {
             return blockSearchCache;
