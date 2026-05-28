@@ -125,6 +125,16 @@ public class MainMenuScreen extends Screen {
         int cy = py + HDR_H + PAD_Y;
         int ch = H - HDR_H - TAB_H - FOOTER_H - PAD_Y * 2;
 
+        addDrawableChild(new AmberButton(px + 10, py + H - 28, 80, 20, Text.literal("Report Bug"), btn -> {
+            String link = "https://docs.google.com/forms/d/e/1FAIpQLScSBVjy7EBTdKZnfd0wf9AbAebhwi9SBnnY7-_uN9sIGzx5mQ/viewform?usp=dialog";
+            client.setScreen(new net.minecraft.client.gui.screen.ConfirmLinkScreen(confirmed -> {
+                if (confirmed) {
+                    net.minecraft.util.Util.getOperatingSystem().open(link);
+                }
+                client.setScreen(MainMenuScreen.this);
+            }, link, true));
+        }));
+
         addDrawableChild(new AmberButton(px + W - 90, py + H - 28, 80, 20, Text.translatable("gui.tcveinminer.button.save_config"), btn -> { save(); triggerSave(); }));
         addDrawableChild(new AmberButton(px + W - 20, py + 2, 18, 16, Text.translatable("gui.tcveinminer.button.close"), btn -> client.setScreen(parent)));
 
