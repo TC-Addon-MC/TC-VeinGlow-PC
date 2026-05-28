@@ -2,3 +2,7 @@ accessWidener v1 named
 
 accessible field net/minecraft/item/AxeItem STRIPPED_BLOCKS Ljava/util/Map;
 accessible field net/minecraft/item/ShovelItem PATH_STATES Ljava/util/Map;
+
+# Fix protected access for RenderLayer on 1.21
+accessible class net/minecraft/client/render/RenderLayer$MultiPhaseParameters
+accessible class net/minecraft/client/render/RenderLayer$MultiPhaseParameters$Builder
