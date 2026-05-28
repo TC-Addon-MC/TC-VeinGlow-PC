@@ -1,5 +1,7 @@
 package com.tcveinminer.engine.right;
 
+import com.tcveinminer.api.TCVeinMinerEvents;
+import com.tcveinminer.api.event.SessionStartEvent;
 import com.tcveinminer.TCVeinMinerMod;
 import com.tcveinminer.config.ConfigManager;
 import com.tcveinminer.config.ModConfig;
@@ -177,6 +179,13 @@ public final class RightClickEngine extends AbstractActionEngine {
         session.getQueue().reset();
         session.getQueue().enqueue(found, world);
         session.initSnapshot(new HashSet<>(found));
+
+        SessionStartEvent startEvent = new SessionStartEvent(player, world, origin, actionType, session.getTargetCount());
+        if (TCVeinMinerEvents.SESSION_START.invoker().onSessionStart(startEvent) != net.minecraft.util.ActionResult.PASS) {
+            session = null;
+            stateMachine.force(EngineState.IDLE);
+            return false;
+        }
 
         stateMachine.force(EngineState.PROCESSING);
         SessionStats.onVeinMineStart();

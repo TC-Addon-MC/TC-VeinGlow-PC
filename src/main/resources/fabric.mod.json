@@ -3,17 +3,36 @@
   "id": "tc_veinminer",
   "version": "${version}",
   "name": "TC-VeinGlow",
-  "description": "Vein mining mod with custom GUI",
-  "authors": ["ToanCao"],
+  "description": "An advanced and highly customizable vein mining mod with a beautiful custom GUI.",
+  "authors": [
+    "ToanCao"
+  ],
+  "contact": {
+    "homepage": "https://modrinth.com/mod/tc-veinglow",
+    "sources": "https://github.com/ToanCao/TC-VeinGlow",
+    "issues": "https://github.com/ToanCao/TC-VeinGlow/issues"
+  },
   "license": "MIT",
+  "icon": "assets/tc_veinminer/icon.png",
   "environment": "*",
+  "provides": [
+    "tc-veinminer-api"
+  ],
   "entrypoints": {
-    "main":   ["com.tcveinminer.TCVeinMinerMod"],
-    "client": ["com.tcveinminer.TCVeinMinerClient"],
-    "modmenu": ["com.tcveinminer.ModMenuIntegration"]
+    "main": [
+      "com.tcveinminer.TCVeinMinerMod"
+    ],
+    "client": [
+      "com.tcveinminer.TCVeinMinerClient"
+    ],
+    "modmenu": [
+      "com.tcveinminer.ModMenuIntegration"
+    ]
   },
   "accessWidener": "tc_veinminer.accesswidener",
-  "mixins": [],
+  "mixins": [
+    "tc_veinminer.mixins.json"
+  ],
   "depends": {
     "fabricloader": ">=0.15.0",
     "fabric-api": "*",

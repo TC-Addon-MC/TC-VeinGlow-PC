@@ -1,5 +1,6 @@
 package com.tcveinminer.engine;
 
+import com.tcveinminer.api.query.EngineQuery;
 import com.tcveinminer.config.ConfigManager;
 import com.tcveinminer.config.ModConfig;
 import com.tcveinminer.engine.left.LeftClickEngine;
@@ -52,7 +53,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>Event delegation (break → left, interact → right, tick → both)</li>
  * </ul>
  */
-public final class MiningEngine {
+public final class MiningEngine implements EngineQuery {
 
     private static final Map<UUID, MiningEngine> ENGINES = new ConcurrentHashMap<>();
 
@@ -332,6 +333,46 @@ public final class MiningEngine {
     public EngineState getState() {
         // Return left engine state for backward compat
         return leftEngine.getState();
+    }
+
+    @Override
+    public String getCurrentShape() {
+        return playerShape;
+    }
+
+    @Override
+    public int getMaxBlocks() {
+        return playerMaxBlocks;
+    }
+
+    @Override
+    public int getProcessedCount() {
+        if (leftEngine.isActive()) {
+            return leftEngine.session != null ? leftEngine.session.getProcessedCount() : 0;
+        } else if (rightEngine.isActive()) {
+            return rightEngine.session != null ? rightEngine.session.getProcessedCount() : 0;
+        }
+        return 0;
+    }
+
+    @Override
+    public int getTargetCount() {
+        if (leftEngine.isActive()) {
+            return leftEngine.session != null ? leftEngine.session.getTargetCount() : 0;
+        } else if (rightEngine.isActive()) {
+            return rightEngine.session != null ? rightEngine.session.getTargetCount() : 0;
+        }
+        return 0;
+    }
+
+    @Override
+    public ActionType getCurrentActionType() {
+        if (leftEngine.isActive()) {
+            return leftEngine.session != null ? leftEngine.session.getActionType() : null;
+        } else if (rightEngine.isActive()) {
+            return rightEngine.session != null ? rightEngine.session.getActionType() : null;
+        }
+        return null;
     }
 
     public Set<BlockPos> getRenderSnapshot() {

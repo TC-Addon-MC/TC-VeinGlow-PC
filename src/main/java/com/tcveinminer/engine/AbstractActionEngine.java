@@ -1,6 +1,8 @@
 package com.tcveinminer.engine;
 
-import com.tcveinminer.TCVeinMinerMod;
+import com.tcveinminer.api.TCVeinMinerEvents;
+import com.tcveinminer.api.event.BlockBreakEvent;
+import com.tcveinminer.api.event.SessionEndEvent;import com.tcveinminer.TCVeinMinerMod;
 import com.tcveinminer.config.ConfigManager;
 import com.tcveinminer.config.ModConfig;
 import com.tcveinminer.engine.action.ActionContext;
@@ -222,12 +224,21 @@ public abstract class AbstractActionEngine {
                     continue;
                 }
 
+                BlockBreakEvent preEvent = new BlockBreakEvent(player, world, e.pos(), currentState, session.getActionType());
+                if (TCVeinMinerEvents.BLOCK_BREAK_PRE.invoker().onBlockBreakPre(preEvent) != net.minecraft.util.ActionResult.PASS) {
+                    session.removeFromSnapshot(e.pos());
+                    removed.add(e.pos());
+                    continue;
+                }
+
                 boolean success = executor.execute(spe, world, e.pos(), session.getActionContext());
 
                 session.removeFromSnapshot(e.pos());
                 removed.add(e.pos());
 
                 if (!success) continue;
+
+                TCVeinMinerEvents.BLOCK_BREAK_POST.invoker().onBlockBreakPost(preEvent);
 
                 String blockId = Registries.BLOCK.getId(currentState.getBlock()).toString();
                 SessionStats.onBlockBroken(blockId);
@@ -275,6 +286,10 @@ public abstract class AbstractActionEngine {
         List<BlockPos> removed = session != null ? new ArrayList<>(session.getRenderSnapshot()) : Collections.emptyList();
 
         if (session != null) {
+            TCVeinMinerEvents.SESSION_END.invoker().onSessionEnd(new SessionEndEvent(
+                player, player.getWorld(), session.getActionType(),
+                session.getProcessedCount(), session.getTargetCount(), true
+            ));
             session.clear();
         }
         stateMachine.force(EngineState.CANCELLED);
@@ -311,6 +326,9 @@ public abstract class AbstractActionEngine {
         onSessionFinalized(player, world);
 
         if (session != null) {
+            TCVeinMinerEvents.SESSION_END.invoker().onSessionEnd(new SessionEndEvent(
+                player, world, session.getActionType(), processed, target, false
+            ));
             session.clear();
         }
     }
