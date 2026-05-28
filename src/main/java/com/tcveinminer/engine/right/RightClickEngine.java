@@ -89,7 +89,8 @@ public final class RightClickEngine extends AbstractActionEngine {
 
         ModConfig c = ConfigManager.get();
         if (!c.enabled) return false;
-        if (!TCVeinMinerMod.playersHoldingV.contains(player.getUuid())) return false;
+        
+        boolean holdingV = TCVeinMinerMod.playersHoldingV.contains(player.getUuid());
 
         BlockPos origin = hitResult.getBlockPos();
         BlockState originState = world.getBlockState(origin);
@@ -106,6 +107,11 @@ public final class RightClickEngine extends AbstractActionEngine {
             return false;
         }
 
+        // Allow single block processing if not holding V, but ONLY for CROP_HARVEST
+        if (!holdingV && actionType != ActionType.CROP_HARVEST) {
+            return false;
+        }
+
         // Validate
         if (!validateTrigger(player, world, origin, originState, c)) return false;
 
@@ -117,7 +123,7 @@ public final class RightClickEngine extends AbstractActionEngine {
 
         // Select strategy (FACE for right-click)
         MiningStrategy strategy = selectStrategy(actionType);
-        int maxBlocksToMine = this.playerMaxBlocks - 1;
+        int maxBlocksToMine = holdingV ? (this.playerMaxBlocks - 1) : 0;
 
         // Bucket special: limit by available buckets
         if (actionType == ActionType.FLUID_SCOOP) {

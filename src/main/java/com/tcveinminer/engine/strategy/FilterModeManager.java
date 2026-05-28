@@ -255,13 +255,13 @@ public final class FilterModeManager {
                 if (ctx.currentState().getBlock() != ctx.targetState().getBlock()) return false;
                 Block b = ctx.currentState().getBlock();
                 if (b instanceof net.minecraft.block.CropBlock crop) {
-                    return crop.isMature(ctx.currentState()) && crop.isMature(ctx.targetState());
+                    return crop.isMature(ctx.currentState()) == crop.isMature(ctx.targetState());
                 } else if (b instanceof net.minecraft.block.NetherWartBlock) {
-                    return ctx.currentState().get(net.minecraft.state.property.Properties.AGE_3) == 3 && 
-                           ctx.targetState().get(net.minecraft.state.property.Properties.AGE_3) == 3;
+                    return ctx.currentState().get(net.minecraft.state.property.Properties.AGE_3).equals(
+                           ctx.targetState().get(net.minecraft.state.property.Properties.AGE_3));
                 } else if (b instanceof net.minecraft.block.CocoaBlock) {
-                    return ctx.currentState().get(net.minecraft.state.property.Properties.AGE_2) == 2 && 
-                           ctx.targetState().get(net.minecraft.state.property.Properties.AGE_2) == 2;
+                    return ctx.currentState().get(net.minecraft.state.property.Properties.AGE_2).equals(
+                           ctx.targetState().get(net.minecraft.state.property.Properties.AGE_2));
                 }
                 return true;
             };

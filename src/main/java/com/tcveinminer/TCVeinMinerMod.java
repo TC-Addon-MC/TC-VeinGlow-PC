@@ -114,12 +114,10 @@ public class TCVeinMinerMod implements ModInitializer {
                 return ActionResult.PASS;
             }
             if (player instanceof net.minecraft.server.network.ServerPlayerEntity spe) {
-                if (playersHoldingV.contains(spe.getUuid())) {
-                    MiningEngine engine = MiningEngine.forPlayer(spe.getUuid());
-                    if (!engine.isWorking() && !engine.right().isProcessing()) {
-                        boolean started = engine.onInteractTrigger(spe, (ServerWorld) world, hand, hitResult);
-                        if (started) return ActionResult.SUCCESS;
-                    }
+                MiningEngine engine = MiningEngine.forPlayer(spe.getUuid());
+                if (!engine.isWorking() && !engine.right().isProcessing()) {
+                    boolean started = engine.onInteractTrigger(spe, (ServerWorld) world, hand, hitResult);
+                    if (started) return ActionResult.SUCCESS;
                 }
             }
             return ActionResult.PASS;
