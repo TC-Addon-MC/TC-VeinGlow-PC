@@ -1,3 +1,7 @@
+plugins {
+    id("dev.architectury.loom") version "1.7-SNAPSHOT" apply false
+    id("architectury-plugin") version "3.4-SNAPSHOT" apply false
+}
 // Root build.gradle.kts — shared toolchain, repositories, and conventions
 // Each subproject (common, fabric, neoforge, forge) has its own build.gradle.kts
 
@@ -29,3 +33,4 @@ subprojects {
         withSourcesJar()
     }
 }
+

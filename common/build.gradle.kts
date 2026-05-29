@@ -1,6 +1,6 @@
 
 plugins {
-    id("dev.architectury.loom") version "1.7-SNAPSHOT"
+    id("dev.architectury.loom")
 }
 val minecraft_version: String by project
 val yarn_mappings: String by project

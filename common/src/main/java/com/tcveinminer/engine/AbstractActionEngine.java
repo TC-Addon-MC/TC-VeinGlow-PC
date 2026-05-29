@@ -1,9 +1,8 @@
 package com.tcveinminer.engine;
 
-import com.tcveinminer.api.VeinMineEvents;
-import com.tcveinminer.api.VeinMineEvents.EventResult;
+import com.tcveinminer.api.TCVeinMinerEvents;
 import com.tcveinminer.api.event.BlockBreakEvent;
-import com.tcveinminer.api.event.SessionEndEvent;
+import com.tcveinminer.api.event.SessionEndEvent;import com.tcveinminer.TCVeinMinerMod;
 import com.tcveinminer.config.ConfigManager;
 import com.tcveinminer.config.ModConfig;
 import com.tcveinminer.engine.action.ActionContext;
@@ -14,19 +13,20 @@ import com.tcveinminer.engine.queue.BlockActionQueue;
 import com.tcveinminer.engine.session.ActionSession;
 import com.tcveinminer.engine.state.EngineState;
 import com.tcveinminer.engine.state.EngineStateMachine;
-import com.tcveinminer.engine.state.PlayerStateRegistry;
 import com.tcveinminer.engine.strategy.CustomEquationStrategy;
 import com.tcveinminer.engine.strategy.FilterModeManager;
 import com.tcveinminer.engine.strategy.MiningStrategy;
 import com.tcveinminer.engine.strategy.StrategyRegistry;
 import com.tcveinminer.logic.HudNotifier;
-import com.tcveinminer.network.NetworkManager;
-import com.tcveinminer.network.payload.HighlightDeltaData;
-import com.tcveinminer.network.payload.MiningStateData;
+import com.tcveinminer.network.HighlightBlockListPayload;
+import com.tcveinminer.network.HighlightDeltaPayload;
+import com.tcveinminer.network.MiningStatePayload;
 import com.tcveinminer.util.ExpressionEvaluator;
 import com.tcveinminer.util.SessionStats;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.Item;
 import net.minecraft.item.Items;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.tag.BlockTags;
@@ -47,7 +47,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>Render/highlight updates</li>
  *   <li>Session lifecycle (stop, finalize, cancel)</li>
  *   <li>Cooldown checking</li>
- *   <li>Packet sending — via {@link NetworkManager} (no loader coupling)</li>
+ *   <li>Packet sending (MiningStatePayload, HighlightBlockListPayload)</li>
  *   <li>HUD notification</li>
  *   <li>Config management</li>
  * </ul>
@@ -61,10 +61,6 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>Trigger validation</li>
  *   <li>Post-finalization hooks</li>
  * </ul>
- *
- * <p><b>Loader coupling: NONE.</b> All packet sends go through {@link NetworkManager}.
- * {@link PlayerStateRegistry} replaces the old {@code TCVeinMinerMod.playersHoldingV} static field.
- * {@link VeinMineEvents} replaces the old {@code TCVeinMinerEvents} with Fabric imports.
  */
 public abstract class AbstractActionEngine {
 
@@ -143,6 +139,7 @@ public abstract class AbstractActionEngine {
         ModConfig c = ConfigManager.get();
         // Nếu enableToolSwapSkill bật, bỏ qua khi tay trống (tool vừa vỡ)
         // để handleToolState xử lý việc tìm & đổi tool thay thế.
+        // Nếu không bỏ qua, stop() sẽ được gọi trước khi handleToolState kịp chạy.
         if (!c.allowHeldItemChange && session.getInitialItem() != null
             && player.getMainHandStack().getItem() != session.getInitialItem()) {
             boolean toolJustBroke = player.getMainHandStack().isEmpty();
@@ -153,8 +150,8 @@ public abstract class AbstractActionEngine {
             }
         }
 
-        // Key hold check — uses PlayerStateRegistry (no Fabric coupling)
-        if (!PlayerStateRegistry.isHoldingKey(player.getUuid())) {
+        // Key hold check
+        if (!TCVeinMinerMod.playersHoldingV.contains(player.getUuid())) {
             stop(player);
             return;
         }
@@ -186,9 +183,9 @@ public abstract class AbstractActionEngine {
             double factor = speed * 0.75;
             double targetTicks = Math.sqrt(totalBlocks) * factor;
             targetTicks = Math.max(1.0, targetTicks);
-
+            
             int dynamicBlocksPerTick = (int) Math.ceil(totalBlocks / targetTicks);
-
+            
             // Safety bounds
             int minBlocksPerTick = c.tickSliceSize > 0 ? c.tickSliceSize : 1;
             blocksPerTick = Math.max(minBlocksPerTick, Math.min(100, dynamicBlocksPerTick));
@@ -205,8 +202,7 @@ public abstract class AbstractActionEngine {
         }
 
         if (player instanceof ServerPlayerEntity spe) {
-            // Packet sending via NetworkManager (no Fabric / NeoForge / Forge imports)
-            NetworkManager.sendToPlayer(spe, new MiningStateData(1, session.getProcessedCount(), session.getTargetCount()));
+            ServerPlayNetworking.send(spe, new MiningStatePayload(1, session.getProcessedCount(), session.getTargetCount()));
         }
 
         try {
@@ -228,9 +224,8 @@ public abstract class AbstractActionEngine {
                     continue;
                 }
 
-                // Per-block pre-event — uses VeinMineEvents (no Fabric EventFactory)
                 BlockBreakEvent preEvent = new BlockBreakEvent(player, world, e.pos(), currentState, session.getActionType());
-                if (VeinMineEvents.BLOCK_BREAK_PRE.invoker().onBlockBreakPre(preEvent) == EventResult.DENY) {
+                if (TCVeinMinerEvents.BLOCK_BREAK_PRE.invoker().onBlockBreakPre(preEvent) != net.minecraft.util.ActionResult.PASS) {
                     session.removeFromSnapshot(e.pos());
                     removed.add(e.pos());
                     continue;
@@ -243,10 +238,10 @@ public abstract class AbstractActionEngine {
 
                 if (!success) continue;
 
-                VeinMineEvents.BLOCK_BREAK_POST.invoker().onBlockBreakPost(preEvent);
+                TCVeinMinerEvents.BLOCK_BREAK_POST.invoker().onBlockBreakPost(preEvent);
 
-                String blockIdStr = Registries.BLOCK.getId(currentState.getBlock()).toString();
-                SessionStats.onBlockBroken(blockIdStr);
+                String blockId = Registries.BLOCK.getId(currentState.getBlock()).toString();
+                SessionStats.onBlockBroken(blockId);
                 session.incrementProcessed();
 
                 // Tool Management Skill
@@ -291,8 +286,7 @@ public abstract class AbstractActionEngine {
         List<BlockPos> removed = session != null ? new ArrayList<>(session.getRenderSnapshot()) : Collections.emptyList();
 
         if (session != null) {
-            // Uses VeinMineEvents — no Fabric coupling
-            VeinMineEvents.SESSION_END.invoker().onSessionEnd(new SessionEndEvent(
+            TCVeinMinerEvents.SESSION_END.invoker().onSessionEnd(new SessionEndEvent(
                 player, player.getWorld(), session.getActionType(),
                 session.getProcessedCount(), session.getTargetCount(), true
             ));
@@ -300,11 +294,10 @@ public abstract class AbstractActionEngine {
         }
         stateMachine.force(EngineState.CANCELLED);
         if (player instanceof ServerPlayerEntity spe) {
-            // NetworkManager — no Fabric coupling
-            NetworkManager.sendToPlayer(spe, new MiningStateData(3,
+            ServerPlayNetworking.send(spe, new MiningStatePayload(3,
                     session != null ? session.getProcessedCount() : 0,
                     session != null ? session.getTargetCount() : 0));
-            NetworkManager.sendToPlayer(spe, new HighlightDeltaData(
+            ServerPlayNetworking.send(spe, new HighlightDeltaPayload(
                     Collections.emptyList(), removed, "FACE", getSourceId()));
         }
     }
@@ -323,9 +316,9 @@ public abstract class AbstractActionEngine {
         stateMachine.force(EngineState.FINISHED);
 
         if (player instanceof ServerPlayerEntity spe) {
-            NetworkManager.sendToPlayer(spe, new MiningStateData(2, processed, target));
+            ServerPlayNetworking.send(spe, new MiningStatePayload(2, processed, target));
             List<BlockPos> removed = session != null ? new ArrayList<>(session.getRenderSnapshot()) : Collections.emptyList();
-            NetworkManager.sendToPlayer(spe, new HighlightDeltaData(
+            ServerPlayNetworking.send(spe, new HighlightDeltaPayload(
                     Collections.emptyList(), removed, "FACE", getSourceId()));
         }
 
@@ -333,7 +326,7 @@ public abstract class AbstractActionEngine {
         onSessionFinalized(player, world);
 
         if (session != null) {
-            VeinMineEvents.SESSION_END.invoker().onSessionEnd(new SessionEndEvent(
+            TCVeinMinerEvents.SESSION_END.invoker().onSessionEnd(new SessionEndEvent(
                 player, world, session.getActionType(), processed, target, false
             ));
             session.clear();
@@ -345,7 +338,7 @@ public abstract class AbstractActionEngine {
      */
     protected void sendHighlightUpdate(PlayerEntity player, List<BlockPos> removedBlocks) {
         if (session != null && player instanceof ServerPlayerEntity spe) {
-            NetworkManager.sendToPlayer(spe, new HighlightDeltaData(
+            ServerPlayNetworking.send(spe, new HighlightDeltaPayload(
                     Collections.emptyList(), removedBlocks, playerShape, getSourceId()));
         }
     }
