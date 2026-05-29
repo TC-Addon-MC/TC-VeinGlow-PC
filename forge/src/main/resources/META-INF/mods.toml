@@ -1,0 +1,30 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+issueTrackerURL="https://github.com/ToanCao/TC-VeinGlow/issues"
+
+[[mods]]
+    modId="tc_veinminer"
+    version="${version}"
+    displayName="TC-VeinGlow"
+    description="""
+An advanced and highly customizable vein mining mod with a beautiful custom GUI.
+Supports Forge.
+"""
+    logoFile="assets/tc_veinminer/icon.png"
+    authors="ToanCao"
+    displayURL="https://modrinth.com/mod/tc-veinglow"
+
+    [[dependencies.tc_veinminer]]
+        modId="minecraft"
+        mandatory=true
+        versionRange="[1.21,1.22)"
+        ordering="NONE"
+        side="BOTH"
+
+    [[dependencies.tc_veinminer]]
+        modId="forge"
+        mandatory=true
+        versionRange="[47,)"
+        ordering="NONE"
+        side="BOTH"

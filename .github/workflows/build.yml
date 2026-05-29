@@ -1,52 +1,125 @@
-# Automatically build the project and run any configured tests for every push
-# and submitted pull request.
+name: Multi-Loader Build
 
-name: build
-on: [pull_request, push]
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
+    name: "${{ matrix.loader }} / MC ${{ matrix.minecraft }}"
     runs-on: ubuntu-24.04
-    
     strategy:
       fail-fast: false
       matrix:
         include:
-          - minecraft: "1.21"
+
+          # ── Fabric 1.21 ──────────────────────────────────────────────────
+          - loader: fabric
+            minecraft: "1.21"
             java: "21"
-            yarn: "1.21+build.4"
-            fabric: "0.100.8+1.21"
+            yarn_mappings: "1.21+build.4"
+            fabric_version: "0.100.8+1.21"
             cloth: "15.0.128"
             modmenu: "11.0.1"
+            task: ":fabric:build"
+            artifact_name: "tc-veinglow-1.21-fabric"
 
-          - minecraft: "1.21.1"
+          # ── NeoForge 1.21 ────────────────────────────────────────────────
+          - loader: neoforge
+            minecraft: "1.21"
             java: "21"
-            yarn: "1.21.1+build.3"
-            fabric: "0.102.0+1.21.1"
+            neoforge_version: "21.0.167"
+            parchment: "2024.06.23"
+            cloth: "15.0.128"
+            task: ":neoforge:build"
+            artifact_name: "tc-veinglow-1.21-neoforge"
+
+          # ── Forge 1.21 ───────────────────────────────────────────────────
+          - loader: forge
+            minecraft: "1.21"
+            java: "21"
+            forge_version: "21.0.14"
+            parchment: "2024.06.23"
+            cloth: "15.0.128"
+            task: ":forge:build"
+            artifact_name: "tc-veinglow-1.21-forge"
+
+          # ── Fabric 1.21.1 ────────────────────────────────────────────────
+          - loader: fabric
+            minecraft: "1.21.1"
+            java: "21"
+            yarn_mappings: "1.21.1+build.3"
+            fabric_version: "0.102.0+1.21.1"
             cloth: "15.0.140"
             modmenu: "11.0.3"
+            task: ":fabric:build"
+            artifact_name: "tc-veinglow-1.21.1-fabric"
+
+          # ── NeoForge 1.21.1 ──────────────────────────────────────────────
+          - loader: neoforge
+            minecraft: "1.21.1"
+            java: "21"
+            neoforge_version: "21.1.172"
+            parchment: "2024.07.28"
+            cloth: "15.0.140"
+            task: ":neoforge:build"
+            artifact_name: "tc-veinglow-1.21.1-neoforge"
+
+          # ── Forge 1.21.1 ─────────────────────────────────────────────────
+          - loader: forge
+            minecraft: "1.21.1"
+            java: "21"
+            forge_version: "21.1.68"
+            parchment: "2024.07.28"
+            cloth: "15.0.140"
+            task: ":forge:build"
+            artifact_name: "tc-veinglow-1.21.1-forge"
 
     steps:
-      - name: checkout repository
-        uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: validate gradle wrapper
-        uses: gradle/actions/wrapper-validation@v6
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v3
 
-      - name: setup jdk
-        uses: actions/setup-java@v5
+      - name: Setup JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
         with:
           java-version: ${{ matrix.java }}
-          distribution: 'temurin'
+          distribution: temurin
 
-      - name: make gradle wrapper executable
+      - name: Setup Gradle (with cache)
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          # Read-only cache on PRs to avoid cache poisoning
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+
+      - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      - name: build mod
-        run: ./gradlew build -Pminecraft_version=${{ matrix.minecraft }} -Pyarn_mappings=${{ matrix.yarn }} -Pfabric_version=${{ matrix.fabric }} -Pjava_version=${{ matrix.java }} -Pcloth_config_version=${{ matrix.cloth }} -Pmodmenu_version=${{ matrix.modmenu }}
+      - name: Build ${{ matrix.loader }} for MC ${{ matrix.minecraft }}
+        run: |
+          ./gradlew ${{ matrix.task }} --no-daemon \
+            -Pminecraft_version=${{ matrix.minecraft }} \
+            -Pcloth_config_version=${{ matrix.cloth }} \
+            ${{ matrix.yarn_mappings && format('-Pyarn_mappings={0}', matrix.yarn_mappings) || '' }} \
+            ${{ matrix.fabric_version && format('-Pfabric_version={0}', matrix.fabric_version) || '' }} \
+            ${{ matrix.modmenu && format('-Pmodmenu_version={0}', matrix.modmenu) || '' }} \
+            ${{ matrix.neoforge_version && format('-Pneoforge_version={0}', matrix.neoforge_version) || '' }} \
+            ${{ matrix.forge_version && format('-Pforge_version={0}', matrix.forge_version) || '' }} \
+            ${{ matrix.parchment && format('-Pparchment_version={0}', matrix.parchment) || '' }}
 
-      - name: capture build artifacts
-        uses: actions/upload-artifact@v7
+      - name: Upload artifact — ${{ matrix.artifact_name }}
+        uses: actions/upload-artifact@v4
         with:
-          name: build-${{ matrix.minecraft }}
-          path: build/libs/
+          name: ${{ matrix.artifact_name }}
+          # Exclude -dev, -sources jars from uploads
+          path: |
+            ${{ matrix.loader }}/build/libs/*.jar
+            !${{ matrix.loader }}/build/libs/*-dev.jar
+            !${{ matrix.loader }}/build/libs/*-sources.jar
+          if-no-files-found: error

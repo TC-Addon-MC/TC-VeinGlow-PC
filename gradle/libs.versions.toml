@@ -1,0 +1,43 @@
+[versions]
+# Minecraft
+minecraft         = "1.21.1"
+java              = "21"
+
+# Mappings
+yarn_mappings     = "1.21.1+build.3"
+parchment         = "2024.07.28"
+
+# Loaders
+fabric_loader     = "0.15.11"
+fabric_api        = "0.102.0+1.21.1"
+neoforge          = "21.1.172"
+forge             = "21.1.68"
+
+# Shared Dependencies
+cloth_config      = "15.0.140"
+modmenu           = "11.0.3"
+gson              = "2.10.1"
+
+# Gradle Plugins
+fabric_loom       = "1.7-SNAPSHOT"
+neoforge_gradle   = "7.0.+"
+forge_gradle      = "6.+"
+foojay            = "0.8.0"
+
+[libraries]
+# Minecraft
+minecraft                 = { module = "com.mojang:minecraft",                         version.ref = "minecraft" }
+
+# Fabric
+fabric-loader             = { module = "net.fabricmc:fabric-loader",                   version.ref = "fabric_loader" }
+fabric-api                = { module = "net.fabricmc.fabric-api:fabric-api",           version.ref = "fabric_api" }
+cloth-config-fabric       = { module = "me.shedaniel.cloth:cloth-config-fabric",       version.ref = "cloth_config" }
+cloth-config-neoforge     = { module = "me.shedaniel.cloth:cloth-config-neoforge",     version.ref = "cloth_config" }
+cloth-config-forge        = { module = "me.shedaniel.cloth:cloth-config-forge",        version.ref = "cloth_config" }
+modmenu                   = { module = "com.terraformersmc:modmenu",                   version.ref = "modmenu" }
+gson                      = { module = "com.google.code.gson:gson",                    version.ref = "gson" }
+
+[plugins]
+fabric-loom               = { id = "fabric-loom",                         version.ref = "fabric_loom" }
+neoforge-gradle           = { id = "net.neoforged.gradle.userdev",         version.ref = "neoforge_gradle" }
+forge-gradle              = { id = "net.minecraftforge.gradle",             version.ref = "forge_gradle" }
