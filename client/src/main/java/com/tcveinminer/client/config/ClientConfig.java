@@ -4,10 +4,10 @@ import com.tcveinminer.config.ModConfig;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
+
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
+
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -145,7 +145,7 @@ public class ClientConfig {
     public void postLoad() {
         if (customShapes == null)
             customShapes = new ArrayList<>();
-            
+
         boolean hasHeart = false;
         for (CustomShapeEntry entry : customShapes) {
             if ("custom:heart".equals(entry.strategyId) || "Heart".equals(entry.name)) {
@@ -154,7 +154,8 @@ public class ClientConfig {
             }
         }
         if (!hasHeart) {
-            customShapes.add(new CustomShapeEntry("Heart", "(x^2 + 2.25*y^2 + z^2 - 1)^3 - x^2*z^3 - 0.1125*y^2*z^3 <= 0"));
+            customShapes
+                    .add(new CustomShapeEntry("Heart", "(x^2 + 2.25*y^2 + z^2 - 1)^3 - x^2*z^3 - 0.1125*y^2*z^3 <= 0"));
             if (enabledShapes != null) {
                 enabledShapes.add("custom:heart");
             }

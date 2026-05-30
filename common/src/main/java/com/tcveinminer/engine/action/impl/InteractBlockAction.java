@@ -4,16 +4,13 @@ import com.tcveinminer.engine.action.ActionContext;
 import com.tcveinminer.engine.action.BlockAction;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
-import net.minecraft.block.Oxidizable;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.AxeItem;
-import net.minecraft.item.HoneycombItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.ShovelItem;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
+
 import net.minecraft.state.property.Property;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.BlockPos;
@@ -47,7 +44,8 @@ public final class InteractBlockAction implements BlockAction {
         if (stack.getItem() instanceof AxeItem || stack.getItem() instanceof ShovelItem) {
             net.minecraft.util.hit.BlockHitResult hitResult = new net.minecraft.util.hit.BlockHitResult(
                     net.minecraft.util.math.Vec3d.ofCenter(pos), net.minecraft.util.math.Direction.UP, pos, false);
-            net.minecraft.item.ItemUsageContext usageCtx = new net.minecraft.item.ItemUsageContext(player, hand, hitResult);
+            net.minecraft.item.ItemUsageContext usageCtx = new net.minecraft.item.ItemUsageContext(player, hand,
+                    hitResult);
             net.minecraft.util.ActionResult result = stack.useOnBlock(usageCtx);
             if (result.isAccepted()) {
                 return true;

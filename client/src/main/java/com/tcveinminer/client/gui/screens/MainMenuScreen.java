@@ -17,20 +17,20 @@ import net.minecraft.client.font.TextRenderer;
 import net.minecraft.text.Text;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
+
 import java.util.LinkedHashSet;
 import java.util.Set;
 import net.minecraft.util.Identifier;
 
 public class MainMenuScreen extends Screen {
 
-    private final int HDR_H     = 20;
-    private final int TAB_H     = 24; // Chiều cao thanh điều hướng thu gọn lại
-    private final int FOOTER_H  = 36;
-    private final int PAD_X     = 10;
-    private final int PAD_Y     = 8;
+    private final int HDR_H = 20;
+    private final int TAB_H = 24; // Chiều cao thanh điều hướng thu gọn lại
+    private final int FOOTER_H = 36;
+    private final int PAD_X = 10;
+    private final int PAD_Y = 8;
     private float animatedTabX = -1; // Vị trí X mượt của thanh chỉ hướng
-    private long tabSwitchTime = 0;  // Thời điểm bấm chuyển tab
+    private long tabSwitchTime = 0; // Thời điểm bấm chuyển tab
     private int W, H, px, py;
     private int currentTabIndex = 0;
     private static final String[] TAB_KEYS = {
@@ -59,14 +59,15 @@ public class MainMenuScreen extends Screen {
 
     @Override
     protected void init() {
-        this.W = Math.max(380, Math.min(460, (int)(this.width * 0.7)));
-        this.H = Math.max(240, Math.min(320, (int)(this.height * 0.75)));
+        this.W = Math.max(380, Math.min(460, (int) (this.width * 0.7)));
+        this.H = Math.max(240, Math.min(320, (int) (this.height * 0.75)));
         this.px = (this.width - this.W) / 2;
         this.py = (this.height - this.H) / 2;
 
         if (!stateLoaded) {
             ModConfig cfg = ConfigManager.get();
-            if (state.selectedShapeId == null) state.selectedShapeId = cfg.miningShape.name();
+            if (state.selectedShapeId == null)
+                state.selectedShapeId = cfg.miningShape.name();
             state.preventMiningNearFluids = cfg.preventMiningNearFluids;
             state.enableBucketSkill = cfg.enableBucketSkill;
             state.enableCropHarvestSkill = cfg.enableCropHarvestSkill;
@@ -82,15 +83,15 @@ public class MainMenuScreen extends Screen {
             if (ccfg.currentShape != null && !ccfg.currentShape.isBlank()) {
                 state.selectedShapeId = ccfg.currentShape;
             }
-            state.showOutline         = ccfg.showOutline;
-            state.outlineThickness    = ccfg.outlineThickness;
-            state.colorR              = ccfg.colorR;
-            state.colorG              = ccfg.colorG;
-            state.colorB              = ccfg.colorB;
-            state.outlineAlpha        = ccfg.outlineAlpha;
-            state.colorRainbow        = ccfg.colorRainbow;
-            state.colorDisabled       = ccfg.colorDisabled;
-            state.colorList           = new ArrayList<>();
+            state.showOutline = ccfg.showOutline;
+            state.outlineThickness = ccfg.outlineThickness;
+            state.colorR = ccfg.colorR;
+            state.colorG = ccfg.colorG;
+            state.colorB = ccfg.colorB;
+            state.outlineAlpha = ccfg.outlineAlpha;
+            state.colorRainbow = ccfg.colorRainbow;
+            state.colorDisabled = ccfg.colorDisabled;
+            state.colorList = new ArrayList<>();
             if (ccfg.colorList != null) {
                 for (String hex : ccfg.colorList) {
                     int[] rgb = com.tcveinminer.client.util.ColorManager.fromHex(hex);
@@ -100,18 +101,18 @@ public class MainMenuScreen extends Screen {
                 }
             }
             state.enableFlowAnimation = ccfg.enableFlowAnimation;
-            state.segmentLength       = ccfg.segmentLength;
-            state.flowSmoothness      = ccfg.flowSmoothness;
+            state.segmentLength = ccfg.segmentLength;
+            state.flowSmoothness = ccfg.flowSmoothness;
             state.colorTransitionTime = ccfg.colorTransitionTime;
-            state.showHud             = ccfg.showHud;
-            state.activationMode      = ccfg.activationMode;
-            state.maxBlocks           = Math.min(ccfg.clientMaxBlocks, ccfg.serverMaxBlocks);
-            state.enabledShapes       = new LinkedHashSet<>(ccfg.enabledShapes);
-            state.blacklist           = new LinkedHashSet<>(ccfg.personalBlacklist.stream()
+            state.showHud = ccfg.showHud;
+            state.activationMode = ccfg.activationMode;
+            state.maxBlocks = Math.min(ccfg.clientMaxBlocks, ccfg.serverMaxBlocks);
+            state.enabledShapes = new LinkedHashSet<>(ccfg.enabledShapes);
+            state.blacklist = new LinkedHashSet<>(ccfg.personalBlacklist.stream()
                     .map(Identifier::of).toList());
-            state.requireCorrectTool  = ccfg.requireCorrectTool;
+            state.requireCorrectTool = ccfg.requireCorrectTool;
             state.customShapeEquation = ccfg.customShapeEquation;
-            state.customShapes        = new ArrayList<>(ccfg.customShapes);
+            state.customShapes = new ArrayList<>(ccfg.customShapes);
             normalizeShapeState();
             stateLoaded = true;
         }
@@ -135,8 +136,13 @@ public class MainMenuScreen extends Screen {
             }, link, true));
         }));
 
-        addDrawableChild(new AmberButton(px + W - 90, py + H - 28, 80, 20, Text.translatable("gui.tcveinminer.button.save_config"), btn -> { save(); triggerSave(); }));
-        addDrawableChild(new AmberButton(px + W - 20, py + 2, 18, 16, Text.translatable("gui.tcveinminer.button.close"), btn -> client.setScreen(parent)));
+        addDrawableChild(new AmberButton(px + W - 90, py + H - 28, 80, 20,
+                Text.translatable("gui.tcveinminer.button.save_config"), btn -> {
+                    save();
+                    triggerSave();
+                }));
+        addDrawableChild(new AmberButton(px + W - 20, py + 2, 18, 16, Text.translatable("gui.tcveinminer.button.close"),
+                btn -> client.setScreen(parent)));
 
         tabInstances[currentTabIndex].init(this, cx, cy, cw, ch);
     }
@@ -193,12 +199,29 @@ public class MainMenuScreen extends Screen {
         return this.addDrawableChild(element);
     }
 
-    public MenuState getState() { return state; }
-    public TextRenderer getTextRenderer() { return this.textRenderer; }
-    public int getPx() { return px; }
-    public int getPy() { return py; }
-    public int getW() { return W; }
-    public int getH() { return H; }
+    public MenuState getState() {
+        return state;
+    }
+
+    public TextRenderer getTextRenderer() {
+        return this.textRenderer;
+    }
+
+    public int getPx() {
+        return px;
+    }
+
+    public int getPy() {
+        return py;
+    }
+
+    public int getW() {
+        return W;
+    }
+
+    public int getH() {
+        return H;
+    }
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
@@ -215,8 +238,12 @@ public class MainMenuScreen extends Screen {
         int currentX = titleX;
         int color1 = ThemeColors.TEXT_TITLE; // Vàng nhạt
         int color2 = ThemeColors.EMERALD_TEXT; // Xanh ngọc
-        int r1 = (color1 >> 16) & 0xFF; int g1 = (color1 >> 8) & 0xFF; int b1 = color1 & 0xFF;
-        int r2 = (color2 >> 16) & 0xFF; int g2 = (color2 >> 8) & 0xFF; int b2 = color2 & 0xFF;
+        int r1 = (color1 >> 16) & 0xFF;
+        int g1 = (color1 >> 8) & 0xFF;
+        int b1 = color1 & 0xFF;
+        int r2 = (color2 >> 16) & 0xFF;
+        int g2 = (color2 >> 8) & 0xFF;
+        int b2 = color2 & 0xFF;
 
         for (int i = 0; i < title.length(); i++) {
             String s = String.valueOf(title.charAt(i));
@@ -241,13 +268,14 @@ public class MainMenuScreen extends Screen {
         } else {
             // Tịnh tiến mượt vị trí thanh chỉ hướng
             animatedTabX = animatedTabX + (targetTabX - animatedTabX) * 0.25f;
-            if (Math.abs(animatedTabX - targetTabX) < 0.1f) animatedTabX = targetTabX;
+            if (Math.abs(animatedTabX - targetTabX) < 0.1f)
+                animatedTabX = targetTabX;
         }
 
         // Vẽ thanh chỉ hướng màu vàng chạy dưới chân Tab hoạt động
         int tx_start = (int) animatedTabX + 10;
         int tx_end = (int) animatedTabX + tabW - 10;
-        
+
         // Hiệu ứng glow mờ cho vạch dưới tab đang chọn
         ctx.fillGradient(tx_start - 2, tabBarY + TAB_H - 3, tx_end + 2, tabBarY + TAB_H, 0x00D8A15B, 0x88D8A15B);
         // Vạch chính sắc nét
@@ -294,7 +322,8 @@ public class MainMenuScreen extends Screen {
         if (saveNotify && System.currentTimeMillis() < saveHideAt) {
             String msg = Text.translatable("gui.tcveinminer.notify.saved").getString();
 
-            // Tính toán thời gian đã trôi qua kể từ lúc nhấn nút Lưu (hiển thị trong 2500ms)
+            // Tính toán thời gian đã trôi qua kể từ lúc nhấn nút Lưu (hiển thị trong
+            // 2500ms)
             long startTime = saveHideAt - 2500;
             long elapsed2 = System.currentTimeMillis() - startTime;
             int charsToShow = (int) (elapsed2 / 50); // Cứ 50ms hiển thị thêm 1 ký tự
@@ -304,10 +333,12 @@ public class MainMenuScreen extends Screen {
             ctx.fill(mx, my, mx + mw, my + mh, 0xE6091410);
             DrawHelper.drawSolidBorder(ctx, mx, my, mw, mh, ThemeColors.EMERALD_BORDER);
 
-            // Sử dụng animatedMsg để vẽ chữ, nhưng căn lề theo độ dài msg gốc để chữ không bị lệch tâm khi chạy
+            // Sử dụng animatedMsg để vẽ chữ, nhưng căn lề theo độ dài msg gốc để chữ không
+            // bị lệch tâm khi chạy
             int textX = mx + (mw - textRenderer.getWidth(msg)) / 2;
             ctx.drawTextWithShadow(textRenderer, animatedMsg, textX, my + (mh - 8) / 2, ThemeColors.EMERALD_TEXT);
-        } else saveNotify = false;
+        } else
+            saveNotify = false;
     }
 
     @Override
@@ -327,37 +358,47 @@ public class MainMenuScreen extends Screen {
                 }
             }
         }
-        if (tabInstances[currentTabIndex].mouseClicked(this, mx, my, btn)) return true;
+        if (tabInstances[currentTabIndex].mouseClicked(this, mx, my, btn))
+            return true;
         return super.mouseClicked(mx, my, btn);
     }
 
     @Override
     public boolean mouseScrolled(double mx, double my, double h, double v) {
-        if (tabInstances[currentTabIndex].mouseScrolled(this, mx, my, h, v)) return true;
+        if (tabInstances[currentTabIndex].mouseScrolled(this, mx, my, h, v))
+            return true;
         return super.mouseScrolled(mx, my, h, v);
     }
 
     @Override
     public boolean mouseDragged(double mx, double my, int btn, double dx, double dy) {
-        if (tabInstances[currentTabIndex].mouseDragged(this, mx, my, btn, dx, dy)) return true;
+        if (tabInstances[currentTabIndex].mouseDragged(this, mx, my, btn, dx, dy))
+            return true;
         return super.mouseDragged(mx, my, btn, dx, dy);
     }
 
     @Override
     public boolean mouseReleased(double mx, double my, int btn) {
-        if (tabInstances[currentTabIndex].mouseReleased(this, mx, my, btn)) return true;
+        if (tabInstances[currentTabIndex].mouseReleased(this, mx, my, btn))
+            return true;
         return super.mouseReleased(mx, my, btn);
     }
 
     @Override
     public boolean keyPressed(int kc, int sc, int mod) {
-        if (kc == 256) { client.setScreen(parent); return true; }
+        if (kc == 256) {
+            client.setScreen(parent);
+            return true;
+        }
         return super.keyPressed(kc, sc, mod);
     }
 
     private void save() {
         ModConfig cfg = ConfigManager.get();
-        try { cfg.miningShape = ModConfig.MiningShape.valueOf(state.selectedShapeId); } catch (Exception ignored) {}
+        try {
+            cfg.miningShape = ModConfig.MiningShape.valueOf(state.selectedShapeId);
+        } catch (Exception ignored) {
+        }
         cfg.preventMiningNearFluids = state.preventMiningNearFluids;
         cfg.enableBucketSkill = state.enableBucketSkill;
         cfg.enableCropHarvestSkill = state.enableCropHarvestSkill;
@@ -370,39 +411,48 @@ public class MainMenuScreen extends Screen {
         ConfigManager.save();
 
         ClientConfig ccfg = ClientConfigManager.instance;
-        ccfg.showOutline         = state.showOutline;
-        ccfg.outlineThickness    = state.outlineThickness;
-        ccfg.colorR              = state.colorR;
-        ccfg.colorG              = state.colorG;
-        ccfg.colorB              = state.colorB;
-        ccfg.outlineAlpha        = state.outlineAlpha;
-        ccfg.colorRainbow        = state.colorRainbow;
-        ccfg.colorDisabled       = state.colorDisabled;
-        ccfg.colorList           = new ArrayList<>();
+        ccfg.showOutline = state.showOutline;
+        ccfg.outlineThickness = state.outlineThickness;
+        ccfg.colorR = state.colorR;
+        ccfg.colorG = state.colorG;
+        ccfg.colorB = state.colorB;
+        ccfg.outlineAlpha = state.outlineAlpha;
+        ccfg.colorRainbow = state.colorRainbow;
+        ccfg.colorDisabled = state.colorDisabled;
+        ccfg.colorList = new ArrayList<>();
         if (state.colorList != null) {
             for (int[] rgb : state.colorList) {
                 ccfg.colorList.add(com.tcveinminer.client.util.ColorManager.toHex(rgb[0], rgb[1], rgb[2]));
             }
         }
         ccfg.enableFlowAnimation = state.enableFlowAnimation;
-        ccfg.segmentLength       = state.segmentLength;
-        ccfg.flowSmoothness      = state.flowSmoothness;
+        ccfg.segmentLength = state.segmentLength;
+        ccfg.flowSmoothness = state.flowSmoothness;
         ccfg.colorTransitionTime = state.colorTransitionTime;
-        ccfg.showHud             = state.showHud;
-        ccfg.activationMode      = state.activationMode;
-        ccfg.clientMaxBlocks     = state.maxBlocks;
-        ccfg.currentShape        = state.selectedShapeId;
-        ccfg.enabledShapes       = state.enabledShapes;
-        ccfg.personalBlacklist   = new ArrayList<>(state.blacklist.stream()
+        ccfg.showHud = state.showHud;
+        ccfg.activationMode = state.activationMode;
+        ccfg.clientMaxBlocks = state.maxBlocks;
+        ccfg.currentShape = state.selectedShapeId;
+        ccfg.enabledShapes = state.enabledShapes;
+        ccfg.personalBlacklist = new ArrayList<>(state.blacklist.stream()
                 .map(Identifier::toString).toList());
-        ccfg.requireCorrectTool  = state.requireCorrectTool;
+        ccfg.requireCorrectTool = state.requireCorrectTool;
         ccfg.customShapeEquation = state.customShapeEquation;
-        ccfg.customShapes        = new ArrayList<>(state.customShapes);
+        ccfg.customShapes = new ArrayList<>(state.customShapes);
         ClientConfigManager.save();
     }
 
-    private void triggerSave() { saveNotify = true; saveHideAt = System.currentTimeMillis() + 2500; }
+    private void triggerSave() {
+        saveNotify = true;
+        saveHideAt = System.currentTimeMillis() + 2500;
+    }
 
-    @Override public boolean shouldPause() { return false; }
-    @Override public void renderBackground(DrawContext c, int mx, int my, float d) {}
+    @Override
+    public boolean shouldPause() {
+        return false;
+    }
+
+    @Override
+    public void renderBackground(DrawContext c, int mx, int my, float d) {
+    }
 }

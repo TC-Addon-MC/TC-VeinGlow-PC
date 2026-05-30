@@ -3,6 +3,7 @@ package com.tcveinminer.client.logic;
 import com.tcveinminer.client.VeinGlowClient;
 import com.tcveinminer.client.config.ClientConfig;
 import com.tcveinminer.client.config.ClientConfigManager;
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.*;
 import net.minecraft.client.util.math.MatrixStack;
@@ -10,102 +11,16 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
-import org.joml.Vector3f;
 
 import java.util.*;
 
 public class BlockHighlighter {
-
-    // ── Render Layer Cache ────────────────────────────────────────────────────
-    // Dùng QUADS + POSITION_COLOR thay vì LINES + lineWidth.
-    // Lý do: GL lineWidth không consistent trên modern drivers — thickness thay đổi
-    // theo orientation, distance, FOV và góc nhìn. Quad geometry tự tính billboard
-    // nên luôn consistent ở mọi angle/distance/FOV.
-    private static RenderLayer cachedSolidLayer;
-    private static RenderLayer cachedXrayLayer;
 
     public static boolean allowContinuous = false;
     public static BlockPos lookedAtBlock = null;
     public static boolean allowHighlight = false;
     public static Set<BlockPos> highlightBlocks = new HashSet<>();
     public static String highlightStyle = "FACE";
-
-    /**
-     * Khởi tạo RenderLayer một lần duy nhất.
-     * Không cần rebuild theo thickness vì thickness bây giờ được xử lý
-     * ở geometry level (tính toán trong CPU, không phụ thuộc GL state).
-     */
-    private static void ensureRenderLayers() {
-        if (cachedSolidLayer != null)
-            return;
-
-        try {
-            java.lang.reflect.Method ofMethod = null;
-            for (java.lang.reflect.Method m : net.minecraft.client.render.RenderLayer.class.getDeclaredMethods()) {
-                if (m.getName().equals("of") && m.getParameterCount() == 7) {
-                    ofMethod = m;
-                    break;
-                }
-            }
-            if (ofMethod == null)
-                throw new NoSuchMethodException("RenderLayer.of not found");
-            ofMethod.setAccessible(true);
-
-            // Get RenderPhase fields via reflection
-            Object solidParams = buildParams(false);
-            Object xrayParams = buildParams(true);
-
-            cachedSolidLayer = (RenderLayer) ofMethod.invoke(null,
-                    "tc_veinminer_solid", VertexFormats.POSITION_COLOR,
-                    VertexFormat.DrawMode.QUADS, 256, false, true, solidParams);
-            cachedXrayLayer = (RenderLayer) ofMethod.invoke(null,
-                    "tc_veinminer_xray", VertexFormats.POSITION_COLOR,
-                    VertexFormat.DrawMode.QUADS, 256, false, true, xrayParams);
-        } catch (Exception e) {
-            // Fallback to LINES render layer if reflection fails
-            cachedSolidLayer = RenderLayer.LINES;
-            cachedXrayLayer = RenderLayer.LINES;
-        }
-    }
-
-    private static Object buildParams(boolean xray) {
-        try {
-            Class<?> paramsClass = Class.forName("net.minecraft.client.render.RenderLayer$MultiPhaseParameters");
-            java.lang.reflect.Method builderMethod = paramsClass.getDeclaredMethod("builder");
-            builderMethod.setAccessible(true);
-            Object builder = builderMethod.invoke(null);
-
-            java.lang.reflect.Field cpf = RenderPhase.class.getDeclaredField("COLOR_PROGRAM");
-            java.lang.reflect.Field lf = RenderPhase.class.getDeclaredField("VIEW_OFFSET_Z_LAYERING");
-            java.lang.reflect.Field tpf = RenderPhase.class.getDeclaredField("TRANSLUCENT_TRANSPARENCY");
-            java.lang.reflect.Field tgt = RenderPhase.class.getDeclaredField("MAIN_TARGET");
-            java.lang.reflect.Field wmf = RenderPhase.class.getDeclaredField("COLOR_MASK");
-            java.lang.reflect.Field dtf = RenderPhase.class
-                    .getDeclaredField(xray ? "ALWAYS_DEPTH_TEST" : "LEQUAL_DEPTH_TEST");
-            java.lang.reflect.Field culf = RenderPhase.class.getDeclaredField("DISABLE_CULLING");
-            for (java.lang.reflect.Field f : new java.lang.reflect.Field[] { cpf, lf, tpf, tgt, wmf, dtf, culf })
-                f.setAccessible(true);
-
-            Class<?> bClass = builder.getClass();
-            for (java.lang.reflect.Method m : bClass.getMethods()) {
-                switch (m.getName()) {
-                    case "program" -> m.invoke(builder, cpf.get(null));
-                    case "layering" -> m.invoke(builder, lf.get(null));
-                    case "transparency" -> m.invoke(builder, tpf.get(null));
-                    case "target" -> m.invoke(builder, tgt.get(null));
-                    case "writeMaskState" -> m.invoke(builder, wmf.get(null));
-                    case "depthTest" -> m.invoke(builder, dtf.get(null));
-                    case "cull" -> m.invoke(builder, culf.get(null));
-                }
-            }
-
-            java.lang.reflect.Method buildMethod = bClass.getDeclaredMethod("build", boolean.class);
-            buildMethod.setAccessible(true);
-            return buildMethod.invoke(builder, false);
-        } catch (Exception e) {
-            return null;
-        }
-    }
 
     public static void register() {
         // Registration should happen in loader-specific entrypoints
@@ -136,7 +51,7 @@ public class BlockHighlighter {
             toHighlight.add(lookedAtBlock);
         }
 
-        drawOutlines(matrices, camera, consumers, client, toHighlight, !allowHighlight);
+        drawOutlines(matrices, camera, client, toHighlight, !allowHighlight);
     }
 
     public static boolean onDrawOutline(MatrixStack matrices, Camera camera, VertexConsumerProvider consumers) {
@@ -159,15 +74,14 @@ public class BlockHighlighter {
         if (toHighlight.isEmpty())
             return true;
 
-        drawOutlines(matrices, camera, consumers, client, toHighlight, !allowHighlight);
+        drawOutlines(matrices, camera, client, toHighlight, !allowHighlight);
         return false;
     }
 
     // ── Rendering ─────────────────────────────────────────────────────────────
 
-    private static void drawOutlines(MatrixStack matrices, Camera camera, VertexConsumerProvider consumers,
-            MinecraftClient client,
-            Set<BlockPos> blockSet, boolean isTargetInvalid) {
+    private static void drawOutlines(MatrixStack matrices, Camera camera,
+            MinecraftClient client, Set<BlockPos> blockSet, boolean isTargetInvalid) {
         Map<Long, EdgeData> edgeCount = new HashMap<>();
         for (BlockPos pos : blockSet) {
             var state = client.world.getBlockState(pos);
@@ -184,8 +98,6 @@ public class BlockHighlighter {
             addAllEdges(edgeCount, pos, box);
         }
 
-        ensureRenderLayers();
-
         ClientConfig cfg = ClientConfigManager.instance;
         float[] fallbackRgb = isTargetInvalid
                 ? new float[] { 0.937f, 0.267f, 0.267f }
@@ -200,21 +112,74 @@ public class BlockHighlighter {
         matrices.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
         Matrix4f mat = matrices.peek().getPositionMatrix();
 
-        VertexConsumer solid = consumers.getBuffer(cachedSolidLayer);
-        VertexConsumer xray = consumers.getBuffer(cachedXrayLayer);
-
-        // Camera position as Vector3f để tính billboard direction
         float camX = (float) cameraPos.x;
         float camY = (float) cameraPos.y;
         float camZ = (float) cameraPos.z;
 
         float maxQuadLen = 0.05f;
 
+        Tessellator tessellator = Tessellator.getInstance();
+
+        // ── Xray pass (depth ALWAYS, alpha thấp) ──────────────────────────────
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.depthMask(false);
+        RenderSystem.disableCull();
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthFunc(515); // GL_ALWAYS = 519, GL_LEQUAL = 515 — xray dùng ALWAYS
+        RenderSystem.depthFunc(519); // GL_ALWAYS
+
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        BufferBuilder xrayBuf = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+
+        renderEdges(xrayBuf, mat, edgeCount, cfg, isTargetInvalid, fallbackRgb, alphaXray,
+                camX, camY, camZ, maxQuadLen);
+
+        if (isTargetInvalid) {
+            renderInvalidX(xrayBuf, mat, blockSet, client, cfg, camX, camY, camZ, r, g, b, alphaXray);
+        }
+
+        var builtXray = xrayBuf.endNullable();
+        if (builtXray != null) {
+            BufferRenderer.drawWithGlobalProgram(builtXray);
+        }
+
+        // ── Solid pass (depth LEQUAL, alpha đầy đủ) ───────────────────────────
+        RenderSystem.depthFunc(515); // GL_LEQUAL
+
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        BufferBuilder solidBuf = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+
+        renderEdges(solidBuf, mat, edgeCount, cfg, isTargetInvalid, fallbackRgb, alpha,
+                camX, camY, camZ, maxQuadLen);
+
+        if (isTargetInvalid) {
+            renderInvalidX(solidBuf, mat, blockSet, client, cfg, camX, camY, camZ, r, g, b, alpha);
+        }
+
+        var builtSolid = solidBuf.endNullable();
+        if (builtSolid != null) {
+            BufferRenderer.drawWithGlobalProgram(builtSolid);
+        }
+
+        // ── Restore GL state ──────────────────────────────────────────────────
+        RenderSystem.depthMask(true);
+        RenderSystem.enableCull();
+        RenderSystem.disableBlend();
+        RenderSystem.depthFunc(515); // restore to LEQUAL
+
+        matrices.pop();
+    }
+
+    private static void renderEdges(BufferBuilder buf, Matrix4f mat,
+            Map<Long, EdgeData> edgeCount, ClientConfig cfg,
+            boolean isTargetInvalid, float[] fallbackRgb, float alpha,
+            float camX, float camY, float camZ, float maxQuadLen) {
+
         for (EdgeData ed : edgeCount.values()) {
             if (ed.count != 1)
                 continue;
 
-            // ── Billboard quad cho edge (ax,ay,az) → (bx,by,bz) ──────────────
             float ex = ed.bx - ed.ax;
             float ey = ed.by - ed.ay;
             float ez = ed.bz - ed.az;
@@ -222,9 +187,7 @@ public class BlockHighlighter {
             float mx = (ed.ax + ed.bx) * 0.5f;
             float my = (ed.ay + ed.by) * 0.5f;
             float mz = (ed.az + ed.bz) * 0.5f;
-            float toX = camX - mx;
-            float toY = camY - my;
-            float toZ = camZ - mz;
+            float toX = camX - mx, toY = camY - my, toZ = camZ - mz;
 
             float ox = ey * toZ - ez * toY;
             float oy = ez * toX - ex * toZ;
@@ -241,9 +204,7 @@ public class BlockHighlighter {
             oz *= invLen;
 
             float edgeLen = (float) Math.sqrt(ex * ex + ey * ey + ez * ez);
-            int subDivs = (int) Math.ceil(edgeLen / maxQuadLen);
-            if (subDivs < 1)
-                subDivs = 1;
+            int subDivs = Math.max(1, (int) Math.ceil(edgeLen / maxQuadLen));
 
             float stepX = ex / subDivs;
             float stepY = ey / subDivs;
@@ -253,7 +214,6 @@ public class BlockHighlighter {
                 float ax = ed.ax + stepX * i;
                 float ay = ed.ay + stepY * i;
                 float az = ed.az + stepZ * i;
-
                 float bx = ed.ax + stepX * (i + 1);
                 float by = ed.ay + stepY * (i + 1);
                 float bz = ed.az + stepZ * (i + 1);
@@ -266,64 +226,46 @@ public class BlockHighlighter {
                 float p2x = bx - ox, p2y = by - oy, p2z = bz - oz;
                 float p3x = bx + ox, p3y = by + oy, p3z = bz + oz;
 
-                // Xray layer (alpha thấp, xuyên tường)
-                xray.vertex(mat, p0x, p0y, p0z).color(rgbA[0], rgbA[1], rgbA[2], alphaXray);
-                xray.vertex(mat, p1x, p1y, p1z).color(rgbA[0], rgbA[1], rgbA[2], alphaXray);
-                xray.vertex(mat, p2x, p2y, p2z).color(rgbB[0], rgbB[1], rgbB[2], alphaXray);
-                xray.vertex(mat, p3x, p3y, p3z).color(rgbB[0], rgbB[1], rgbB[2], alphaXray);
-
-                // Solid layer
-                solid.vertex(mat, p0x, p0y, p0z).color(rgbA[0], rgbA[1], rgbA[2], alpha);
-                solid.vertex(mat, p1x, p1y, p1z).color(rgbA[0], rgbA[1], rgbA[2], alpha);
-                solid.vertex(mat, p2x, p2y, p2z).color(rgbB[0], rgbB[1], rgbB[2], alpha);
-                solid.vertex(mat, p3x, p3y, p3z).color(rgbB[0], rgbB[1], rgbB[2], alpha);
+                buf.vertex(mat, p0x, p0y, p0z).color(rgbA[0], rgbA[1], rgbA[2], alpha);
+                buf.vertex(mat, p1x, p1y, p1z).color(rgbA[0], rgbA[1], rgbA[2], alpha);
+                buf.vertex(mat, p2x, p2y, p2z).color(rgbB[0], rgbB[1], rgbB[2], alpha);
+                buf.vertex(mat, p3x, p3y, p3z).color(rgbB[0], rgbB[1], rgbB[2], alpha);
             }
         }
-
-        // Invalid target: vẽ thêm dấu X trên mặt trên của block
-        if (isTargetInvalid) {
-            for (BlockPos pos : blockSet) {
-                var shape = client.world.getBlockState(pos).getOutlineShape(client.world, pos);
-                if (shape.isEmpty())
-                    continue;
-                Box box = shape.getBoundingBox();
-                float x0 = (float) (pos.getX() + box.minX), x1 = (float) (pos.getX() + box.maxX);
-                float y1 = (float) (pos.getY() + box.maxY);
-                float z0 = (float) (pos.getZ() + box.minZ), z1 = (float) (pos.getZ() + box.maxZ);
-
-                float diagHalfWidth = getDynamicHalfWidth(cfg.outlineThickness, (x0 + x1) * 0.5f, y1, (z0 + z1) * 0.5f,
-                        camX, camY, camZ);
-
-                // Dấu chéo trên mặt trên — vẫn dùng billboard quad logic
-                drawFlatEdgeQuad(mat, solid, xray, x0, y1, z0, x1, y1, z1,
-                        camX, camY, camZ, diagHalfWidth, r, g, b, alpha, alphaXray);
-            }
-        }
-
-        matrices.pop();
     }
 
-    private static float getDynamicHalfWidth(float thickness, float mx, float my, float mz, float camX, float camY,
-            float camZ) {
-        float dx = camX - mx;
-        float dy = camY - my;
-        float dz = camZ - mz;
+    private static void renderInvalidX(BufferBuilder buf, Matrix4f mat,
+            Set<BlockPos> blockSet, MinecraftClient client, ClientConfig cfg,
+            float camX, float camY, float camZ,
+            float r, float g, float b, float alpha) {
+        for (BlockPos pos : blockSet) {
+            var shape = client.world.getBlockState(pos).getOutlineShape(client.world, pos);
+            if (shape.isEmpty())
+                continue;
+            Box box = shape.getBoundingBox();
+            float x0 = (float) (pos.getX() + box.minX), x1 = (float) (pos.getX() + box.maxX);
+            float y1f = (float) (pos.getY() + box.maxY);
+            float z0 = (float) (pos.getZ() + box.minZ), z1 = (float) (pos.getZ() + box.maxZ);
+
+            float halfWidth = getDynamicHalfWidth(cfg.outlineThickness,
+                    (x0 + x1) * 0.5f, y1f, (z0 + z1) * 0.5f, camX, camY, camZ);
+
+            drawFlatEdgeQuad(buf, mat, x0, y1f, z0, x1, y1f, z1,
+                    camX, camY, camZ, halfWidth, r, g, b, alpha);
+        }
+    }
+
+    private static float getDynamicHalfWidth(float thickness, float mx, float my, float mz,
+            float camX, float camY, float camZ) {
+        float dx = camX - mx, dy = camY - my, dz = camZ - mz;
         float dist = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
         return dist * thickness * 0.0006f;
     }
 
-    /**
-     * Helper riêng cho edge nằm trên mặt phẳng ngang (y cố định).
-     * Bởi vì edge nằm ngang, billboard sẽ offset theo trục Y để luôn nhìn thấy.
-     */
-    private static void drawFlatEdgeQuad(Matrix4f mat,
-            VertexConsumer solid, VertexConsumer xray,
-            float ax, float ay, float az,
-            float bx, float by, float bz,
-            float camX, float camY, float camZ,
-            float halfWidth,
-            float r, float g, float b,
-            float alpha, float alphaXray) {
+    private static void drawFlatEdgeQuad(BufferBuilder buf, Matrix4f mat,
+            float ax, float ay, float az, float bx, float by, float bz,
+            float camX, float camY, float camZ, float halfWidth,
+            float r, float g, float b, float alpha) {
         float ex = bx - ax, ey = by - ay, ez = bz - az;
         float mx = (ax + bx) * 0.5f, my = (ay + by) * 0.5f, mz = (az + bz) * 0.5f;
         float toX = camX - mx, toY = camY - my, toZ = camZ - mz;
@@ -338,15 +280,10 @@ public class BlockHighlighter {
         oy *= inv;
         oz *= inv;
 
-        xray.vertex(mat, ax + ox, ay + oy, az + oz).color(r, g, b, alphaXray);
-        xray.vertex(mat, ax - ox, ay - oy, az - oz).color(r, g, b, alphaXray);
-        xray.vertex(mat, bx - ox, by - oy, bz - oz).color(r, g, b, alphaXray);
-        xray.vertex(mat, bx + ox, by + oy, bz + oz).color(r, g, b, alphaXray);
-
-        solid.vertex(mat, ax + ox, ay + oy, az + oz).color(r, g, b, alpha);
-        solid.vertex(mat, ax - ox, ay - oy, az - oz).color(r, g, b, alpha);
-        solid.vertex(mat, bx - ox, by - oy, bz - oz).color(r, g, b, alpha);
-        solid.vertex(mat, bx + ox, by + oy, bz + oz).color(r, g, b, alpha);
+        buf.vertex(mat, ax + ox, ay + oy, az + oz).color(r, g, b, alpha);
+        buf.vertex(mat, ax - ox, ay - oy, az - oz).color(r, g, b, alpha);
+        buf.vertex(mat, bx - ox, by - oy, bz - oz).color(r, g, b, alpha);
+        buf.vertex(mat, bx + ox, by + oy, bz + oz).color(r, g, b, alpha);
     }
 
     // ── Color Utilities ───────────────────────────────────────────────────────
@@ -380,12 +317,10 @@ public class BlockHighlighter {
 
         float segmentLen = Math.max(0.1f, cfg.segmentLength);
         float phase = (d / segmentLen) - timeOffset;
-
         phase = (phase % n + n) % n;
 
         int index1 = (int) phase;
         int index2 = (index1 + 1) % n;
-
         float t = phase - index1;
         float smooth = Math.max(0.001f, Math.min(1.0f, cfg.flowSmoothness));
 
@@ -397,14 +332,12 @@ public class BlockHighlighter {
 
         int[] rgb1 = com.tcveinminer.client.util.ColorManager.fromHex(cfg.colorList.get(index1));
         int[] rgb2 = com.tcveinminer.client.util.ColorManager.fromHex(cfg.colorList.get(index2));
-
         if (rgb1 == null || rgb2 == null)
             return new float[] { 1f, 1f, 1f };
 
         float r = (rgb1[0] + (rgb2[0] - rgb1[0]) * t) / 255f;
         float g = (rgb1[1] + (rgb2[1] - rgb1[1]) * t) / 255f;
         float b = (rgb1[2] + (rgb2[2] - rgb1[2]) * t) / 255f;
-
         return new float[] { r, g, b };
     }
 
@@ -429,30 +362,26 @@ public class BlockHighlighter {
         int x0 = bx2 + (int) (box.minX * 2), x1 = bx2 + (int) (box.maxX * 2);
         int y0 = by2 + (int) (box.minY * 2), y1 = by2 + (int) (box.maxY * 2);
         int z0 = bz2 + (int) (box.minZ * 2), z1 = bz2 + (int) (box.maxZ * 2);
-        addEdge(edgeCount, pos, box, x0, y1, z0, x1, y1, z0);
-        addEdge(edgeCount, pos, box, x0, y1, z1, x1, y1, z1);
-        addEdge(edgeCount, pos, box, x0, y0, z0, x1, y0, z0);
-        addEdge(edgeCount, pos, box, x0, y0, z1, x1, y0, z1);
-        addEdge(edgeCount, pos, box, x0, y0, z0, x0, y1, z0);
-        addEdge(edgeCount, pos, box, x1, y0, z0, x1, y1, z0);
-        addEdge(edgeCount, pos, box, x0, y0, z1, x0, y1, z1);
-        addEdge(edgeCount, pos, box, x1, y0, z1, x1, y1, z1);
-        addEdge(edgeCount, pos, box, x0, y1, z0, x0, y1, z1);
-        addEdge(edgeCount, pos, box, x1, y1, z0, x1, y1, z1);
-        addEdge(edgeCount, pos, box, x0, y0, z0, x0, y0, z1);
-        addEdge(edgeCount, pos, box, x1, y0, z0, x1, y0, z1);
+        addEdge(edgeCount, x0, y1, z0, x1, y1, z0);
+        addEdge(edgeCount, x0, y1, z1, x1, y1, z1);
+        addEdge(edgeCount, x0, y0, z0, x1, y0, z0);
+        addEdge(edgeCount, x0, y0, z1, x1, y0, z1);
+        addEdge(edgeCount, x0, y0, z0, x0, y1, z0);
+        addEdge(edgeCount, x1, y0, z0, x1, y1, z0);
+        addEdge(edgeCount, x0, y0, z1, x0, y1, z1);
+        addEdge(edgeCount, x1, y0, z1, x1, y1, z1);
+        addEdge(edgeCount, x0, y1, z0, x0, y1, z1);
+        addEdge(edgeCount, x1, y1, z0, x1, y1, z1);
+        addEdge(edgeCount, x0, y0, z0, x0, y0, z1);
+        addEdge(edgeCount, x1, y0, z0, x1, y0, z1);
     }
 
-    private static void addEdge(Map<Long, EdgeData> map, BlockPos pos, Box box,
+    private static void addEdge(Map<Long, EdgeData> map,
             int ax2, int ay2, int az2, int bx2, int by2, int bz2) {
         long key = edgeKey(ax2, ay2, az2, bx2, by2, bz2);
         EdgeData ed = map.get(key);
         if (ed == null) {
-            float ax = ax2 / 2f, ay = ay2 / 2f, az = az2 / 2f;
-            float bx = bx2 / 2f, by = by2 / 2f, bz = bz2 / 2f;
-            // Normal vector không còn cần thiết cho quad rendering,
-            // nhưng giữ lại EdgeData structure để tránh break thêm code.
-            map.put(key, new EdgeData(ax, ay, az, bx, by, bz));
+            map.put(key, new EdgeData(ax2 / 2f, ay2 / 2f, az2 / 2f, bx2 / 2f, by2 / 2f, bz2 / 2f));
         } else {
             ed.count++;
         }

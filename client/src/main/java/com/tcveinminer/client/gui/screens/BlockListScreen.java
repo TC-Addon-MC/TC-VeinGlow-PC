@@ -1,6 +1,5 @@
 package com.tcveinminer.client.gui.screens;
 
-import com.tcveinminer.config.ConfigManager;
 import com.tcveinminer.client.gui.CustomButton;
 import com.tcveinminer.client.util.ButtonDrawUtil;
 import com.tcveinminer.client.util.DrawHelper;
@@ -14,6 +13,7 @@ import net.minecraft.util.Identifier;
 
 import java.util.*;
 import com.tcveinminer.client.config.ClientConfigManager;
+
 public class BlockListScreen extends Screen {
 
     private static final int W = 300, H = 270;
@@ -54,27 +54,28 @@ public class BlockListScreen extends Screen {
 
         addDrawableChild(new CustomButton(x + 10, y + H - 60, 110, 16,
                 Text.translatable("gui.tcveinminer.button.add_block"), btn -> {
-            showAddPopup = true;
-            if (addField != null) addField.setText("");
-            addError = null;
-        }));
+                    showAddPopup = true;
+                    if (addField != null)
+                        addField.setText("");
+                    addError = null;
+                }));
 
         addDrawableChild(new CustomButton(x + 130, y + H - 60, 80, 16,
                 Text.translatable("gui.tcveinminer.button.clear_all"), btn -> {
-            blocks.clear();
-            scrollOffset = 0;
-        }));
+                    blocks.clear();
+                    scrollOffset = 0;
+                }));
 
         addDrawableChild(new CustomButton(x + W / 2 - 70, y + H - 36, 140, 18,
                 Text.translatable("gui.tcveinminer.button.save_back"), btn -> {
-            ClientConfigManager.instance.personalBlacklist.clear();
-            ClientConfigManager.instance.personalBlacklist.addAll(blocks);
-            ClientConfigManager.save();
-            client.setScreen(parent);
-        }));
+                    ClientConfigManager.instance.personalBlacklist.clear();
+                    ClientConfigManager.instance.personalBlacklist.addAll(blocks);
+                    ClientConfigManager.save();
+                    client.setScreen(parent);
+                }));
 
         // Popup add field
-        addField = new TextFieldWidget(textRenderer, x + W/2 - 100, y + H/2 - 10, 200, 20,
+        addField = new TextFieldWidget(textRenderer, x + W / 2 - 100, y + H / 2 - 10, 200, 20,
                 Text.literal("minecraft:diamond_ore"));
         addField.setMaxLength(200);
         addField.setVisible(false);
@@ -83,7 +84,8 @@ public class BlockListScreen extends Screen {
 
     private List<String> getFilteredBlocks() {
         String query = searchField != null ? searchField.getText().toLowerCase() : "";
-        if (query.isBlank()) return blocks;
+        if (query.isBlank())
+            return blocks;
         return blocks.stream().filter(b -> b.contains(query)).toList();
     }
 
@@ -91,7 +93,8 @@ public class BlockListScreen extends Screen {
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         DrawHelper.drawPanel(ctx, x, y, W, H);
         DrawHelper.drawHeader(ctx, x, y, W, HEADER_H);
-        ctx.drawTextWithShadow(textRenderer, Text.translatable("gui.tcveinminer.blocklist.header").getString(), x + 12, y + 8, ThemeColors.TEXT_TITLE);
+        ctx.drawTextWithShadow(textRenderer, Text.translatable("gui.tcveinminer.blocklist.header").getString(), x + 12,
+                y + 8, ThemeColors.TEXT_TITLE);
 
         // List area background
         int listX = x + 10;
@@ -145,7 +148,8 @@ public class BlockListScreen extends Screen {
         int py = y + (H - ph) / 2;
 
         DrawHelper.drawPanel(ctx, px, py, pw, ph);
-        ctx.drawTextWithShadow(textRenderer, Text.translatable("gui.tcveinminer.blocklist.add_prompt").getString(), px + 12, py + 10, ThemeColors.TEXT_TITLE);
+        ctx.drawTextWithShadow(textRenderer, Text.translatable("gui.tcveinminer.blocklist.add_prompt").getString(),
+                px + 12, py + 10, ThemeColors.TEXT_TITLE);
 
         addField.setX(px + 10);
         addField.setY(py + 25);
@@ -214,7 +218,10 @@ public class BlockListScreen extends Screen {
     }
 
     private void tryAddBlock(String id) {
-        if (id.isBlank()) { addError = Text.translatable("gui.tcveinminer.error.invalid_block").getString(); return; }
+        if (id.isBlank()) {
+            addError = Text.translatable("gui.tcveinminer.error.invalid_block").getString();
+            return;
+        }
         try {
             Identifier ident = Identifier.of(id);
             if (!Registries.BLOCK.containsId(ident)) {
@@ -225,7 +232,8 @@ public class BlockListScreen extends Screen {
             addError = Text.translatable("gui.tcveinminer.error.invalid_block").getString();
             return;
         }
-        if (!blocks.contains(id)) blocks.add(id);
+        if (!blocks.contains(id))
+            blocks.add(id);
         showAddPopup = false;
         addField.setVisible(false);
         addError = null;
@@ -234,11 +242,14 @@ public class BlockListScreen extends Screen {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         int amt = (int) verticalAmount;
-        if (amt == 0 && verticalAmount != 0) amt = verticalAmount > 0 ? 1 : -1;
+        if (amt == 0 && verticalAmount != 0)
+            amt = verticalAmount > 0 ? 1 : -1;
         scrollOffset = Math.max(0, scrollOffset - amt);
         return true;
     }
 
     @Override
-    public boolean shouldPause() { return false; }
+    public boolean shouldPause() {
+        return false;
+    }
 }
