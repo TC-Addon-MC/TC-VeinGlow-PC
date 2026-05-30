@@ -34,6 +34,7 @@ dependencies {
     implementation(project(path = ":client", configuration = "namedElements"))
     
     modApi("me.shedaniel.cloth:cloth-config-fabric:${cloth_config_version}")
+    modCompileOnlyApi("com.terraformersmc:modmenu:${modmenu_version}")
     modLocalRuntime("com.terraformersmc:modmenu:${modmenu_version}")
 }
 

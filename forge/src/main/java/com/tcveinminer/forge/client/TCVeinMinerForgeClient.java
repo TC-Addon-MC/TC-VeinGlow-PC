@@ -36,23 +36,7 @@ public class TCVeinMinerForgeClient {
         MinecraftForge.EVENT_BUS.addListener(TCVeinMinerForgeClient::onClientPlayerLoggingIn);
         MinecraftForge.EVENT_BUS.addListener(TCVeinMinerForgeClient::onClientPlayerLoggingOut);
 
-        net.minecraftforge.fml.ModLoadingContext.get().registerExtensionPoint(net.minecraftforge.client.ConfigScreenHandler.ConfigScreenFactory.class,
-                () -> new net.minecraftforge.client.ConfigScreenHandler.ConfigScreenFactory((minecraft, parent) -> {
-                    me.shedaniel.clothconfig2.api.ConfigBuilder builder = me.shedaniel.clothconfig2.api.ConfigBuilder.create()
-                            .setParentScreen(parent)
-                            .setTitle(net.minecraft.network.chat.Component.translatable("title.tcveinminer.config"));
-                    builder.setSavingRunnable(() -> {
-                        com.tcveinminer.client.config.ClientConfigManager.save();
-                        com.tcveinminer.config.ConfigManager.save();
-                    });
-                    me.shedaniel.clothconfig2.api.ConfigCategory general = builder.getOrCreateCategory(net.minecraft.network.chat.Component.translatable("category.tcveinminer.general"));
-                    me.shedaniel.clothconfig2.api.ConfigEntryBuilder entryBuilder = builder.entryBuilder();
-                    general.addEntry(entryBuilder.startBooleanToggle(net.minecraft.network.chat.Component.translatable("option.tcveinminer.enable"), com.tcveinminer.config.ConfigManager.get().enabled)
-                            .setDefaultValue(true)
-                            .setSaveConsumer(newValue -> com.tcveinminer.config.ConfigManager.get().enabled = newValue)
-                            .build());
-                    return builder.build();
-                }));
+
     }
 
     @SubscribeEvent
