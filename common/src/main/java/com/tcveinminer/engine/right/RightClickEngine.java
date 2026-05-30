@@ -90,7 +90,7 @@ public final class RightClickEngine extends AbstractActionEngine {
         ModConfig c = ConfigManager.get();
         if (!c.enabled) return false;
         
-        boolean holdingV = TCVeinMinerMod.playersHoldingV.contains(player.getUuid());
+        boolean holdingV = com.tcveinminer.engine.state.PlayerStateRegistry.isHoldingKey(player.getUuid());
 
         BlockPos origin = hitResult.getBlockPos();
         BlockState originState = world.getBlockState(origin);

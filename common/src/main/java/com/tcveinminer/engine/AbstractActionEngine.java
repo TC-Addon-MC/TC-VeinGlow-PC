@@ -158,7 +158,7 @@ public abstract class AbstractActionEngine {
         }
 
         // Key hold check
-        if (!TCVeinMinerMod.playersHoldingV.contains(player.getUuid())) {
+        if (!com.tcveinminer.engine.state.PlayerStateRegistry.isHoldingKey(player.getUuid())) {
             stop(player);
             return;
         }

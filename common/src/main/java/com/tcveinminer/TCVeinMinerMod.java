@@ -7,7 +7,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class TCVeinMinerMod {
 
-    public static final Set<UUID> playersHoldingV =
-            Collections.newSetFromMap(new ConcurrentHashMap<>());
+
 
 }

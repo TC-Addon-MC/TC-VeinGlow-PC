@@ -44,4 +44,8 @@ configurations.create("commonJava") {
     isCanBeConsumed = true
 }
 
-tasks.jar { archiveClassifier = "dev" }
+tasks.jar {
+    archiveClassifier = "dev"
+    from(project(":common").sourceSets["main"].output)
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}

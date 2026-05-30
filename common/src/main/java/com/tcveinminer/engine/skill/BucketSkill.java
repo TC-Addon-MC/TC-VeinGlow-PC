@@ -40,7 +40,7 @@ public final class BucketSkill {
         if (!(player instanceof ServerPlayerEntity spe)) return TypedActionResult.pass(player.getStackInHand(hand));
         
         // Kiểm tra xem người chơi có đang giữ phím V không
-        if (!TCVeinMinerMod.playersHoldingV.contains(spe.getUuid())) return TypedActionResult.pass(player.getStackInHand(hand));
+        if (!com.tcveinminer.engine.state.PlayerStateRegistry.isHoldingKey(spe.getUuid())) return TypedActionResult.pass(player.getStackInHand(hand));
 
         ItemStack stack = spe.getStackInHand(hand);
         

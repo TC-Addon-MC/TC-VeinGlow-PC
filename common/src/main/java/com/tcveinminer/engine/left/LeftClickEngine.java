@@ -83,7 +83,7 @@ public final class LeftClickEngine extends AbstractActionEngine {
         ModConfig c = ConfigManager.get();
         if (!c.enabled)
             return;
-        if (!TCVeinMinerMod.playersHoldingV.contains(player.getUuid()))
+        if (!com.tcveinminer.engine.state.PlayerStateRegistry.isHoldingKey(player.getUuid()))
             return;
 
         if (c.requireSneak && !player.isSneaking())
