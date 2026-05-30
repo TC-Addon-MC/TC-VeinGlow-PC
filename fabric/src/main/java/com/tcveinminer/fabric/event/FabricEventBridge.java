@@ -47,13 +47,13 @@ public final class FabricEventBridge {
         });
 
         // Use item (bucket skill)
-        UseItemCallback.EVENT.register((player, world, hand) ->
-                com.tcveinminer.engine.skill.BucketSkill.onUseItem(player, world, hand)
-        );
+        UseItemCallback.EVENT.register(
+                (player, world, hand) -> com.tcveinminer.engine.skill.BucketSkill.onUseItem(player, world, hand));
 
         // Right click block → interact/harvest/plant trigger
         UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
-            if (world.isClient) return ActionResult.PASS;
+            if (world.isClient)
+                return ActionResult.PASS;
             if (com.tcveinminer.engine.right.RightClickEngine.isProcessingInternal()) {
                 return ActionResult.PASS;
             }
@@ -61,7 +61,8 @@ public final class FabricEventBridge {
                 MiningEngine engine = MiningEngine.forPlayer(spe.getUuid());
                 if (!engine.isWorking() && !engine.right().isProcessing()) {
                     boolean started = engine.onInteractTrigger(spe, (ServerWorld) world, hand, hitResult);
-                    if (started) return ActionResult.SUCCESS;
+                    if (started)
+                        return ActionResult.SUCCESS;
                 }
             }
             return ActionResult.PASS;
@@ -92,8 +93,7 @@ public final class FabricEventBridge {
             var cfg = ConfigManager.get();
             NetworkManager.sendToPlayer(
                     handler.player,
-                    new ConfigSyncData(cfg.maxBlocks, new ArrayList<>(cfg.blacklistedBlocks))
-            );
+                    new ConfigSyncData(cfg.maxBlocks, new ArrayList<>(cfg.blacklistedBlocks)));
         });
 
         // Cleanup on disconnect
@@ -116,23 +116,22 @@ public final class FabricEventBridge {
                 (payload, context) -> {
                     var data = new com.tcveinminer.network.payload.HoldKeyData(
                             payload.isHolding(), payload.shapeId(), payload.maxBlocks(),
-                            payload.equation(), payload.blacklist()
-                    );
+                            payload.equation(), payload.blacklist());
                     context.server().execute(() -> HoldKeyHandler.handle(context.player(), data));
-                }
-        );
+                });
 
         // ActivationRequest C→S
         ServerPlayNetworking.registerGlobalReceiver(
                 FabricPacketChannel.FabricActivationRequestPayload.ID,
                 (payload, context) -> {
                     var data = new com.tcveinminer.network.payload.ActivationRequestData(
-                            payload.active(), payload.targetPos()
-                    );
+                            payload.active(),
+                            payload.targetPos().map(pos -> pos.asLong()));
+
                     context.server().execute(() -> ActivationRequestHandler.handle(context.player(), data));
-                }
-        );
+                });
     }
 
-    private FabricEventBridge() {}
+    private FabricEventBridge() {
+    }
 }

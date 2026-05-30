@@ -54,11 +54,11 @@ public class TCVeinMinerFabricClient implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.player != null && client.currentScreen == null) {
-                while (KEY_NEXT_SHAPE.wasPressed()) VeinGlowClient.cycleShape(client, 1);
-                while (KEY_PREV_SHAPE.wasPressed()) VeinGlowClient.cycleShape(client, -1);
-                while (KEY_QUICK_CYCLE.wasPressed()) VeinGlowClient.cycleShape(client, 1);
+                while (KEY_NEXT_SHAPE.wasPressed()) VeinGlowClient.cycleShape(1);
+                while (KEY_PREV_SHAPE.wasPressed()) VeinGlowClient.cycleShape(-1);
+                while (KEY_QUICK_CYCLE.wasPressed()) VeinGlowClient.cycleShape(1);
                 for (int i = 0; i < 9; i++) {
-                    while (KEY_QUICK_SELECT[i].wasPressed()) VeinGlowClient.selectShapeByIndex(client, i);
+                    while (KEY_QUICK_SELECT[i].wasPressed()) VeinGlowClient.selectShapeByIndex(i);
                 }
             }
 
@@ -72,7 +72,7 @@ public class TCVeinMinerFabricClient implements ClientModInitializer {
             int mineKey = KeyBindingHelper.getBoundKeyOf(KEY_MINE).getCode();
             boolean mineKeyPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), mineKey);
 
-            VeinGlowClient.onClientTick(client, mineKeyPressed, menuKeyPressed);
+            VeinGlowClient.onClientTick(mineKeyPressed, menuKeyPressed);
         });
     }
 }

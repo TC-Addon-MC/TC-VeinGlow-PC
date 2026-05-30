@@ -29,7 +29,7 @@ public final class TCVeinMinerForge {
         // 2. Networking
         ForgePacketChannel channel = new ForgePacketChannel();
         NetworkManager.setChannel(channel);
-        modBus.addListener(channel::registerPackets);
+        channel.registerPackets();
 
         // 3. Game event listeners on the FORGE game bus
         MinecraftForge.EVENT_BUS.register(new ForgeEventBridge.GameEventListener());

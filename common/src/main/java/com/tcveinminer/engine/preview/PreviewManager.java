@@ -2,8 +2,8 @@ package com.tcveinminer.engine.preview;
 
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.BlockPos;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import com.tcveinminer.network.HighlightBlockListPayload;
+import com.tcveinminer.network.NetworkManager;
+import com.tcveinminer.network.payload.HighlightBlockListData;
 
 import java.util.*;
 
@@ -68,8 +68,8 @@ public final class PreviewManager {
      */
     public void sendHighlight(ServerPlayerEntity spe, String source, Set<BlockPos> blocks, String style) {
         updatePreview(source, blocks, style);
-        ServerPlayNetworking.send(spe, new HighlightBlockListPayload(
-                new ArrayList<>(blocks), style, source));
+        NetworkManager.sendToPlayer(spe, new HighlightBlockListData(
+                blocks.stream().map(BlockPos::asLong).toList(), style, source));
     }
 
     /**
@@ -77,7 +77,7 @@ public final class PreviewManager {
      */
     public void sendClearHighlight(ServerPlayerEntity spe, String source) {
         clear(source);
-        ServerPlayNetworking.send(spe, new HighlightBlockListPayload(
+        NetworkManager.sendToPlayer(spe, new HighlightBlockListData(
                 Collections.emptyList(), "FACE", source));
     }
 }

@@ -14,6 +14,7 @@ plugins {
 }
 rootProject.name = "tc-veinglow"
 include("common")
+include("client")
 include("fabric")
 include("neoforge")
 include("forge")

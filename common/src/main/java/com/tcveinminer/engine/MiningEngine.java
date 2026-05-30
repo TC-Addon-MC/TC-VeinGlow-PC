@@ -18,13 +18,13 @@ import com.tcveinminer.engine.strategy.FilterModeManager;
 import com.tcveinminer.engine.strategy.MiningStrategy;
 import com.tcveinminer.engine.strategy.StrategyRegistry;
 import com.tcveinminer.engine.traversal.OrientationContext;
-import com.tcveinminer.network.ActivationConfirmPayload;
-import com.tcveinminer.network.FilterResultPayload;
-import com.tcveinminer.network.HighlightBlockListPayload;
-import com.tcveinminer.network.HighlightDeltaPayload;
-import com.tcveinminer.network.LookedAtBlockPayload;
+import com.tcveinminer.network.NetworkManager;
+import com.tcveinminer.network.payload.ActivationConfirmData;
+import com.tcveinminer.network.payload.FilterResultData;
+import com.tcveinminer.network.payload.HighlightBlockListData;
+import com.tcveinminer.network.payload.HighlightDeltaData;
+import com.tcveinminer.network.payload.LookedAtBlockData;
 import com.tcveinminer.util.ExpressionEvaluator;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.FluidBlock;
 import net.minecraft.entity.player.PlayerEntity;
@@ -43,14 +43,15 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * MiningEngine: per-player thin orchestrator.
  * <p>
- * Delegates all work to independent {@link LeftClickEngine} and {@link RightClickEngine}.
+ * Delegates all work to independent {@link LeftClickEngine} and
+ * {@link RightClickEngine}.
  * Both engines run in parallel — no shared mutable state between them.
  * <p>
  * This class manages:
  * <ul>
- *   <li>Player engine lifecycle (create, remove, config propagation)</li>
- *   <li>Preview/highlight computation (activation requests)</li>
- *   <li>Event delegation (break → left, interact → right, tick → both)</li>
+ * <li>Player engine lifecycle (create, remove, config propagation)</li>
+ * <li>Preview/highlight computation (activation requests)</li>
+ * <li>Event delegation (break → left, interact → right, tick → both)</li>
  * </ul>
  */
 public final class MiningEngine implements EngineQuery {
@@ -64,7 +65,9 @@ public final class MiningEngine implements EngineQuery {
     private final PreviewManager previewManager = new PreviewManager();
 
     // ── Preview cache ─────────────────────────────────────────────────────
-    private record PreviewCacheKey(BlockPos pos, String shape, int maxBlocks, net.minecraft.item.Item heldItem) {}
+    private record PreviewCacheKey(BlockPos pos, String shape, int maxBlocks, net.minecraft.item.Item heldItem) {
+    }
+
     private PreviewCacheKey lastPreviewKey = null;
     private List<BlockPos> lastPreviewResult = null;
 
@@ -75,7 +78,8 @@ public final class MiningEngine implements EngineQuery {
     private Set<String> playerBlacklist = new HashSet<>();
     private Set<String> mergedBlacklist = Collections.emptySet();
 
-    private MiningEngine() {}
+    private MiningEngine() {
+    }
 
     // ── Static Access ─────────────────────────────────────────────────────
 
@@ -100,7 +104,7 @@ public final class MiningEngine implements EngineQuery {
      * Left click — break/vein mine trigger.
      */
     public void onBreakTrigger(PlayerEntity player, ServerWorld world,
-                                BlockPos origin, BlockState originState) {
+            BlockPos origin, BlockState originState) {
         leftEngine.onBreakTrigger(player, world, origin, originState);
     }
 
@@ -110,7 +114,7 @@ public final class MiningEngine implements EngineQuery {
      * @return true if the mod handled the interaction
      */
     public boolean onInteractTrigger(PlayerEntity player, ServerWorld world,
-                                      Hand hand, BlockHitResult hitResult) {
+            Hand hand, BlockHitResult hitResult) {
         return rightEngine.onInteractTrigger(player, world, hand, hitResult);
     }
 
@@ -131,50 +135,53 @@ public final class MiningEngine implements EngineQuery {
     public void handleActivationRequest(ServerPlayerEntity spe, boolean active, BlockPos targetPos) {
         // Ignore dynamic updates if already processing
         if (leftEngine.getState() == EngineState.PROCESSING
-            || leftEngine.getState() == EngineState.FINISHED
-            || leftEngine.getState() == EngineState.CANCELLED) {
+                || leftEngine.getState() == EngineState.FINISHED
+                || leftEngine.getState() == EngineState.CANCELLED) {
             return;
         }
 
         if (!active || targetPos == null) {
             if (leftEngine.getState() == EngineState.PREVIEW) {
-                leftEngine.stateMachine.force(EngineState.IDLE);
+                leftEngine.forceState(EngineState.IDLE);
             }
-            ServerPlayNetworking.send(spe, new ActivationConfirmPayload(false));
-            ServerPlayNetworking.send(spe, new FilterResultPayload(false));
-            
+            NetworkManager.sendToPlayer(spe, new ActivationConfirmData(false));
+            NetworkManager.sendToPlayer(spe, new FilterResultData(false));
+
             ActionSession session = ActionSessionManager.getOrCreate(spe.getUuid());
             Set<BlockPos> prev = session.getRenderSnapshot();
             if (!prev.isEmpty()) {
-                ServerPlayNetworking.send(spe, new HighlightDeltaPayload(Collections.emptyList(), new ArrayList<>(prev), "FACE", "LEFT"));
+                NetworkManager.sendToPlayer(spe, new HighlightDeltaData(Collections.emptyList(),
+                        prev.stream().map(BlockPos::asLong).toList(), "FACE", "LEFT"));
                 session.initSnapshot(Collections.emptySet());
             }
             return;
         }
 
         ModConfig c = ConfigManager.get();
-        if (!c.enabled) return;
+        if (!c.enabled)
+            return;
 
-        leftEngine.stateMachine.force(EngineState.PREVIEW);
+        leftEngine.forceState(EngineState.PREVIEW);
 
         ServerWorld world = spe.getServerWorld();
-        if (!world.isChunkLoaded(targetPos.getX() >> 4, targetPos.getZ() >> 4)) return;
+        if (!world.isChunkLoaded(targetPos.getX() >> 4, targetPos.getZ() >> 4))
+            return;
 
         BlockState targetState = world.getBlockState(targetPos);
         if (targetState.isAir()) {
-            ServerPlayNetworking.send(spe, new FilterResultPayload(false));
+            NetworkManager.sendToPlayer(spe, new FilterResultData(false));
             return;
         }
 
-        if (spe.getMainHandStack().getItem() == Items.BUCKET 
-            && !(targetState.getBlock() instanceof FluidBlock && targetState.getFluidState().isStill())) {
-            ServerPlayNetworking.send(spe, new ActivationConfirmPayload(false));
-            ServerPlayNetworking.send(spe, new FilterResultPayload(false));
+        if (spe.getMainHandStack().getItem() == Items.BUCKET
+                && !(targetState.getBlock() instanceof FluidBlock && targetState.getFluidState().isStill())) {
+            NetworkManager.sendToPlayer(spe, new ActivationConfirmData(false));
+            NetworkManager.sendToPlayer(spe, new FilterResultData(false));
             ActionSession session = ActionSessionManager.getOrCreate(spe.getUuid());
             Set<BlockPos> prev = session.getRenderSnapshot();
             if (!prev.isEmpty()) {
-                ServerPlayNetworking.send(spe, new HighlightDeltaPayload(
-                    Collections.emptyList(), new ArrayList<>(prev), "FACE", "LEFT"));
+                NetworkManager.sendToPlayer(spe, new HighlightDeltaData(
+                        Collections.emptyList(), prev.stream().map(BlockPos::asLong).toList(), "FACE", "LEFT"));
                 session.initSnapshot(Collections.emptySet());
             }
             return;
@@ -184,9 +191,10 @@ public final class MiningEngine implements EngineQuery {
         boolean isBlacklisted = activeBlacklist.contains(blockId(targetState));
 
         if (isBlacklisted) {
-            ServerPlayNetworking.send(spe, new ActivationConfirmPayload(false));
-            ServerPlayNetworking.send(spe, new LookedAtBlockPayload(targetPos));
-            ServerPlayNetworking.send(spe, new FilterResultPayload(false));
+            NetworkManager.sendToPlayer(spe, new ActivationConfirmData(false));
+            NetworkManager.sendToPlayer(spe,
+                    new LookedAtBlockData(java.util.Optional.ofNullable(targetPos).map(BlockPos::asLong)));
+            NetworkManager.sendToPlayer(spe, new FilterResultData(false));
             return;
         }
 
@@ -198,10 +206,10 @@ public final class MiningEngine implements EngineQuery {
         FilterModeManager.BlockFilter filter;
 
         ActionType rightAction = CapabilityRegistry.resolve(spe, spe.getMainHandStack(), targetState, Hand.MAIN_HAND);
-        
+
         if (rightAction != ActionType.VANILLA_FALLBACK && rightAction != ActionType.USE_ITEM) {
             strategy = (customStrategy != null) ? customStrategy : StrategyRegistry.get(this.playerShape);
-            
+
             if (rightAction == ActionType.FLUID_SCOOP) {
                 int availableBuckets = 0;
                 for (int i = 0; i < spe.getInventory().size(); i++) {
@@ -211,16 +219,19 @@ public final class MiningEngine implements EngineQuery {
                     }
                 }
                 int bucketMax = Math.max(0, Math.min(this.playerMaxBlocks, availableBuckets) - 1);
-                if (bucketMax < maxBlocksToMine) maxBlocksToMine = bucketMax;
+                if (bucketMax < maxBlocksToMine)
+                    maxBlocksToMine = bucketMax;
                 strategy = StrategyRegistry.get("FACE");
             }
-            
+
             filter = RightClickFilterPipeline.forAction(rightAction, maxBlocksToMine);
         } else {
             strategy = (customStrategy != null) ? customStrategy : StrategyRegistry.get(this.playerShape);
-            ActionType leftAction = ("TREE_CAP".equals(this.playerShape) && targetState.isIn(net.minecraft.registry.tag.BlockTags.LOGS)) 
-                    ? ActionType.TREE_CAP : ActionType.BREAK;
-                    
+            ActionType leftAction = ("TREE_CAP".equals(this.playerShape)
+                    && targetState.isIn(net.minecraft.registry.tag.BlockTags.LOGS))
+                            ? ActionType.TREE_CAP
+                            : ActionType.BREAK;
+
             filter = LeftClickFilterPipeline.forAction(leftAction, strategy.getModeType(), maxBlocksToMine);
         }
 
@@ -232,20 +243,21 @@ public final class MiningEngine implements EngineQuery {
                 strategy.getModeType(), cache, activeBlacklist, c.requireHarvestCapability);
 
         if (!filter.test(fCtxTarget)) {
-            ServerPlayNetworking.send(spe, new ActivationConfirmPayload(false));
-            ServerPlayNetworking.send(spe, new LookedAtBlockPayload(targetPos));
-            ServerPlayNetworking.send(spe, new FilterResultPayload(false));
+            NetworkManager.sendToPlayer(spe, new ActivationConfirmData(false));
+            NetworkManager.sendToPlayer(spe,
+                    new LookedAtBlockData(java.util.Optional.ofNullable(targetPos).map(BlockPos::asLong)));
+            NetworkManager.sendToPlayer(spe, new FilterResultData(false));
             return;
         }
 
-        ServerPlayNetworking.send(spe, new ActivationConfirmPayload(true));
-        ServerPlayNetworking.send(spe, new LookedAtBlockPayload(targetPos));
-        ServerPlayNetworking.send(spe, new FilterResultPayload(true));
+        NetworkManager.sendToPlayer(spe, new ActivationConfirmData(true));
+        NetworkManager.sendToPlayer(spe,
+                new LookedAtBlockData(java.util.Optional.ofNullable(targetPos).map(BlockPos::asLong)));
+        NetworkManager.sendToPlayer(spe, new FilterResultData(true));
 
         PreviewCacheKey key = new PreviewCacheKey(
                 targetPos, this.playerShape, this.playerMaxBlocks,
-                spe.getMainHandStack().getItem()
-        );
+                spe.getMainHandStack().getItem());
 
         List<BlockPos> found;
         if (key.equals(lastPreviewKey) && lastPreviewResult != null) {
@@ -254,7 +266,8 @@ public final class MiningEngine implements EngineQuery {
             MiningStrategy.MiningRequest req = new MiningStrategy.MiningRequest(
                     world, spe, spe.getMainHandStack(),
                     targetPos, targetState, maxBlocksToMine, ctx, filter, cache, activeBlacklist,
-                    c.requireHarvestCapability, EngineState.PREVIEW, spe.getMainHandStack().getItem(), c.allowHeldItemChange);
+                    c.requireHarvestCapability, EngineState.PREVIEW, spe.getMainHandStack().getItem(),
+                    c.allowHeldItemChange);
             found = strategy.collectBlocks(req);
             lastPreviewKey = key;
             lastPreviewResult = found;
@@ -269,16 +282,19 @@ public final class MiningEngine implements EngineQuery {
 
         List<BlockPos> added = new ArrayList<>();
         for (BlockPos p : current) {
-            if (!previous.contains(p)) added.add(p);
+            if (!previous.contains(p))
+                added.add(p);
         }
 
         List<BlockPos> removed = new ArrayList<>();
         for (BlockPos p : previous) {
-            if (!current.contains(p)) removed.add(p);
+            if (!current.contains(p))
+                removed.add(p);
         }
 
         if (!added.isEmpty() || !removed.isEmpty()) {
-            ServerPlayNetworking.send(spe, new HighlightDeltaPayload(added, removed, this.playerShape, "LEFT"));
+            NetworkManager.sendToPlayer(spe, new HighlightDeltaData(added.stream().map(BlockPos::asLong).toList(),
+                    removed.stream().map(BlockPos::asLong).toList(), this.playerShape, "LEFT"));
             session.initSnapshot(current);
             session.updateTime();
         }
@@ -326,9 +342,17 @@ public final class MiningEngine implements EngineQuery {
         return leftEngine.isActive() || rightEngine.isActive();
     }
 
-    public LeftClickEngine left() { return leftEngine; }
-    public RightClickEngine right() { return rightEngine; }
-    public PreviewManager preview() { return previewManager; }
+    public LeftClickEngine left() {
+        return leftEngine;
+    }
+
+    public RightClickEngine right() {
+        return rightEngine;
+    }
+
+    public PreviewManager preview() {
+        return previewManager;
+    }
 
     public EngineState getState() {
         // Return left engine state for backward compat
@@ -348,9 +372,9 @@ public final class MiningEngine implements EngineQuery {
     @Override
     public int getProcessedCount() {
         if (leftEngine.isActive()) {
-            return leftEngine.session != null ? leftEngine.session.getProcessedCount() : 0;
+            return leftEngine.getSessionProcessedCount();
         } else if (rightEngine.isActive()) {
-            return rightEngine.session != null ? rightEngine.session.getProcessedCount() : 0;
+            return rightEngine.getSessionProcessedCount();
         }
         return 0;
     }
@@ -358,9 +382,9 @@ public final class MiningEngine implements EngineQuery {
     @Override
     public int getTargetCount() {
         if (leftEngine.isActive()) {
-            return leftEngine.session != null ? leftEngine.session.getTargetCount() : 0;
+            return leftEngine.getSessionTargetCount();
         } else if (rightEngine.isActive()) {
-            return rightEngine.session != null ? rightEngine.session.getTargetCount() : 0;
+            return rightEngine.getSessionTargetCount();
         }
         return 0;
     }
@@ -368,9 +392,9 @@ public final class MiningEngine implements EngineQuery {
     @Override
     public ActionType getCurrentActionType() {
         if (leftEngine.isActive()) {
-            return leftEngine.session != null ? leftEngine.session.getActionType() : null;
+            return leftEngine.getSessionActionType();
         } else if (rightEngine.isActive()) {
-            return rightEngine.session != null ? rightEngine.session.getActionType() : null;
+            return rightEngine.getSessionActionType();
         }
         return null;
     }
@@ -396,8 +420,10 @@ public final class MiningEngine implements EngineQuery {
 
     private static Direction approximateHitFace(PlayerEntity player) {
         float pitch = player.getPitch();
-        if (pitch > 60f) return Direction.UP;
-        if (pitch < -60f) return Direction.DOWN;
+        if (pitch > 60f)
+            return Direction.UP;
+        if (pitch < -60f)
+            return Direction.DOWN;
         return OrientationContext.facingFromYaw(player.getYaw()).getOpposite();
     }
 }

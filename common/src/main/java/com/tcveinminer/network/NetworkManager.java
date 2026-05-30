@@ -1,6 +1,6 @@
 package com.tcveinminer.network;
 
-import net.minecraft.server.network.ServerPlayerEntity;
+import com.tcveinminer.network.payload.NetworkPacket;
 
 /**
  * Central network dispatcher for the common module.
@@ -40,7 +40,7 @@ public final class NetworkManager {
      *
      * @throws IllegalStateException if {@link #setChannel} was not called yet.
      */
-    public static void sendToPlayer(ServerPlayerEntity player, NetworkPacket packet) {
+    public static void sendToPlayer(Object player, NetworkPacket packet) {
         requireChannel();
         channel.sendToPlayer(player, packet);
     }
@@ -48,7 +48,7 @@ public final class NetworkManager {
     /**
      * Send a packet to all players in the given collection.
      */
-    public static void sendToAll(NetworkPacket packet, Iterable<ServerPlayerEntity> players) {
+    public static void sendToAll(NetworkPacket packet, Iterable<?> players) {
         requireChannel();
         channel.sendToAll(packet, players);
     }
@@ -56,7 +56,7 @@ public final class NetworkManager {
     /**
      * Check whether a specific player's client has the mod installed.
      */
-    public static boolean canSendToPlayer(ServerPlayerEntity player) {
+    public static boolean canSendToPlayer(Object player) {
         requireChannel();
         return channel.canSendToPlayer(player);
     }

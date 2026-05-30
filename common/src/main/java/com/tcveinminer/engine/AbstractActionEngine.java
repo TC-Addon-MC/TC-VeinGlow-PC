@@ -2,7 +2,8 @@ package com.tcveinminer.engine;
 
 import com.tcveinminer.api.TCVeinMinerEvents;
 import com.tcveinminer.api.event.BlockBreakEvent;
-import com.tcveinminer.api.event.SessionEndEvent;import com.tcveinminer.TCVeinMinerMod;
+import com.tcveinminer.api.event.SessionEndEvent;
+import com.tcveinminer.TCVeinMinerMod;
 import com.tcveinminer.config.ConfigManager;
 import com.tcveinminer.config.ModConfig;
 import com.tcveinminer.engine.action.ActionContext;
@@ -18,12 +19,11 @@ import com.tcveinminer.engine.strategy.FilterModeManager;
 import com.tcveinminer.engine.strategy.MiningStrategy;
 import com.tcveinminer.engine.strategy.StrategyRegistry;
 import com.tcveinminer.logic.HudNotifier;
-import com.tcveinminer.network.HighlightBlockListPayload;
-import com.tcveinminer.network.HighlightDeltaPayload;
-import com.tcveinminer.network.MiningStatePayload;
+import com.tcveinminer.network.NetworkManager;
+import com.tcveinminer.network.payload.HighlightDeltaData;
+import com.tcveinminer.network.payload.MiningStateData;
 import com.tcveinminer.util.ExpressionEvaluator;
 import com.tcveinminer.util.SessionStats;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
@@ -42,24 +42,24 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>
  * Contains ALL shared lifecycle logic:
  * <ul>
- *   <li>Queue ticking ({@link #onServerTick})</li>
- *   <li>Snapshot sync</li>
- *   <li>Render/highlight updates</li>
- *   <li>Session lifecycle (stop, finalize, cancel)</li>
- *   <li>Cooldown checking</li>
- *   <li>Packet sending (MiningStatePayload, HighlightBlockListPayload)</li>
- *   <li>HUD notification</li>
- *   <li>Config management</li>
+ * <li>Queue ticking ({@link #onServerTick})</li>
+ * <li>Snapshot sync</li>
+ * <li>Render/highlight updates</li>
+ * <li>Session lifecycle (stop, finalize, cancel)</li>
+ * <li>Cooldown checking</li>
+ * <li>Packet sending (MiningStatePayload, HighlightBlockListPayload)</li>
+ * <li>HUD notification</li>
+ * <li>Config management</li>
  * </ul>
  * <p>
  * Subclasses (LeftClickEngine, RightClickEngine) only override:
  * <ul>
- *   <li>Action resolution</li>
- *   <li>Filter pipeline composition</li>
- *   <li>Strategy selection</li>
- *   <li>ActionContext creation</li>
- *   <li>Trigger validation</li>
- *   <li>Post-finalization hooks</li>
+ * <li>Action resolution</li>
+ * <li>Filter pipeline composition</li>
+ * <li>Strategy selection</li>
+ * <li>ActionContext creation</li>
+ * <li>Trigger validation</li>
+ * <li>Post-finalization hooks</li>
  * </ul>
  */
 public abstract class AbstractActionEngine {
@@ -86,33 +86,38 @@ public abstract class AbstractActionEngine {
 
     /** Resolve which ActionType to use for the given context */
     protected abstract ActionType resolveActionType(PlayerEntity player, ServerWorld world,
-                                                     BlockPos origin, BlockState state);
+            BlockPos origin, BlockState state);
 
     /** Build the filter pipeline for the resolved action */
     protected abstract FilterModeManager.BlockFilter buildFilter(ActionType type,
-                                                                  MiningStrategy strategy, int maxBlocks);
+            MiningStrategy strategy, int maxBlocks);
 
     /** Create the appropriate ActionContext for the resolved action */
     protected abstract ActionContext createContext(ActionType type, PlayerEntity player,
-                                                   ServerWorld world, BlockPos origin, BlockState state);
+            ServerWorld world, BlockPos origin, BlockState state);
 
     /** Select mining strategy for block collection */
     protected abstract MiningStrategy selectStrategy(ActionType type);
 
     /** Engine-specific validation before starting a session */
     protected abstract boolean validateTrigger(PlayerEntity player, ServerWorld world,
-                                               BlockPos origin, BlockState state, ModConfig config);
+            BlockPos origin, BlockState state, ModConfig config);
 
-    /** Called after session completes successfully (e.g., tree replant). Override for hooks. */
-    protected void onSessionFinalized(PlayerEntity player, ServerWorld world) {}
+    /**
+     * Called after session completes successfully (e.g., tree replant). Override
+     * for hooks.
+     */
+    protected void onSessionFinalized(PlayerEntity player, ServerWorld world) {
+    }
 
     /**
      * Check if a block is still valid for processing during tick.
      * Default: same block type as expected. Override for action-specific logic.
      */
     protected boolean isBlockStillValid(BlockState currentState, BlockActionQueue.ActionEntry entry,
-                                         ActionSession session) {
-        if (session.getActionContext() == null) return false;
+            ActionSession session) {
+        if (session.getActionContext() == null)
+            return false;
         BlockState original = session.getActionContext().getOriginalState();
         return original != null && currentState.getBlock() == original.getBlock();
     }
@@ -132,8 +137,10 @@ public abstract class AbstractActionEngine {
             return;
         }
 
-        if (!stateMachine.is(EngineState.PROCESSING)) return;
-        if (session == null) return;
+        if (!stateMachine.is(EngineState.PROCESSING))
+            return;
+        if (session == null)
+            return;
 
         // Item lock constraint
         ModConfig c = ConfigManager.get();
@@ -141,7 +148,7 @@ public abstract class AbstractActionEngine {
         // để handleToolState xử lý việc tìm & đổi tool thay thế.
         // Nếu không bỏ qua, stop() sẽ được gọi trước khi handleToolState kịp chạy.
         if (!c.allowHeldItemChange && session.getInitialItem() != null
-            && player.getMainHandStack().getItem() != session.getInitialItem()) {
+                && player.getMainHandStack().getItem() != session.getInitialItem()) {
             boolean toolJustBroke = player.getMainHandStack().isEmpty();
             boolean swapWillHandle = c.enableToolSwapSkill && c.requireHarvestCapability;
             if (!(toolJustBroke && swapWillHandle)) {
@@ -183,9 +190,9 @@ public abstract class AbstractActionEngine {
             double factor = speed * 0.75;
             double targetTicks = Math.sqrt(totalBlocks) * factor;
             targetTicks = Math.max(1.0, targetTicks);
-            
+
             int dynamicBlocksPerTick = (int) Math.ceil(totalBlocks / targetTicks);
-            
+
             // Safety bounds
             int minBlocksPerTick = c.tickSliceSize > 0 ? c.tickSliceSize : 1;
             blocksPerTick = Math.max(minBlocksPerTick, Math.min(100, dynamicBlocksPerTick));
@@ -202,7 +209,8 @@ public abstract class AbstractActionEngine {
         }
 
         if (player instanceof ServerPlayerEntity spe) {
-            ServerPlayNetworking.send(spe, new MiningStatePayload(1, session.getProcessedCount(), session.getTargetCount()));
+            NetworkManager.sendToPlayer(spe,
+                    new MiningStateData(1, session.getProcessedCount(), session.getTargetCount()));
         }
 
         try {
@@ -213,7 +221,8 @@ public abstract class AbstractActionEngine {
             }
 
             for (BlockActionQueue.ActionEntry e : batch) {
-                if (!(player instanceof ServerPlayerEntity spe)) break;
+                if (!(player instanceof ServerPlayerEntity spe))
+                    break;
 
                 BlockState currentState = world.getBlockState(e.pos());
 
@@ -224,8 +233,10 @@ public abstract class AbstractActionEngine {
                     continue;
                 }
 
-                BlockBreakEvent preEvent = new BlockBreakEvent(player, world, e.pos(), currentState, session.getActionType());
-                if (TCVeinMinerEvents.BLOCK_BREAK_PRE.invoker().onBlockBreakPre(preEvent) != net.minecraft.util.ActionResult.PASS) {
+                BlockBreakEvent preEvent = new BlockBreakEvent(player, world, e.pos(), currentState,
+                        session.getActionType());
+                if (TCVeinMinerEvents.BLOCK_BREAK_PRE.invoker()
+                        .onBlockBreakPre(preEvent) != net.minecraft.util.ActionResult.PASS) {
                     session.removeFromSnapshot(e.pos());
                     removed.add(e.pos());
                     continue;
@@ -236,7 +247,8 @@ public abstract class AbstractActionEngine {
                 session.removeFromSnapshot(e.pos());
                 removed.add(e.pos());
 
-                if (!success) continue;
+                if (!success)
+                    continue;
 
                 TCVeinMinerEvents.BLOCK_BREAK_POST.invoker().onBlockBreakPost(preEvent);
 
@@ -246,8 +258,8 @@ public abstract class AbstractActionEngine {
 
                 // Tool Management Skill
                 if (c.requireHarvestCapability && session.getInitialItem() != Items.AIR) {
-                    com.tcveinminer.engine.skill.ToolManagerSkill.ToolAction toolAction =
-                        com.tcveinminer.engine.skill.ToolManagerSkill.handleToolState(spe, c, session.getInitialItem(), session);
+                    com.tcveinminer.engine.skill.ToolManagerSkill.ToolAction toolAction = com.tcveinminer.engine.skill.ToolManagerSkill
+                            .handleToolState(spe, c, session.getInitialItem(), session);
                     if (toolAction == com.tcveinminer.engine.skill.ToolManagerSkill.ToolAction.STOP) {
                         stop(player);
                         return;
@@ -283,22 +295,22 @@ public abstract class AbstractActionEngine {
      * Stop/cancel the current session.
      */
     protected void stop(PlayerEntity player) {
-        List<BlockPos> removed = session != null ? new ArrayList<>(session.getRenderSnapshot()) : Collections.emptyList();
+        List<BlockPos> removed = session != null ? new ArrayList<>(session.getRenderSnapshot())
+                : Collections.emptyList();
 
         if (session != null) {
             TCVeinMinerEvents.SESSION_END.invoker().onSessionEnd(new SessionEndEvent(
-                player, player.getWorld(), session.getActionType(),
-                session.getProcessedCount(), session.getTargetCount(), true
-            ));
+                    player, player.getWorld(), session.getActionType(),
+                    session.getProcessedCount(), session.getTargetCount(), true));
             session.clear();
         }
         stateMachine.force(EngineState.CANCELLED);
         if (player instanceof ServerPlayerEntity spe) {
-            ServerPlayNetworking.send(spe, new MiningStatePayload(3,
+            NetworkManager.sendToPlayer(spe, new MiningStateData(3,
                     session != null ? session.getProcessedCount() : 0,
                     session != null ? session.getTargetCount() : 0));
-            ServerPlayNetworking.send(spe, new HighlightDeltaPayload(
-                    Collections.emptyList(), removed, "FACE", getSourceId()));
+            NetworkManager.sendToPlayer(spe, new HighlightDeltaData(
+                    Collections.emptyList(), removed.stream().map(BlockPos::asLong).toList(), "FACE", getSourceId()));
         }
     }
 
@@ -316,10 +328,11 @@ public abstract class AbstractActionEngine {
         stateMachine.force(EngineState.FINISHED);
 
         if (player instanceof ServerPlayerEntity spe) {
-            ServerPlayNetworking.send(spe, new MiningStatePayload(2, processed, target));
-            List<BlockPos> removed = session != null ? new ArrayList<>(session.getRenderSnapshot()) : Collections.emptyList();
-            ServerPlayNetworking.send(spe, new HighlightDeltaPayload(
-                    Collections.emptyList(), removed, "FACE", getSourceId()));
+            NetworkManager.sendToPlayer(spe, new MiningStateData(2, processed, target));
+            List<BlockPos> removed = session != null ? new ArrayList<>(session.getRenderSnapshot())
+                    : Collections.emptyList();
+            NetworkManager.sendToPlayer(spe, new HighlightDeltaData(
+                    Collections.emptyList(), removed.stream().map(BlockPos::asLong).toList(), "FACE", getSourceId()));
         }
 
         // Hook for subclasses (e.g., tree replant)
@@ -327,8 +340,7 @@ public abstract class AbstractActionEngine {
 
         if (session != null) {
             TCVeinMinerEvents.SESSION_END.invoker().onSessionEnd(new SessionEndEvent(
-                player, world, session.getActionType(), processed, target, false
-            ));
+                    player, world, session.getActionType(), processed, target, false));
             session.clear();
         }
     }
@@ -338,8 +350,9 @@ public abstract class AbstractActionEngine {
      */
     protected void sendHighlightUpdate(PlayerEntity player, List<BlockPos> removedBlocks) {
         if (session != null && player instanceof ServerPlayerEntity spe) {
-            ServerPlayNetworking.send(spe, new HighlightDeltaPayload(
-                    Collections.emptyList(), removedBlocks, playerShape, getSourceId()));
+            NetworkManager.sendToPlayer(spe, new HighlightDeltaData(
+                    Collections.emptyList(), removedBlocks.stream().map(BlockPos::asLong).toList(), playerShape,
+                    getSourceId()));
         }
     }
 
@@ -353,7 +366,8 @@ public abstract class AbstractActionEngine {
     }
 
     /**
-     * @return true if this engine is in PROCESSING state (session active, may or may not be in tick)
+     * @return true if this engine is in PROCESSING state (session active, may or
+     *         may not be in tick)
      */
     public boolean isActive() {
         return stateMachine.is(EngineState.PROCESSING);
@@ -371,6 +385,26 @@ public abstract class AbstractActionEngine {
      */
     public Set<BlockPos> getRenderSnapshot() {
         return session != null ? session.getRenderSnapshot() : Collections.emptySet();
+    }
+
+    /** Force the engine into a specific state (e.g., IDLE, PREVIEW). */
+    public void forceState(EngineState state) {
+        stateMachine.force(state);
+    }
+
+    /** @return processed block count for the current session, or 0 if none */
+    public int getSessionProcessedCount() {
+        return session != null ? session.getProcessedCount() : 0;
+    }
+
+    /** @return target block count for the current session, or 0 if none */
+    public int getSessionTargetCount() {
+        return session != null ? session.getTargetCount() : 0;
+    }
+
+    /** @return action type for the current session, or null if none */
+    public ActionType getSessionActionType() {
+        return session != null ? session.getActionType() : null;
     }
 
     // ── Config ────────────────────────────────────────────────────────────
@@ -403,10 +437,12 @@ public abstract class AbstractActionEngine {
      * Check and update cooldown for a player+source combination.
      */
     protected boolean checkCooldown(UUID uuid, long tick, ModConfig c) {
-        if (c.cooldownTicks <= 0) return true;
+        if (c.cooldownTicks <= 0)
+            return true;
         String key = uuid.toString() + "_" + getSourceId();
         long avail = cooldowns.getOrDefault(key, 0L);
-        if (tick < avail) return false;
+        if (tick < avail)
+            return false;
         cooldowns.put(key, tick + c.cooldownTicks);
         return true;
     }

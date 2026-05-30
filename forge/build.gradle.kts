@@ -36,6 +36,7 @@ dependencies {
     "forge"("net.minecraftforge:forge:${minecraft_version}-${forge_version}")
 
     implementation(project(path = ":common", configuration = "namedElements"))
+    implementation(project(path = ":client", configuration = "namedElements"))
 
     modApi("me.shedaniel.cloth:cloth-config-forge:${cloth_config_version}")
 }

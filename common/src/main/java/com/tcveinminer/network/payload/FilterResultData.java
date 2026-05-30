@@ -1,6 +1,6 @@
 package com.tcveinminer.network.payload;
 
-import com.tcveinminer.network.NetworkPacket;
+import com.tcveinminer.network.payload.NetworkPacket;
 
 /** S→C: Whether the looked-at block passes the filter (should highlight). */
 public record FilterResultData(boolean allowHighlight) implements NetworkPacket {

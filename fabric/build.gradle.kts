@@ -31,6 +31,7 @@ dependencies {
     modImplementation("net.fabricmc.fabric-api:fabric-api:${fabric_version}")
 
     implementation(project(path = ":common", configuration = "namedElements"))
+    implementation(project(path = ":client", configuration = "namedElements"))
     
     modApi("me.shedaniel.cloth:cloth-config-fabric:${cloth_config_version}")
     modLocalRuntime("com.terraformersmc:modmenu:${modmenu_version}")

@@ -1,7 +1,6 @@
 package com.tcveinminer.network.payload;
 
-import com.tcveinminer.network.NetworkPacket;
-import net.minecraft.util.math.BlockPos;
+import com.tcveinminer.network.payload.NetworkPacket;
 import java.util.List;
 
 /**
@@ -9,8 +8,8 @@ import java.util.List;
  * More bandwidth-efficient than resending the full list every tick.
  */
 public record HighlightDeltaData(
-        List<BlockPos> addedBlocks,
-        List<BlockPos> removedBlocks,
+        List<Long> addedBlocks,
+        List<Long> removedBlocks,
         String highlightStyle,
         String source  // "LEFT" or "RIGHT"
 ) implements NetworkPacket {

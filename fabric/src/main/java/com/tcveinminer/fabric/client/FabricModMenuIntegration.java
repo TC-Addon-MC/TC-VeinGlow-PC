@@ -26,9 +26,9 @@ public class FabricModMenuIntegration implements ModMenuApi {
             ConfigCategory general = builder.getOrCreateCategory(Text.translatable("category.tcveinminer.general"));
             ConfigEntryBuilder entryBuilder = builder.entryBuilder();
 
-            general.addEntry(entryBuilder.startBooleanToggle(Text.translatable("option.tcveinminer.enable"), ConfigManager.get().enable)
+            general.addEntry(entryBuilder.startBooleanToggle(Text.translatable("option.tcveinminer.enable"), ConfigManager.get().enabled)
                     .setDefaultValue(true)
-                    .setSaveConsumer(newValue -> ConfigManager.get().enable = newValue)
+                    .setSaveConsumer(newValue -> ConfigManager.get().enabled = newValue)
                     .build());
 
             return builder.build();

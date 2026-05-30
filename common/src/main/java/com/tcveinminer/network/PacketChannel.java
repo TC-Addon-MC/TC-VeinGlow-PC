@@ -1,7 +1,6 @@
 package com.tcveinminer.network;
 
-import net.minecraft.server.network.ServerPlayerEntity;
-
+import com.tcveinminer.network.payload.NetworkPacket;
 /**
  * Networking backend abstraction.
  * <p>
@@ -28,16 +27,16 @@ public interface PacketChannel {
      * @param player the recipient
      * @param packet the data packet (a {@link NetworkPacket} record)
      */
-    void sendToPlayer(ServerPlayerEntity player, NetworkPacket packet);
+    void sendToPlayer(Object player, NetworkPacket packet);
 
     /**
      * Send a packet to all players in the given iterable.
      */
-    void sendToAll(NetworkPacket packet, Iterable<ServerPlayerEntity> players);
+    void sendToAll(NetworkPacket packet, Iterable<?> players);
 
     /**
      * Check whether the given player's connection supports receiving this channel's packets.
      * Returns true if the mod is installed on the client, false for vanilla clients.
      */
-    boolean canSendToPlayer(ServerPlayerEntity player);
+    boolean canSendToPlayer(Object player);
 }

@@ -1,7 +1,7 @@
 package com.tcveinminer.neoforge.client.network;
 
 import com.tcveinminer.client.network.ClientPacketChannel;
-import com.tcveinminer.network.NetworkPacket;
+import com.tcveinminer.network.payload.NetworkPacket;
 import com.tcveinminer.neoforge.network.NeoForgePacketChannel;
 import net.neoforged.neoforge.network.PacketDistributor;
 
@@ -23,3 +23,4 @@ public class NeoForgeClientPacketChannel implements ClientPacketChannel {
         // Handled in NeoForgePacketChannel.registerPackets for NeoForge
     }
 }
+

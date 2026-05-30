@@ -17,9 +17,9 @@ import com.tcveinminer.engine.strategy.FilterModeManager;
 import com.tcveinminer.engine.strategy.MiningStrategy;
 import com.tcveinminer.engine.strategy.StrategyRegistry;
 import com.tcveinminer.engine.traversal.OrientationContext;
-import com.tcveinminer.network.MiningStatePayload;
+import com.tcveinminer.network.NetworkManager;
+import com.tcveinminer.network.payload.MiningStateData;
 import com.tcveinminer.util.SessionStats;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.FluidBlock;
@@ -196,7 +196,7 @@ public final class RightClickEngine extends AbstractActionEngine {
         stateMachine.force(EngineState.PROCESSING);
         SessionStats.onVeinMineStart();
         if (player instanceof ServerPlayerEntity spe) {
-            ServerPlayNetworking.send(spe, new MiningStatePayload(1, 0, session.getTargetCount()));
+            NetworkManager.sendToPlayer(spe, new MiningStateData(1, 0, session.getTargetCount()));
         }
 
         return true;

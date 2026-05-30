@@ -43,73 +43,14 @@ public final class InteractBlockAction implements BlockAction {
 
         EquipmentSlot slot = (hand == Hand.MAIN_HAND) ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND;
 
-        // 1. AXE INTERACTIONS
-        if (stack.getItem() instanceof AxeItem) {
-            // A. Wax off (waxed copper -> copper)
-            try {
-                Map<Block, Block> waxedMap = HoneycombItem.WAXED_TO_UNWAXED_BLOCKS.get();
-                if (waxedMap != null && waxedMap.containsKey(block)) {
-                    Block unwaxedBlock = waxedMap.get(block);
-                    BlockState targetState = copyProperties(state, unwaxedBlock.getDefaultState());
-                    world.playSound(null, pos, SoundEvents.ITEM_AXE_WAX_OFF, SoundCategory.BLOCKS, 1.0F, 1.0F);
-                    world.syncWorldEvent(player, 3004, pos, 0); // Wax off particle event
-                    world.setBlockState(pos, targetState, 11);
-                    if (!player.isCreative()) {
-                        stack.damage(1, player, slot);
-                    }
-                    return true;
-                }
-            } catch (Exception ignored) {
-            }
-
-            // B. De-oxidize (scrape copper oxidation level)
-            Optional<BlockState> decreased = Oxidizable.getDecreasedOxidationState(state);
-            if (decreased.isPresent()) {
-                world.playSound(null, pos, SoundEvents.ITEM_AXE_SCRAPE, SoundCategory.BLOCKS, 1.0F, 1.0F);
-                world.syncWorldEvent(player, 3005, pos, 0); // Scrape particle event
-                world.setBlockState(pos, decreased.get(), 11);
-                if (!player.isCreative()) {
-                    stack.damage(1, player, slot);
-                }
+        // 1. AXE & SHOVEL INTERACTIONS
+        if (stack.getItem() instanceof AxeItem || stack.getItem() instanceof ShovelItem) {
+            net.minecraft.util.hit.BlockHitResult hitResult = new net.minecraft.util.hit.BlockHitResult(
+                    net.minecraft.util.math.Vec3d.ofCenter(pos), net.minecraft.util.math.Direction.UP, pos, false);
+            net.minecraft.item.ItemUsageContext usageCtx = new net.minecraft.item.ItemUsageContext(player, hand, hitResult);
+            net.minecraft.util.ActionResult result = stack.useOnBlock(usageCtx);
+            if (result.isAccepted()) {
                 return true;
-            }
-
-            // C. Strip Log
-            Map<Block, Block> strippedBlocksMap = AxeItem.STRIPPED_BLOCKS;
-            if (strippedBlocksMap == null || strippedBlocksMap.isEmpty()) {
-                LOGGER.warn("AxeItem.STRIPPED_BLOCKS is null or empty. Stripping logs may not work.");
-            } else {
-                Block strippedBlock = strippedBlocksMap.get(block);
-                if (strippedBlock != null) {
-                    BlockState targetState = copyProperties(state, strippedBlock.getDefaultState());
-                    world.playSound(null, pos, SoundEvents.ITEM_AXE_STRIP, SoundCategory.BLOCKS, 1.0F, 1.0F);
-                    world.setBlockState(pos, targetState, 11);
-                    if (!player.isCreative()) {
-                        stack.damage(1, player, slot);
-                    }
-                    return true;
-                }
-            }
-        }
-
-        // 2. SHOVEL INTERACTIONS (Path grass)
-        if (stack.getItem() instanceof ShovelItem) {
-            Map<Block, BlockState> pathStatesMap = ShovelItem.PATH_STATES;
-            if (pathStatesMap == null || pathStatesMap.isEmpty()) {
-                LOGGER.warn("ShovelItem.PATH_STATES is null or empty. Creating paths may not work.");
-            } else {
-                BlockState pathState = pathStatesMap.get(block);
-                if (pathState != null) {
-                    BlockPos above = pos.up();
-                    if (world.getBlockState(above).isAir() || world.getBlockState(above).isReplaceable()) {
-                        world.playSound(null, pos, SoundEvents.ITEM_SHOVEL_FLATTEN, SoundCategory.BLOCKS, 1.0F, 1.0F);
-                        world.setBlockState(pos, pathState, 11);
-                        if (!player.isCreative()) {
-                            stack.damage(1, player, slot);
-                        }
-                        return true;
-                    }
-                }
             }
         }
 

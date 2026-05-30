@@ -16,6 +16,9 @@ import java.util.UUID;
  * after decoding the packet. All game logic lives here — no loader coupling.
  */
 public final class HoldKeyHandler {
+    public static void handleRaw(Object player, HoldKeyData data) {
+        handle((ServerPlayerEntity) player, data);
+    }
 
     public static void handle(ServerPlayerEntity player, HoldKeyData data) {
         UUID uuid = player.getUuid();

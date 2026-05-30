@@ -8,7 +8,7 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 public final class NeoForgeCommandRegistrar {
     public static void register(IEventBus modBus) {
         NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent event) -> {
-            VeinMinerCommand.register(event.getDispatcher());
+            com.tcveinminer.command.CommandApi.registerRaw(event.getDispatcher());
         });
     }
 }

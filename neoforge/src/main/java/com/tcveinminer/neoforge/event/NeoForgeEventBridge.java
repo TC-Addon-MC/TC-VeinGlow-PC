@@ -30,13 +30,13 @@ public final class NeoForgeEventBridge {
         @SubscribeEvent
         public void onBlockBreak(BlockEvent.BreakEvent event) {
             if (event.getLevel() instanceof net.minecraft.server.level.ServerLevel world) {
-                MiningEngine.forPlayer(event.getPlayer().getUUID())
-                        .onBreakTrigger(
-                                (net.minecraft.world.entity.player.Player) event.getPlayer(),
-                                world,
-                                event.getPos(),
-                                world.getBlockState(event.getPos())
-                        );
+                com.tcveinminer.engine.EngineApi.onBreakTriggerRaw(
+                        event.getPlayer().getUUID(),
+                        event.getPlayer(),
+                        world,
+                        event.getPos(),
+                        world.getBlockState(event.getPos())
+                );
             }
         }
 
@@ -48,9 +48,7 @@ public final class NeoForgeEventBridge {
                 if (!(level instanceof net.minecraft.server.level.ServerLevel world)) continue;
                 for (var player : world.players()) {
                     UUID uuid = player.getUUID();
-                    if (MiningEngine.hasEngine(uuid)) {
-                        MiningEngine.forPlayer(uuid).onServerTick(player, world);
-                    }
+                        com.tcveinminer.engine.EngineApi.onServerTickRaw(uuid, player, world);
                 }
             }
         }
@@ -60,7 +58,7 @@ public final class NeoForgeEventBridge {
             if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer spe) {
                 var cfg = ConfigManager.get();
                 NetworkManager.sendToPlayer(
-                        (net.minecraft.server.network.ServerPlayerEntity) spe,
+                        spe,
                         new ConfigSyncData(cfg.maxBlocks, new ArrayList<>(cfg.blacklistedBlocks))
                 );
             }

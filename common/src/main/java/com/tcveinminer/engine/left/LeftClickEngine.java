@@ -17,10 +17,10 @@ import com.tcveinminer.engine.strategy.MiningStrategy;
 import com.tcveinminer.engine.strategy.StrategyRegistry;
 import com.tcveinminer.engine.traversal.OrientationContext;
 import com.tcveinminer.engine.skill.TreeCapitatorSkill;
-import com.tcveinminer.network.HighlightBlockListPayload;
-import com.tcveinminer.network.MiningStatePayload;
+import com.tcveinminer.network.NetworkManager;
+import com.tcveinminer.network.payload.HighlightBlockListData;
+import com.tcveinminer.network.payload.MiningStateData;
 import com.tcveinminer.util.SessionStats;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.player.PlayerEntity;
@@ -67,8 +67,8 @@ public final class LeftClickEngine extends AbstractActionEngine {
                 session.removeFromSnapshot(origin);
                 session.updateRenderSnapshot();
                 if (player instanceof ServerPlayerEntity spe) {
-                    ServerPlayNetworking.send(spe, new HighlightBlockListPayload(
-                            new ArrayList<>(session.getRenderSnapshot()), playerShape, getSourceId()));
+                    NetworkManager.sendToPlayer(spe, new HighlightBlockListData(
+                            session.getRenderSnapshot().stream().map(BlockPos::asLong).toList(), playerShape, getSourceId()));
                 }
                 if (session.getQueue().isEmpty() && session.getLockedSnapshot().isEmpty()) {
                     finalizeMining(player, world);
@@ -178,7 +178,7 @@ public final class LeftClickEngine extends AbstractActionEngine {
         stateMachine.force(EngineState.PROCESSING);
         SessionStats.onVeinMineStart();
         if (player instanceof ServerPlayerEntity spe) {
-            ServerPlayNetworking.send(spe, new MiningStatePayload(1, 0, session.getTargetCount()));
+            NetworkManager.sendToPlayer(spe, new MiningStateData(1, 0, session.getTargetCount()));
         }
     }
 

@@ -1,6 +1,6 @@
 package com.tcveinminer.network.payload;
 
-import com.tcveinminer.network.NetworkPacket;
+import com.tcveinminer.network.payload.NetworkPacket;
 import java.util.List;
 
 /** S→C: Server-to-client config synchronization on join and reload. */

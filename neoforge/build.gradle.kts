@@ -32,6 +32,7 @@ dependencies {
     "neoForge"("net.neoforged:neoforge:${neoforge_version}")
 
     implementation(project(path = ":common", configuration = "namedElements"))
+    implementation(project(path = ":client", configuration = "namedElements"))
 
     modApi("me.shedaniel.cloth:cloth-config-neoforge:${cloth_config_version}")
 }
