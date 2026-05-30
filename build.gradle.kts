@@ -32,5 +32,15 @@ subprojects {
         }
         withSourcesJar()
     }
-}
 
+    tasks.withType<ProcessResources>().configureEach {
+        val replaceProperties = mapOf(
+            "version" to project.property("mod_version") as String
+        )
+        inputs.properties(replaceProperties)
+
+        filesMatching(listOf("META-INF/mods.toml", "META-INF/neoforge.mods.toml", "fabric.mod.json")) {
+            expand(replaceProperties)
+        }
+    }
+}

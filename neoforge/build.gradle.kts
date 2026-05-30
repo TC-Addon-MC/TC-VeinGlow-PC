@@ -36,3 +36,14 @@ dependencies {
 
     modApi("me.shedaniel.cloth:cloth-config-neoforge:${cloth_config_version}")
 }
+
+val bundledDeps = configurations.create("bundledDeps")
+dependencies {
+    bundledDeps(project(path = ":common", configuration = "transformProductionNeoForge"))
+    bundledDeps(project(path = ":client", configuration = "transformProductionNeoForge"))
+}
+
+tasks.named<org.gradle.jvm.tasks.Jar>("jar") {
+    from(bundledDeps.map { if (it.isDirectory) it else zipTree(it) })
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
