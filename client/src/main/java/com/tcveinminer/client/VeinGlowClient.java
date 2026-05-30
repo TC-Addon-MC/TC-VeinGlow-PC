@@ -36,6 +36,8 @@ public final class VeinGlowClient {
     private static boolean lastKeyPressed = false;
 
     private static BlockPos lastTargetPos = null;
+    private static net.minecraft.block.BlockState lastTargetState = null;
+    private static boolean forceUpdateNextTick = false;
     private static boolean lastHoldStateForActivation = false;
     private static long lastActivationSendTime = 0;
 
@@ -62,6 +64,8 @@ public final class VeinGlowClient {
         toggleActive = false;
         lastKeyPressed = false;
         lastTargetPos = null;
+        lastTargetState = null;
+        forceUpdateNextTick = false;
         lastHoldStateForActivation = false;
     }
 
@@ -113,6 +117,7 @@ public final class VeinGlowClient {
         if (state == 2 || state == 3) {
             com.tcveinminer.logic.HudNotifier.notifyAt = System.currentTimeMillis() + 2500;
             com.tcveinminer.logic.HudNotifier.lastCancelled = (state == 3);
+            forceUpdateNextTick = true;
         }
     }
 
@@ -194,6 +199,7 @@ public final class VeinGlowClient {
 
         if (client.world != null) {
             BlockPos currentTarget = null;
+            net.minecraft.block.BlockState currentState = null;
             HitResult hit = client.crosshairTarget;
 
             if (client.player.getMainHandStack().getItem() == net.minecraft.item.Items.BUCKET) {
@@ -213,15 +219,23 @@ public final class VeinGlowClient {
 
             if (hit != null && hit.getType() == HitResult.Type.BLOCK) {
                 currentTarget = ((BlockHitResult) hit).getBlockPos();
+                currentState = client.world.getBlockState(currentTarget);
             }
 
-            boolean targetChanged = (currentTarget == null && lastTargetPos != null)
+            boolean targetPosChanged = (currentTarget == null && lastTargetPos != null)
                     || (currentTarget != null && !currentTarget.equals(lastTargetPos));
+            boolean targetStateChanged = (currentState == null && lastTargetState != null)
+                    || (currentState != null && currentState != lastTargetState);
+            
+            boolean targetChanged = targetPosChanged || targetStateChanged;
+
             long now = System.currentTimeMillis();
-            boolean forceSend = (holdKeyDown != lastHoldStateForActivation);
+            boolean forceSend = (holdKeyDown != lastHoldStateForActivation) || forceUpdateNextTick;
             
             if (forceSend || (targetChanged && now - lastActivationSendTime > 100)) {
+                forceUpdateNextTick = false;
                 lastTargetPos = currentTarget;
+                lastTargetState = currentState;
                 lastHoldStateForActivation = holdKeyDown;
                 lastActivationSendTime = now;
 
