@@ -1,4 +1,3 @@
-
 plugins {
     id("dev.architectury.loom")
     id("architectury-plugin")
@@ -32,9 +31,14 @@ dependencies {
 
     implementation(project(path = ":common", configuration = "namedElements"))
     implementation(project(path = ":client", configuration = "namedElements"))
-    
+
     modApi("me.shedaniel.cloth:cloth-config-fabric:${cloth_config_version}")
     modCompileOnlyApi("com.terraformersmc:modmenu:${modmenu_version}")
     modLocalRuntime("com.terraformersmc:modmenu:${modmenu_version}")
 }
 
+tasks.named<org.gradle.jvm.tasks.Jar>("jar") {
+    from(project(":common").sourceSets["main"].output)
+    from(project(":client").sourceSets["main"].output)
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}

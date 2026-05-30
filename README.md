@@ -37,160 +37,30 @@
 
 ```
 TC_VeinGlow_Java/
-├── build.gradle
+├── build.gradle.kts
+├── settings.gradle.kts
 ├── gradle.properties
-├── settings.gradle
-├── src/
-│   ├── main/
-│   │   ├── java/com/tcveinminer/
-│   │   │   ├── TCVeinMinerMod.java              # Server entrypoint (ModInitializer)
-│   │   │   ├── config/
-│   │   │   │   ├── ModConfig.java               # Cấu hình server (MiningShape enum, settings)
-│   │   │   │   └── ConfigManager.java           # Đọc/ghi config server
-│   │   │   ├── engine/
-│   │   │   │   ├── AbstractActionEngine.java    # Base engine chứa logic chung
-│   │   │   │   ├── MiningEngine.java            # Engine chính điều phối toàn bộ quá trình đào
-│   │   │   │   ├── action/
-│   │   │   │   │   ├── ActionContext.java       # Context dữ liệu cho mỗi action
-│   │   │   │   │   ├── ActionExecutorRegistry.java
-│   │   │   │   │   ├── ActionType.java          # Enum loại action
-│   │   │   │   │   ├── BlockAction.java
-│   │   │   │   │   └── impl/
-│   │   │   │   │       ├── BreakBlockAction.java
-│   │   │   │   │       ├── FluidScoopAction.java
-│   │   │   │   │       ├── HarvestCropAction.java
-│   │   │   │   │       ├── HoeTillAction.java
-│   │   │   │   │       ├── InteractBlockAction.java
-│   │   │   │   │       ├── PlantAction.java
-│   │   │   │   │       └── TreeCapAction.java
-│   │   │   │   ├── capability/
-│   │   │   │   │   ├── CapabilityRegistry.java
-│   │   │   │   │   ├── ItemActionCapability.java
-│   │   │   │   │   └── impl/
-│   │   │   │   │       ├── BucketCapability.java
-│   │   │   │   │       ├── HarvestCapability.java
-│   │   │   │   │       ├── HoeCapability.java
-│   │   │   │   │       ├── InteractBlockCapability.java
-│   │   │   │   │       ├── PlantCapability.java
-│   │   │   │   │       └── UseItemCapability.java
-│   │   │   │   ├── filter/
-│   │   │   │   │   ├── LeftClickFilterPipeline.java
-│   │   │   │   │   ├── RightClickFilterPipeline.java
-│   │   │   │   │   └── ValidationPipeline.java
-│   │   │   │   ├── left/
-│   │   │   │   │   └── LeftClickEngine.java     # Xử lý kích hoạt bằng chuột trái (đào khối)
-│   │   │   │   ├── preview/
-│   │   │   │   │   └── PreviewManager.java
-│   │   │   │   ├── queue/
-│   │   │   │   │   └── BlockActionQueue.java    # Hàng đợi action theo từng tick
-│   │   │   │   ├── right/
-│   │   │   │   │   └── RightClickEngine.java    # Xử lý kích hoạt bằng chuột phải (interact)
-│   │   │   │   ├── session/
-│   │   │   │   │   ├── ActionSession.java
-│   │   │   │   │   └── ActionSessionManager.java
-│   │   │   │   ├── skill/
-│   │   │   │   │   ├── BreakSkill.java
-│   │   │   │   │   ├── BucketSkill.java
-│   │   │   │   │   ├── CropHarvestSkill.java
-│   │   │   │   │   ├── InteractSkill.java
-│   │   │   │   │   └── TreeCapitatorSkill.java
-│   │   │   │   ├── state/
-│   │   │   │   │   ├── EngineState.java         # Enum trạng thái engine
-│   │   │   │   │   └── EngineStateMachine.java
-│   │   │   │   ├── strategy/
-│   │   │   │   │   ├── BaseBfsStrategy.java     # BFS cơ sở cho các strategy dạng vein
-│   │   │   │   │   ├── CustomEquationStrategy.java
-│   │   │   │   │   ├── FilterModeManager.java   # Quản lý bộ lọc khối đào
-│   │   │   │   │   ├── MiningStrategy.java      # Interface strategy
-│   │   │   │   │   ├── RotationManager.java
-│   │   │   │   │   ├── ShapeModeManager.java
-│   │   │   │   │   ├── SpreadModeManager.java
-│   │   │   │   │   ├── StairModeManager.java
-│   │   │   │   │   ├── StrategyRegistry.java    # Đăng ký & tra cứu strategy theo ID
-│   │   │   │   │   └── TunnelModeManager.java
-│   │   │   │   └── traversal/
-│   │   │   │       ├── OrientationContext.java
-│   │   │   │       ├── Traversal.java
-│   │   │   │       └── TraversalUtils.java
-│   │   │   ├── hud/
-│   │   │   │   └── HudNotifier.java             # Gửi thông báo HUD từ phía server
-│   │   │   ├── logic/                           # (dành cho mở rộng)
-│   │   │   ├── mixin/                           # (dành cho mixin server nếu cần)
-│   │   │   ├── network/
-│   │   │   │   ├── ActivationConfirmPayload.java
-│   │   │   │   ├── ActivationRequestPayload.java
-│   │   │   │   ├── ConfigSyncPayload.java
-│   │   │   │   ├── FilterResultPayload.java
-│   │   │   │   ├── HighlightBlockListPayload.java
-│   │   │   │   ├── HighlightDeltaPayload.java
-│   │   │   │   ├── HoldKeyPayload.java
-│   │   │   │   ├── LookedAtBlockPayload.java
-│   │   │   │   └── MiningStatePayload.java
-│   │   │   └── util/
-│   │   │       ├── ExpressionEvaluator.java     # Parser biểu thức custom equation
-│   │   │       └── SessionStats.java
-│   │   └── resources/
-│   │       ├── fabric.mod.json
-│   │       ├── tc_veinminer.accesswidener
-│   │       ├── tc_veinminer.mixins.json
-│   │       └── assets/tc_veinminer/
-│   └── client/
-│       ├── java/
-│       │   ├── com/tcveinminer/
-│       │   │   ├── TCVeinMinerClient.java           # Client entrypoint (ClientModInitializer)
-│       │   │   ├── ModMenuIntegration.java          # Tích hợp ModMenu
-│       │   │   ├── config/
-│       │   │   │   ├── ClientConfig.java            # Cài đặt phía client (màu sắc, HUD, v.v.)
-│       │   │   │   └── ClientConfigManager.java
-│       │   │   ├── gui/
-│       │   │   │   ├── CustomButton.java
-│       │   │   │   ├── radial/                      # (dành cho radial menu nếu tách riêng)
-│       │   │   │   ├── screens/
-│       │   │   │   │   ├── BlockListScreen.java     # Màn hình danh sách khối trong blacklist
-│       │   │   │   │   ├── CustomShapeDesignerScreen.java  # Thiết kế hình dạng custom
-│       │   │   │   │   ├── MainMenuScreen.java      # Màn hình cài đặt chính
-│       │   │   │   │   ├── MenuState.java
-│       │   │   │   │   ├── RadialDrawingUtils.java
-│       │   │   │   │   ├── RadialMenuScreen.java    # Radial menu chọn hình dạng đào
-│       │   │   │   │   ├── custom/
-│       │   │   │   │   │   ├── GeometryGenerator.java
-│       │   │   │   │   │   ├── RenderMesh.java
-│       │   │   │   │   │   ├── ShapeAnalyzer.java
-│       │   │   │   │   │   ├── ShapeType.java
-│       │   │   │   │   │   └── VoxelRenderer.java
-│       │   │   │   │   └── tabs/
-│       │   │   │   │       ├── ColorTab.java        # Tab cài đặt màu sắc & hiệu ứng
-│       │   │   │   │       ├── DashTab.java         # Tab Dashboard
-│       │   │   │   │       ├── FilterTab.java       # Tab bộ lọc khối
-│       │   │   │   │       ├── GeneralTab.java      # Tab cài đặt chung
-│       │   │   │   │       ├── MenuTab.java
-│       │   │   │   │       ├── ShapesTab.java       # Tab quản lý hình dạng đào
-│       │   │   │   │       └── SkillsTab.java       # Tab bật/tắt các skill
-│       │   │   │   └── widgets/
-│       │   │   │       ├── AlphaSlider.java
-│       │   │   │       ├── AmberButton.java
-│       │   │   │       ├── MaxBlockSlider.java
-│       │   │   │       ├── RGBSlider.java
-│       │   │   │       ├── ThicknessSlider.java
-│       │   │   │       └── TransitionTimeSlider.java
-│       │   │   ├── hud/
-│       │   │   │   └── VeinMinerHudOverlay.java     # Render HUD overlay trên màn hình
-│       │   │   ├── logic/
-│       │   │   │   └── BlockHighlighter.java        # Tô sáng khối sẽ bị đào (client-side)
-│       │   │   └── util/
-│       │   │       ├── ButtonDrawUtil.java
-│       │   │       ├── ColorManager.java
-│       │   │       ├── DrawHelper.java
-│       │   │       ├── LayoutUtil.java
-│       │   │       ├── PanelDrawUtil.java
-│       │   │       ├── ThemeColors.java
-│       │   │       └── ToggleDrawUtil.java
-│       │   └── com/toancao/client/
-│       │       └── TemplateModClient.java           # Template placeholder
-│       └── resources/
-│           └── template-mod.client.mixins.json
-└── docs/
-    └── agents/
+├── common/                          # Mã nguồn dùng chung cho tất cả các nền tảng
+│   └── src/main/java/com/tcveinminer/
+│       ├── engine/                  # Core logic đào, hệ thống skill, trạng thái engine
+│       ├── event/                   # EventBus dùng chung
+│       ├── network/                 # Các payload packet (C2S/S2C) và handler
+│       ├── platform/                # Service loader (PlatformHelper, ClientBridge)
+│       └── util/                    # Tiện ích dùng chung
+├── client/                          # Mã nguồn giao diện (Client-side) dùng chung
+│   └── src/main/java/com/tcveinminer/client/
+│       ├── config/                  # Cài đặt cấu hình phía client
+│       ├── gui/                     # Giao diện màn hình cài đặt, widgets, tabs
+│       ├── hud/                     # HUD overlay hiển thị thông tin
+│       ├── logic/                   # Block Highlighter (tô sáng khối)
+│       ├── network/                 # Xử lý mạng phía client
+│       └── platform/                # Triển khai ClientBridgeImpl
+├── fabric/                          # Triển khai cụ thể cho Fabric Loader
+│   └── src/main/java/com/tcveinminer/fabric/
+├── forge/                           # Triển khai cụ thể cho Forge
+│   └── src/main/java/com/tcveinminer/forge/
+└── neoforge/                        # Triển khai cụ thể cho NeoForge
+    └── src/main/java/com/tcveinminer/neoforge/
 ```
 
 ## Kiến trúc tổng quan

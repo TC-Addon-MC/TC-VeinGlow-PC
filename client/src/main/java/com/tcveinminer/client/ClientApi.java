@@ -1,8 +1,12 @@
 package com.tcveinminer.client;
 
+import com.tcveinminer.client.logic.BlockHighlighter;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.RenderTickCounter;
+import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.util.math.MatrixStack;
 
 public final class ClientApi {
     public static void openRadialMenuRaw() {
@@ -14,6 +18,21 @@ public final class ClientApi {
                 (DrawContext) drawContext,
                 (RenderTickCounter) tickCounter);
     }
-    
-    private ClientApi() {}
+
+    public static boolean onDrawOutlineRaw(Object matrices, Object camera, Object consumers) {
+        return BlockHighlighter.onDrawOutline(
+                (MatrixStack) matrices,
+                (Camera) camera,
+                (VertexConsumerProvider) consumers);
+    }
+
+    public static void onDrawFluidHighlightRaw(Object matrices, Object camera, Object consumers) {
+        BlockHighlighter.onDrawFluidHighlight(
+                (MatrixStack) matrices,
+                (Camera) camera,
+                (VertexConsumerProvider) consumers);
+    }
+
+    private ClientApi() {
+    }
 }

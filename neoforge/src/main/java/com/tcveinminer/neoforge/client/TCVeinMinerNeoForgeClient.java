@@ -13,6 +13,8 @@ import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
+import net.neoforged.neoforge.client.event.RenderHighlightEvent;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import org.lwjgl.glfw.GLFW;
 
@@ -36,15 +38,20 @@ public class TCVeinMinerNeoForgeClient {
         NeoForge.EVENT_BUS.addListener(TCVeinMinerNeoForgeClient::onClientPlayerLoggingIn);
         NeoForge.EVENT_BUS.addListener(TCVeinMinerNeoForgeClient::onClientPlayerLoggingOut);
         NeoForge.EVENT_BUS.addListener(TCVeinMinerNeoForgeClient::onRenderGui);
+        NeoForge.EVENT_BUS.addListener(TCVeinMinerNeoForgeClient::onRenderBlockHighlight);
+        NeoForge.EVENT_BUS.addListener(TCVeinMinerNeoForgeClient::onRenderLevelStage);
     }
 
     @SubscribeEvent
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
         KEY_MINE = new KeyMapping("key.tc_veinminer.mine", GLFW.GLFW_KEY_V, "key.categories.tc_veinminer");
         KEY_MENU = new KeyMapping("key.tc_veinminer.menu", GLFW.GLFW_KEY_G, "key.categories.tc_veinminer");
-        KEY_NEXT_SHAPE = new KeyMapping("key.tc_veinminer.next_shape", GLFW.GLFW_KEY_RIGHT, "key.categories.tc_veinminer");
-        KEY_PREV_SHAPE = new KeyMapping("key.tc_veinminer.prev_shape", GLFW.GLFW_KEY_LEFT, "key.categories.tc_veinminer");
-        KEY_QUICK_CYCLE = new KeyMapping("key.tc_veinminer.quick_cycle", GLFW.GLFW_KEY_N, "key.categories.tc_veinminer");
+        KEY_NEXT_SHAPE = new KeyMapping("key.tc_veinminer.next_shape", GLFW.GLFW_KEY_RIGHT,
+                "key.categories.tc_veinminer");
+        KEY_PREV_SHAPE = new KeyMapping("key.tc_veinminer.prev_shape", GLFW.GLFW_KEY_LEFT,
+                "key.categories.tc_veinminer");
+        KEY_QUICK_CYCLE = new KeyMapping("key.tc_veinminer.quick_cycle", GLFW.GLFW_KEY_N,
+                "key.categories.tc_veinminer");
 
         event.register(KEY_MINE);
         event.register(KEY_MENU);
@@ -53,7 +60,8 @@ public class TCVeinMinerNeoForgeClient {
         event.register(KEY_QUICK_CYCLE);
 
         for (int i = 0; i < 9; i++) {
-            KEY_QUICK_SELECT[i] = new KeyMapping("key.tc_veinminer.quick_select_" + (i + 1), GLFW.GLFW_KEY_1 + i, "key.categories.tc_veinminer");
+            KEY_QUICK_SELECT[i] = new KeyMapping("key.tc_veinminer.quick_select_" + (i + 1), GLFW.GLFW_KEY_1 + i,
+                    "key.categories.tc_veinminer");
             event.register(KEY_QUICK_SELECT[i]);
         }
     }
@@ -61,11 +69,15 @@ public class TCVeinMinerNeoForgeClient {
     private static void onClientTick(ClientTickEvent.Post event) {
         Minecraft client = Minecraft.getInstance();
         if (client.player != null && client.screen == null) {
-            while (KEY_NEXT_SHAPE.consumeClick()) VeinGlowClient.cycleShape(1);
-            while (KEY_PREV_SHAPE.consumeClick()) VeinGlowClient.cycleShape(-1);
-            while (KEY_QUICK_CYCLE.consumeClick()) VeinGlowClient.cycleShape(1);
+            while (KEY_NEXT_SHAPE.consumeClick())
+                VeinGlowClient.cycleShape(1);
+            while (KEY_PREV_SHAPE.consumeClick())
+                VeinGlowClient.cycleShape(-1);
+            while (KEY_QUICK_CYCLE.consumeClick())
+                VeinGlowClient.cycleShape(1);
             for (int i = 0; i < 9; i++) {
-                while (KEY_QUICK_SELECT[i].consumeClick()) VeinGlowClient.selectShapeByIndex(i);
+                while (KEY_QUICK_SELECT[i].consumeClick())
+                    VeinGlowClient.selectShapeByIndex(i);
             }
         }
 
@@ -82,21 +94,39 @@ public class TCVeinMinerNeoForgeClient {
         VeinGlowClient.onClientTick(mineKeyPressed, menuKeyPressed);
     }
 
-    private static void onClientPlayerLoggingIn(net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingIn event) {
+    private static void onClientPlayerLoggingIn(
+            net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingIn event) {
         VeinGlowClient.onJoin();
     }
 
-    private static void onClientPlayerLoggingOut(net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingOut event) {
+    private static void onClientPlayerLoggingOut(
+            net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingOut event) {
         VeinGlowClient.onDisconnect();
     }
 
     private static void onRenderGui(RenderGuiEvent.Post event) {
-        // VeinMinerHudOverlay uses Yarn DrawContext internally (from common module).
-        // NeoForge's GuiGraphics is the Mojang-mapped equivalent (remapped at runtime).
-        // We call it via the remapped interface — this works because Architectury Loom
-        // remaps common classes at compile time for NeoForge.
         com.tcveinminer.client.ClientApi.onHudRenderRaw(
                 event.getGuiGraphics(),
                 event.getPartialTick());
+    }
+
+    // ── Render highlight outline khi giữ phím V ──────────────────────────────
+    private static void onRenderBlockHighlight(RenderHighlightEvent.Block event) {
+        boolean keepDefault = com.tcveinminer.client.ClientApi.onDrawOutlineRaw(
+                event.getPoseStack(),
+                event.getCamera(),
+                event.getMultiBufferSource());
+        if (!keepDefault)
+            event.setCanceled(true);
+    }
+
+    // ── Render fluid highlight (cầm Bucket) ──────────────────────────────────
+    private static void onRenderLevelStage(RenderLevelStageEvent event) {
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES)
+            return;
+        com.tcveinminer.client.ClientApi.onDrawFluidHighlightRaw(
+                event.getPoseStack(),
+                event.getCamera(),
+                net.minecraft.client.Minecraft.getInstance().renderBuffers().bufferSource());
     }
 }

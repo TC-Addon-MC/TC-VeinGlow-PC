@@ -1,6 +1,7 @@
 package com.tcveinminer.fabric.client;
 
 import com.tcveinminer.client.VeinGlowClient;
+import com.tcveinminer.client.logic.BlockHighlighter;
 import com.tcveinminer.client.network.ClientNetworkManager;
 import com.tcveinminer.fabric.client.network.FabricClientPacketChannel;
 import net.fabricmc.api.ClientModInitializer;
@@ -8,6 +9,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import org.lwjgl.glfw.GLFW;
@@ -34,15 +36,18 @@ public class TCVeinMinerFabricClient implements ClientModInitializer {
         KEY_MENU = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.tc_veinminer.menu", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_G, "key.categories.tc_veinminer"));
         KEY_NEXT_SHAPE = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.tc_veinminer.next_shape", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT, "key.categories.tc_veinminer"));
+                "key.tc_veinminer.next_shape", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT,
+                "key.categories.tc_veinminer"));
         KEY_PREV_SHAPE = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.tc_veinminer.prev_shape", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_LEFT, "key.categories.tc_veinminer"));
+                "key.tc_veinminer.prev_shape", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_LEFT,
+                "key.categories.tc_veinminer"));
         KEY_QUICK_CYCLE = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.tc_veinminer.quick_cycle", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_N, "key.categories.tc_veinminer"));
 
         for (int i = 0; i < 9; i++) {
             KEY_QUICK_SELECT[i] = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                    "key.tc_veinminer.quick_select_" + (i + 1), InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_1 + i, "key.categories.tc_veinminer"));
+                    "key.tc_veinminer.quick_select_" + (i + 1), InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_1 + i,
+                    "key.categories.tc_veinminer"));
         }
 
         HudRenderCallback.EVENT.register((ctx, tick) -> {
@@ -54,17 +59,21 @@ public class TCVeinMinerFabricClient implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.player != null && client.currentScreen == null) {
-                while (KEY_NEXT_SHAPE.wasPressed()) VeinGlowClient.cycleShape(1);
-                while (KEY_PREV_SHAPE.wasPressed()) VeinGlowClient.cycleShape(-1);
-                while (KEY_QUICK_CYCLE.wasPressed()) VeinGlowClient.cycleShape(1);
+                while (KEY_NEXT_SHAPE.wasPressed())
+                    VeinGlowClient.cycleShape(1);
+                while (KEY_PREV_SHAPE.wasPressed())
+                    VeinGlowClient.cycleShape(-1);
+                while (KEY_QUICK_CYCLE.wasPressed())
+                    VeinGlowClient.cycleShape(1);
                 for (int i = 0; i < 9; i++) {
-                    while (KEY_QUICK_SELECT[i].wasPressed()) VeinGlowClient.selectShapeByIndex(i);
+                    while (KEY_QUICK_SELECT[i].wasPressed())
+                        VeinGlowClient.selectShapeByIndex(i);
                 }
             }
 
             int menuKey = KeyBindingHelper.getBoundKeyOf(KEY_MENU).getCode();
             boolean menuKeyPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), menuKey);
-            
+
             if (menuKeyPressed && client.currentScreen == null && client.player != null) {
                 client.setScreen(new com.tcveinminer.client.gui.screens.RadialMenuScreen(null));
             }
@@ -73,6 +82,26 @@ public class TCVeinMinerFabricClient implements ClientModInitializer {
             boolean mineKeyPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), mineKey);
 
             VeinGlowClient.onClientTick(mineKeyPressed, menuKeyPressed);
+        });
+
+        // ── Render highlight outline khi giữ phím V ──────────────────────────
+        WorldRenderEvents.BEFORE_BLOCK_OUTLINE.register((context, hit) -> {
+            if (hit == null)
+                return true;
+            return BlockHighlighter.onDrawOutline(
+                    context.matrixStack(),
+                    context.camera(),
+                    context.consumers());
+        });
+
+        // ── Render fluid highlight (cầm Bucket) ──────────────────────────────
+        WorldRenderEvents.LAST.register(context -> {
+            if (context.consumers() == null)
+                return;
+            BlockHighlighter.onDrawFluidHighlight(
+                    context.matrixStack(),
+                    context.camera(),
+                    context.consumers());
         });
     }
 }
