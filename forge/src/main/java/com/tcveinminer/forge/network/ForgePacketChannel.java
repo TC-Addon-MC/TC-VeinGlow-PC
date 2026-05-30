@@ -149,9 +149,25 @@ public final class ForgePacketChannel implements PacketChannel {
                 );
             }).add();
 
-        if (net.minecraftforge.fml.loading.FMLEnvironment.dist.isClient()) {
-            com.tcveinminer.forge.client.network.ForgeClientPayloadHandler.registerClientHandlers();
-        }
+        // S2C
+        registerS2C(ForgeConfigSyncPayload.class, ForgeConfigSyncPayload.CODEC, com.tcveinminer.forge.client.network.ForgeClientPayloadHandler::handleConfigSync);
+        registerS2C(ForgeMiningStatePayload.class, ForgeMiningStatePayload.CODEC, com.tcveinminer.forge.client.network.ForgeClientPayloadHandler::handleMiningState);
+        registerS2C(ForgeActivationConfirmPayload.class, ForgeActivationConfirmPayload.CODEC, com.tcveinminer.forge.client.network.ForgeClientPayloadHandler::handleActivationConfirm);
+        registerS2C(ForgeLookedAtBlockPayload.class, ForgeLookedAtBlockPayload.CODEC, com.tcveinminer.forge.client.network.ForgeClientPayloadHandler::handleLookedAtBlock);
+        registerS2C(ForgeFilterResultPayload.class, ForgeFilterResultPayload.CODEC, com.tcveinminer.forge.client.network.ForgeClientPayloadHandler::handleFilterResult);
+        registerS2C(ForgeHighlightBlockListPayload.class, ForgeHighlightBlockListPayload.CODEC, com.tcveinminer.forge.client.network.ForgeClientPayloadHandler::handleHighlightBlockList);
+        registerS2C(ForgeHighlightDeltaPayload.class, ForgeHighlightDeltaPayload.CODEC, com.tcveinminer.forge.client.network.ForgeClientPayloadHandler::handleHighlightDelta);
+    }
+
+    private <T extends CustomPacketPayload> void registerS2C(Class<T> clazz, StreamCodec<RegistryFriendlyByteBuf, T> codec, java.util.function.Consumer<T> clientHandler) {
+        CHANNEL.messageBuilder(clazz, NetworkProtocol.PLAY)
+            .codec(codec)
+            .direction(PacketFlow.CLIENTBOUND)
+            .consumerMainThread((payload, context) -> {
+                if (net.minecraftforge.fml.loading.FMLEnvironment.dist.isClient()) {
+                    clientHandler.accept(payload);
+                }
+            }).add();
     }
 
     @Override

@@ -9,56 +9,33 @@ import net.minecraftforge.network.NetworkProtocol;
 
 public class ForgeClientPayloadHandler {
     
-    public static void registerClientHandlers() {
-        ForgePacketChannel.CHANNEL.messageBuilder(ForgeConfigSyncPayload.class, NetworkProtocol.PLAY)
-            .codec(ForgeConfigSyncPayload.CODEC)
-            .direction(PacketFlow.CLIENTBOUND)
-            .consumerMainThread((payload, context) -> {
-                VeinGlowClient.handleConfigSync(new ConfigSyncData(payload.maxBlocks(), payload.blacklistedBlocks()));
-            }).add();
+    public static void handleConfigSync(ForgeConfigSyncPayload payload) {
+        VeinGlowClient.handleConfigSync(new ConfigSyncData(payload.maxBlocks(), payload.blacklistedBlocks()));
+    }
 
-        ForgePacketChannel.CHANNEL.messageBuilder(ForgeMiningStatePayload.class, NetworkProtocol.PLAY)
-            .codec(ForgeMiningStatePayload.CODEC)
-            .direction(PacketFlow.CLIENTBOUND)
-            .consumerMainThread((payload, context) -> {
-                VeinGlowClient.handleMiningState(new MiningStateData(payload.state(), payload.broken(), payload.target()));
-            }).add();
+    public static void handleMiningState(ForgeMiningStatePayload payload) {
+        VeinGlowClient.handleMiningState(new MiningStateData(payload.state(), payload.broken(), payload.target()));
+    }
 
-        ForgePacketChannel.CHANNEL.messageBuilder(ForgeActivationConfirmPayload.class, NetworkProtocol.PLAY)
-            .codec(ForgeActivationConfirmPayload.CODEC)
-            .direction(PacketFlow.CLIENTBOUND)
-            .consumerMainThread((payload, context) -> {
-                VeinGlowClient.handleActivationConfirm(new ActivationConfirmData(payload.allowContinuous()));
-            }).add();
+    public static void handleActivationConfirm(ForgeActivationConfirmPayload payload) {
+        VeinGlowClient.handleActivationConfirm(new ActivationConfirmData(payload.allowContinuous()));
+    }
 
-        ForgePacketChannel.CHANNEL.messageBuilder(ForgeLookedAtBlockPayload.class, NetworkProtocol.PLAY)
-            .codec(ForgeLookedAtBlockPayload.CODEC)
-            .direction(PacketFlow.CLIENTBOUND)
-            .consumerMainThread((payload, context) -> {
-                VeinGlowClient.handleLookedAtBlock(new LookedAtBlockData(payload.pos()));
-            }).add();
+    public static void handleLookedAtBlock(ForgeLookedAtBlockPayload payload) {
+        VeinGlowClient.handleLookedAtBlock(new LookedAtBlockData(payload.pos()));
+    }
 
-        ForgePacketChannel.CHANNEL.messageBuilder(ForgeFilterResultPayload.class, NetworkProtocol.PLAY)
-            .codec(ForgeFilterResultPayload.CODEC)
-            .direction(PacketFlow.CLIENTBOUND)
-            .consumerMainThread((payload, context) -> {
-                VeinGlowClient.handleFilterResult(new FilterResultData(payload.allowHighlight()));
-            }).add();
+    public static void handleFilterResult(ForgeFilterResultPayload payload) {
+        VeinGlowClient.handleFilterResult(new FilterResultData(payload.allowHighlight()));
+    }
 
-        ForgePacketChannel.CHANNEL.messageBuilder(ForgeHighlightBlockListPayload.class, NetworkProtocol.PLAY)
-            .codec(ForgeHighlightBlockListPayload.CODEC)
-            .direction(PacketFlow.CLIENTBOUND)
-            .consumerMainThread((payload, context) -> {
-                VeinGlowClient.handleHighlightBlockList(new HighlightBlockListData(
-                        payload.blocks(), payload.highlightStyle(), payload.source()));
-            }).add();
+    public static void handleHighlightBlockList(ForgeHighlightBlockListPayload payload) {
+        VeinGlowClient.handleHighlightBlockList(new HighlightBlockListData(
+                payload.blocks(), payload.highlightStyle(), payload.source()));
+    }
 
-        ForgePacketChannel.CHANNEL.messageBuilder(ForgeHighlightDeltaPayload.class, NetworkProtocol.PLAY)
-            .codec(ForgeHighlightDeltaPayload.CODEC)
-            .direction(PacketFlow.CLIENTBOUND)
-            .consumerMainThread((payload, context) -> {
-                VeinGlowClient.handleHighlightDelta(new HighlightDeltaData(
-                        payload.addedBlocks(), payload.removedBlocks(), payload.highlightStyle(), payload.source()));
-            }).add();
+    public static void handleHighlightDelta(ForgeHighlightDeltaPayload payload) {
+        VeinGlowClient.handleHighlightDelta(new HighlightDeltaData(
+                payload.addedBlocks(), payload.removedBlocks(), payload.highlightStyle(), payload.source()));
     }
 }
