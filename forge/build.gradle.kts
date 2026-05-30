@@ -40,3 +40,9 @@ dependencies {
 
     modApi("me.shedaniel.cloth:cloth-config-forge:${cloth_config_version}")
 }
+
+tasks.named<org.gradle.jvm.tasks.Jar>("jar") {
+    from(project(":common").sourceSets["main"].output)
+    from(project(":client").sourceSets["main"].output)
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
