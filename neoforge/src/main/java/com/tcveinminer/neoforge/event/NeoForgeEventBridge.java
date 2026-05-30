@@ -8,9 +8,11 @@ import com.tcveinminer.network.NetworkManager;
 import com.tcveinminer.network.payload.ConfigSyncData;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.minecraft.world.InteractionResult;
 
 import java.util.ArrayList;
 import java.util.UUID;
@@ -28,6 +30,37 @@ public final class NeoForgeEventBridge {
     public static class GameEventListener {
 
         @SubscribeEvent
+        public void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
+            if (event.getLevel().isClientSide())
+                return;
+            if (com.tcveinminer.engine.right.RightClickEngine.isProcessingInternal())
+                return;
+            if (!(event.getEntity() instanceof net.minecraft.server.level.ServerPlayer spe))
+                return;
+            if (!(event.getLevel() instanceof net.minecraft.server.level.ServerLevel world))
+                return;
+
+            MiningEngine engine = MiningEngine.forPlayer(spe.getUUID());
+            if (!engine.isWorking() && !engine.right().isProcessing()) {
+                boolean started = engine.onInteractTrigger(spe, world, event.getHand(),
+                        (net.minecraft.world.phys.BlockHitResult) event.getHitVec());
+                if (started)
+                    event.setCanceled(true);
+            }
+        }
+
+        @SubscribeEvent
+        public void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
+            if (event.getLevel().isClientSide())
+                return;
+            var result = com.tcveinminer.engine.skill.BucketSkill.onUseItem(
+                    event.getEntity(), event.getLevel(), event.getHand());
+            if (result.getResult().consumesAction()) {
+                event.setCanceled(true);
+            }
+        }
+
+        @SubscribeEvent
         public void onBlockBreak(BlockEvent.BreakEvent event) {
             if (event.getLevel() instanceof net.minecraft.server.level.ServerLevel world) {
                 com.tcveinminer.engine.EngineApi.onBreakTriggerRaw(
@@ -35,8 +68,7 @@ public final class NeoForgeEventBridge {
                         event.getPlayer(),
                         world,
                         event.getPos(),
-                        world.getBlockState(event.getPos())
-                );
+                        world.getBlockState(event.getPos()));
             }
         }
 
@@ -45,10 +77,11 @@ public final class NeoForgeEventBridge {
             var server = event.getServer();
             ActionSessionManager.checkTimeouts(System.currentTimeMillis(), 5000);
             for (var level : server.getAllLevels()) {
-                if (!(level instanceof net.minecraft.server.level.ServerLevel world)) continue;
+                if (!(level instanceof net.minecraft.server.level.ServerLevel world))
+                    continue;
                 for (var player : world.players()) {
                     UUID uuid = player.getUUID();
-                        com.tcveinminer.engine.EngineApi.onServerTickRaw(uuid, player, world);
+                    com.tcveinminer.engine.EngineApi.onServerTickRaw(uuid, player, world);
                 }
             }
         }
@@ -59,8 +92,7 @@ public final class NeoForgeEventBridge {
                 var cfg = ConfigManager.get();
                 NetworkManager.sendToPlayer(
                         spe,
-                        new ConfigSyncData(cfg.maxBlocks, new ArrayList<>(cfg.blacklistedBlocks))
-                );
+                        new ConfigSyncData(cfg.maxBlocks, new ArrayList<>(cfg.blacklistedBlocks)));
             }
         }
 
@@ -73,5 +105,6 @@ public final class NeoForgeEventBridge {
         }
     }
 
-    private NeoForgeEventBridge() {}
+    private NeoForgeEventBridge() {
+    }
 }

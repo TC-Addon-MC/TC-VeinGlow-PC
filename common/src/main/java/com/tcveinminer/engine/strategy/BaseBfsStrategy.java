@@ -60,6 +60,10 @@ public abstract class BaseBfsStrategy implements MiningStrategy {
         int[][] directions = getSpreadDirections();
         boolean isTree = isTreeMode();
 
+        net.minecraft.world.level.chunk.ChunkAccess currentChunk = null;
+        int lastChunkX = Integer.MAX_VALUE;
+        int lastChunkZ = Integer.MAX_VALUE;
+
         while (!queue.isEmpty() && result.size() < req.maxBlocks()) {
             SearchNode cur = queue.poll();
 
@@ -72,8 +76,22 @@ public abstract class BaseBfsStrategy implements MiningStrategy {
 
                 if (!isWithinShape(nb, req.origin(), req.orientCtx(), f, s, u)) continue;
 
-                if (!req.Level().hasChunk(nb.getX() >> 4, nb.getZ() >> 4)) continue;
-                BlockState nbState = req.Level().getBlockState(nb);
+                int cx = nb.getX() >> 4;
+                int cz = nb.getZ() >> 4;
+
+                if (cx != lastChunkX || cz != lastChunkZ) {
+                    lastChunkX = cx;
+                    lastChunkZ = cz;
+                    if (!req.Level().hasChunk(cx, cz)) {
+                        currentChunk = null;
+                        continue;
+                    }
+                    currentChunk = req.Level().getChunk(cx, cz);
+                } else if (currentChunk == null) {
+                    continue;
+                }
+
+                BlockState nbState = currentChunk.getBlockState(nb);
 
                 Direction approach = TraversalUtils.getApproachDirection(d[0], d[1], d[2]);
                 double distance = Math.sqrt(nb.distSqr(req.origin()));
