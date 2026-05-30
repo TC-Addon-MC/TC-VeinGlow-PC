@@ -24,14 +24,14 @@ import net.minecraft.tags.BlockTags;
 public final class InteractBlockCapability implements ItemActionCapability {
 
     @Override
-    public boolean canPerform(ItemStack stack, BlockState targetState, PlayerEntity player) {
+    public boolean canPerform(ItemStack stack, BlockState targetState, Player player) {
         if (stack.isEmpty()) return false;
 
         // Axe interactions: strip log, scrape copper, de-wax
         if (stack.getItem() instanceof AxeItem) {
             Block target = targetState.getBlock();
             // Strippable logs
-            if (targetState.isIn(BlockTags.LOGS)) return true;
+            if (targetState.is(BlockTags.LOGS)) return true;
             // Copper blocks (oxidized/waxed)
             if (isCopper(target)) return true;
             return false;

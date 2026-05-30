@@ -17,13 +17,13 @@ public final class OrientationContext {
     public final Vec3i planeUp; // Thuộc tính mới cho việc trải lưới Area
 
     private OrientationContext(Direction hitFace, Direction playerFacing,
-                               Vec3i forward, Vec3i right, Vec3i up, Vec3i planeUp) {
-        this.hitFace      = hitFace;
+            Vec3i forward, Vec3i right, Vec3i up, Vec3i planeUp) {
+        this.hitFace = hitFace;
         this.playerFacing = playerFacing;
-        this.forward      = forward;
-        this.right        = right;
-        this.up           = up;
-        this.planeUp      = planeUp;
+        this.forward = forward;
+        this.right = right;
+        this.up = up;
+        this.planeUp = planeUp;
     }
 
     public static OrientationContext of(Direction hitFace, Direction playerFacing) {
@@ -34,19 +34,19 @@ public final class OrientationContext {
         switch (hitFace) {
             case UP -> {
                 // Đào xuống sàn: fwd là DOWN, up là hướng nhìn của player, right là chuẩn
-                fwd = Direction.DOWN.getVector();
-                worldUp = playerFacing.getVector();
-                planeUp = playerFacing.getVector();
+                fwd = Direction.DOWN.getNormal();
+                worldUp = playerFacing.getNormal();
+                planeUp = playerFacing.getNormal();
             }
             case DOWN -> {
                 // Đào lên trần: fwd là UP, up là hướng ngược lại của player
-                fwd = Direction.UP.getVector();
-                worldUp = playerFacing.getOpposite().getVector();
-                planeUp = playerFacing.getOpposite().getVector();
+                fwd = Direction.UP.getNormal();
+                worldUp = playerFacing.getOpposite().getNormal();
+                planeUp = playerFacing.getOpposite().getNormal();
             }
             default -> {
                 // Tường: hướng đi sâu vào trong lòng tường
-                fwd = hitFace.getOpposite().getVector();
+                fwd = hitFace.getOpposite().getNormal();
                 planeUp = worldUp; // Giữ nguyên worldUp cho các mặt tường đứng
             }
         }
@@ -66,11 +66,10 @@ public final class OrientationContext {
      * Sử dụng planeUp thay vì up cố định.
      */
     public BlockPos planeOffset(BlockPos origin, int s, int u) {
-        return origin.add(
+        return origin.offset(
                 right.getX() * s + this.planeUp.getX() * u,
                 right.getY() * s + this.planeUp.getY() * u,
-                right.getZ() * s + this.planeUp.getZ() * u
-        );
+                right.getZ() * s + this.planeUp.getZ() * u);
     }
 
     /**
@@ -78,11 +77,10 @@ public final class OrientationContext {
      * Giữ nguyên up (worldUp) để đảm bảo chiều cao các mode Tunnel/Stair chính xác.
      */
     public BlockPos offset(BlockPos origin, int f, int s, int u) {
-        return origin.add(
+        return origin.offset(
                 forward.getX() * f + right.getX() * s + this.up.getX() * u,
                 forward.getY() * f + right.getY() * s + this.up.getY() * u,
-                forward.getZ() * f + right.getZ() * s + this.up.getZ() * u
-        );
+                forward.getZ() * f + right.getZ() * s + this.up.getZ() * u);
     }
 
     /** a × b */
@@ -90,8 +88,7 @@ public final class OrientationContext {
         return new Vec3i(
                 a.getY() * b.getZ() - a.getZ() * b.getY(),
                 a.getZ() * b.getX() - a.getX() * b.getZ(),
-                a.getX() * b.getY() - a.getY() * b.getX()
-        );
+                a.getX() * b.getY() - a.getY() * b.getX());
     }
 
     /**
@@ -99,9 +96,12 @@ public final class OrientationContext {
      */
     public static Direction facingFromYaw(float yaw) {
         float y = ((yaw % 360) + 360) % 360;
-        if (y < 45 || y >= 315) return Direction.SOUTH;
-        if (y < 135) return Direction.WEST;
-        if (y < 225) return Direction.NORTH;
+        if (y < 45 || y >= 315)
+            return Direction.SOUTH;
+        if (y < 135)
+            return Direction.WEST;
+        if (y < 225)
+            return Direction.NORTH;
         return Direction.EAST;
     }
 }

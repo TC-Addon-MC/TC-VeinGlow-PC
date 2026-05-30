@@ -12,7 +12,6 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.network.chat.Component;
 
-import java.util.ArrayList;
 
 public class ColorTab implements MenuTab {
 
@@ -187,7 +186,7 @@ public class ColorTab implements MenuTab {
                                 screen.getState().colorB);
 
                 if (hexInput == null) {
-                        hexInput = new EditBox(screen.getTextRenderer(),
+                        hexInput = new EditBox(screen.getMinecraft().font,
                                         panelX + 8, panelY + 20, 80, 16, Component.literal("Hex"));
                         hexInput.setMaxLength(7);
                 }
@@ -195,7 +194,7 @@ public class ColorTab implements MenuTab {
                 hexInput.setY(panelY + 20);
                 hexInput.setWidth(80);
                 if (!hexInput.isFocused()) {
-                        hexInput.setText(currentHex);
+                        hexInput.setValue(currentHex);
                 }
                 screen.addUIElement(hexInput);
 
@@ -226,7 +225,7 @@ public class ColorTab implements MenuTab {
                                         Component.empty(), btn -> {
                                                 setColor(screen, ri, gi, bi);
                                                 if (hexInput != null) {
-                                                        hexInput.setText("#" + ColorManager.toHex(ri, gi, bi));
+                                                        hexInput.setValue("#" + ColorManager.toHex(ri, gi, bi));
                                                 }
                                         }) {
                                 @Override
@@ -290,7 +289,7 @@ public class ColorTab implements MenuTab {
 
 
         private void addHex(MainMenuScreen screen) {
-                int[] rgb = ColorManager.fromHex(hexInput == null ? "" : hexInput.getText());
+                int[] rgb = ColorManager.fromHex(hexInput == null ? "" : hexInput.getValue());
                 if (rgb == null) {
                         colorError = "Invalid hex";
                         return;
@@ -365,11 +364,11 @@ public class ColorTab implements MenuTab {
                 if (colorPanelOpen) {
                         int statusX = cx;
                         int statusY = cy + 54;
-                        ctx.drawTextWithShadow(screen.getTextRenderer(), statusStr, statusX, statusY, activeColor);
+                        ctx.drawString(screen.getMinecraft().font, statusStr, statusX, statusY, activeColor);
                 } else {
                         int topX = cx + PREVIEW_SIZE + 8;
                         int statusY = cy + 28;
-                        ctx.drawTextWithShadow(screen.getTextRenderer(), statusStr, topX, statusY, activeColor);
+                        ctx.drawString(screen.getMinecraft().font, statusStr, topX, statusY, activeColor);
                 }
 
                 if (colorPanelOpen) {
@@ -383,36 +382,36 @@ public class ColorTab implements MenuTab {
 
                 String widthLabel = "Width";
                 String widthValue = String.format("%.1f", screen.getState().outlineThickness);
-                ctx.drawTextWithShadow(screen.getTextRenderer(), widthLabel, cx, sliderY + 3, ThemeColors.TEXT_LABEL);
-                int vw = screen.getTextRenderer().getWidth(widthValue);
-                ctx.drawTextWithShadow(screen.getTextRenderer(), widthValue, cx + 80 - vw, sliderY + 3, 0xFFFFFFFF);
+                ctx.drawString(screen.getMinecraft().font, widthLabel, cx, sliderY + 3, ThemeColors.TEXT_LABEL);
+                int vw = screen.getMinecraft().font.width(widthValue);
+                ctx.drawString(screen.getMinecraft().font, widthValue, cx + 80 - vw, sliderY + 3, 0xFFFFFFFF);
 
                 int timeSliderY = sliderY + 20;
                 String timeLabel = "Interval";
                 String timeValue = String.format("%.1fs", screen.getState().colorTransitionTime);
-                ctx.drawTextWithShadow(screen.getTextRenderer(), timeLabel, cx, timeSliderY + 3, ThemeColors.TEXT_LABEL);
-                int tw = screen.getTextRenderer().getWidth(timeValue);
-                ctx.drawTextWithShadow(screen.getTextRenderer(), timeValue, cx + 80 - tw, timeSliderY + 3, 0xFFFFFFFF);
+                ctx.drawString(screen.getMinecraft().font, timeLabel, cx, timeSliderY + 3, ThemeColors.TEXT_LABEL);
+                int tw = screen.getMinecraft().font.width(timeValue);
+                ctx.drawString(screen.getMinecraft().font, timeValue, cx + 80 - tw, timeSliderY + 3, 0xFFFFFFFF);
 
                 int segmentSliderY = timeSliderY + 20;
                 String segmentLabel = "Segment";
                 String segmentValue = String.format("%.1f", screen.getState().segmentLength);
-                ctx.drawTextWithShadow(screen.getTextRenderer(), segmentLabel, cx, segmentSliderY + 3, ThemeColors.TEXT_LABEL);
-                int sw = screen.getTextRenderer().getWidth(segmentValue);
-                ctx.drawTextWithShadow(screen.getTextRenderer(), segmentValue, cx + 80 - sw, segmentSliderY + 3, 0xFFFFFFFF);
+                ctx.drawString(screen.getMinecraft().font, segmentLabel, cx, segmentSliderY + 3, ThemeColors.TEXT_LABEL);
+                int sw = screen.getMinecraft().font.width(segmentValue);
+                ctx.drawString(screen.getMinecraft().font, segmentValue, cx + 80 - sw, segmentSliderY + 3, 0xFFFFFFFF);
 
                 int smoothSliderY = segmentSliderY + 20;
                 String smoothLabel = "Smooth";
                 String smoothValue = String.format("%.2f", screen.getState().flowSmoothness);
-                ctx.drawTextWithShadow(screen.getTextRenderer(), smoothLabel, cx, smoothSliderY + 3, ThemeColors.TEXT_LABEL);
-                int smw = screen.getTextRenderer().getWidth(smoothValue);
-                ctx.drawTextWithShadow(screen.getTextRenderer(), smoothValue, cx + 80 - smw, smoothSliderY + 3, 0xFFFFFFFF);
+                ctx.drawString(screen.getMinecraft().font, smoothLabel, cx, smoothSliderY + 3, ThemeColors.TEXT_LABEL);
+                int smw = screen.getMinecraft().font.width(smoothValue);
+                ctx.drawString(screen.getMinecraft().font, smoothValue, cx + 80 - smw, smoothSliderY + 3, 0xFFFFFFFF);
         }
 
         private void renderColorPanel(GuiGraphics ctx, MainMenuScreen screen, int panelX, int panelY) {
                 DrawHelper.drawCard(ctx, panelX, panelY, PANEL_W, PANEL_H);
-                ctx.drawTextWithShadow(screen.getTextRenderer(), "Enter color", panelX + 8, panelY + 8, 0xFFFFFFFF);
-                ctx.drawTextWithShadow(screen.getTextRenderer(), "Basic colors", panelX + 8, panelY + 38,
+                ctx.drawString(screen.getMinecraft().font, "Enter color", panelX + 8, panelY + 8, 0xFFFFFFFF);
+                ctx.drawString(screen.getMinecraft().font, "Basic colors", panelX + 8, panelY + 38,
                                 ThemeColors.TEXT_LABEL);
 
                 int previewColor = 0xFF000000 | (screen.getState().colorR << 16)
@@ -421,15 +420,15 @@ public class ColorTab implements MenuTab {
                 ctx.fill(panelX + 176, panelY + 20, panelX + 220, panelY + 36, previewColor);
                 DrawHelper.drawSolidBorder(ctx, panelX + 176, panelY + 20, 44, 16, ThemeColors.BORDER_DEFAULT);
 
-                ctx.drawTextWithShadow(screen.getTextRenderer(), "Color List", panelX + 8, panelY + 92,
+                ctx.drawString(screen.getMinecraft().font, "Color List", panelX + 8, panelY + 92,
                                 ThemeColors.TEXT_LABEL);
                 String countStr = screen.getState().colorList.size() + "/20";
-                int countW = screen.getTextRenderer().getWidth(countStr);
-                ctx.drawTextWithShadow(screen.getTextRenderer(), countStr, panelX + 164 - countW, panelY + 92,
+                int countW = screen.getMinecraft().font.width(countStr);
+                ctx.drawString(screen.getMinecraft().font, countStr, panelX + 164 - countW, panelY + 92,
                                 ThemeColors.TEXT_DIM);
 
                 if (!colorError.isEmpty()) {
-                        ctx.drawTextWithShadow(screen.getTextRenderer(), colorError, panelX + 110, panelY + 8,
+                        ctx.drawString(screen.getMinecraft().font, colorError, panelX + 110, panelY + 8,
                                         ThemeColors.TEXT_ERROR);
                 }
         }
@@ -440,8 +439,8 @@ public class ColorTab implements MenuTab {
 
                 if (screen.getState().colorDisabled) {
                         String off = "OFF";
-                        int tw = screen.getTextRenderer().getWidth(off);
-                        ctx.drawTextWithShadow(screen.getTextRenderer(), off,
+                        int tw = screen.getMinecraft().font.width(off);
+                        ctx.drawString(screen.getMinecraft().font, off,
                                         bpX + (s - tw) / 2, bpY + (s - 8) / 2, ThemeColors.TEXT_DIM);
                         return;
                 }

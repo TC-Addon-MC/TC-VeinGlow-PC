@@ -66,7 +66,7 @@ public final class PreviewManager {
     /**
      * Send highlight update for the given source to the minecraft.
      */
-    public void sendHighlight(ServerPlayerEntity spe, String source, Set<BlockPos> blocks, String style) {
+    public void sendHighlight(ServerPlayer spe, String source, Set<BlockPos> blocks, String style) {
         updatePreview(source, blocks, style);
         NetworkManager.sendToPlayer(spe, new HighlightBlockListData(
                 blocks.stream().map(BlockPos::asLong).toList(), style, source));
@@ -75,7 +75,7 @@ public final class PreviewManager {
     /**
      * Send empty highlight for the given source.
      */
-    public void sendClearHighlight(ServerPlayerEntity spe, String source) {
+    public void sendClearHighlight(ServerPlayer spe, String source) {
         clear(source);
         NetworkManager.sendToPlayer(spe, new HighlightBlockListData(
                 Collections.emptyList(), "FACE", source));

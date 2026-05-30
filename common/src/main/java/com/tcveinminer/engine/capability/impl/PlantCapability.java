@@ -4,13 +4,10 @@ import com.tcveinminer.engine.action.ActionType;
 import com.tcveinminer.engine.capability.ItemActionCapability;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.FarmBlock;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.tags.BlockTags;
 
 /**
  * Detects seed items that can be planted on farmland.
@@ -21,7 +18,7 @@ import net.minecraft.tags.BlockTags;
 public final class PlantCapability implements ItemActionCapability {
 
     @Override
-    public boolean canPerform(ItemStack stack, BlockState targetState, PlayerEntity player) {
+    public boolean canPerform(ItemStack stack, BlockState targetState, Player player) {
         if (stack.isEmpty()) return false;
 
         // Target must be farmland

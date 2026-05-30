@@ -66,7 +66,7 @@ public final class TCVeinMinerAPI {
      * @param player The player entity.
      * @return A read-only query object, or null if the player has no engine.
      */
-    public static EngineQuery queryPlayer(PlayerEntity player) {
-        return queryPlayer(player.getUuid());
+    public static EngineQuery queryPlayer(Player player) {
+        return queryPlayer(player.getUUID());
     }
 }

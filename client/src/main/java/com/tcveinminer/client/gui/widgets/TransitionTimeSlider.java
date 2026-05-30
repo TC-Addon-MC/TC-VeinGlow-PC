@@ -4,7 +4,7 @@ import com.tcveinminer.client.gui.screens.MenuState;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.network.chat.Component;
 
-public class TransitionTimeSlider extends SliderWidget {
+public class TransitionTimeSlider extends AbstractSliderButton {
     private final MenuState state;
 
     public TransitionTimeSlider(int x, int y, int w, int h, MenuState state, float currentTime) {

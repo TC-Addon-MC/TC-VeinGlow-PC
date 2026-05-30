@@ -11,8 +11,8 @@ import com.tcveinminer.client.util.ThemeColors;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.components.Renderable;
-import net.minecraft.client.gui.components.TabOrderedElement;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.network.chat.Component;
 
@@ -141,8 +141,9 @@ public class MainMenuScreen extends Screen {
                     save();
                     triggerSave();
                 }));
-        addRenderableWidget(new AmberButton(px + W - 20, py + 2, 18, 16, Component.translatable("gui.tcveinminer.button.close"),
-                btn -> minecraft.setScreen(parent)));
+        addRenderableWidget(
+                new AmberButton(px + W - 20, py + 2, 18, 16, Component.translatable("gui.tcveinminer.button.close"),
+                        btn -> minecraft.setScreen(parent)));
 
         tabInstances[currentTabIndex].init(this, cx, cy, cw, ch);
     }
@@ -150,6 +151,11 @@ public class MainMenuScreen extends Screen {
     public void rebuildMenu() {
         normalizeShapeState();
         this.rebuild();
+    }
+
+    // Trong MainMenuScreen.java, thêm method:
+    public Minecraft getMinecraft() {
+        return this.minecraft;
     }
 
     public void syncShapeStateToClientConfig() {
@@ -195,7 +201,8 @@ public class MainMenuScreen extends Screen {
         }
     }
 
-    public <T extends GuiEventListener & Renderable & net.minecraft.client.gui.narration.NarratableEntry> T addUIElement(T element) {
+    public <T extends GuiEventListener & Renderable & net.minecraft.client.gui.narration.NarratableEntry> T addUIElement(
+            T element) {
         return this.addRenderableWidget(element);
     }
 
@@ -288,7 +295,8 @@ public class MainMenuScreen extends Screen {
             String tabLabel = Component.translatable(TAB_KEYS[i]).getString();
             int tw = font.width(tabLabel);
             // Nếu không được chọn, vẽ không bóng để làm chìm đi, nếu chọn vẽ có bóng
-            ctx.drawString(font, Component.literal(tabLabel), tx + (tabW - tw) / 2, tabBarY + (TAB_H - 8) / 2, tc, isActive);
+            ctx.drawString(font, Component.literal(tabLabel), tx + (tabW - tw) / 2, tabBarY + (TAB_H - 8) / 2, tc,
+                    isActive);
         }
 
         // --- VẼ FOOTER ---
@@ -336,7 +344,8 @@ public class MainMenuScreen extends Screen {
             // Sử dụng animatedMsg để vẽ chữ, nhưng căn lề theo độ dài msg gốc để chữ không
             // bị lệch tâm khi chạy
             int textX = mx + (mw - font.width(msg)) / 2;
-            ctx.drawString(font, Component.literal(animatedMsg), textX, my + (mh - 8) / 2, ThemeColors.EMERALD_TEXT, true);
+            ctx.drawString(font, Component.literal(animatedMsg), textX, my + (mh - 8) / 2, ThemeColors.EMERALD_TEXT,
+                    true);
         } else
             saveNotify = false;
     }

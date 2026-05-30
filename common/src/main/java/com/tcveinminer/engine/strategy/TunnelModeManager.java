@@ -1,7 +1,6 @@
 package com.tcveinminer.engine.strategy;
 
 import com.tcveinminer.engine.traversal.OrientationContext;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.core.BlockPos;
 
 public final class TunnelModeManager extends BaseBfsStrategy {

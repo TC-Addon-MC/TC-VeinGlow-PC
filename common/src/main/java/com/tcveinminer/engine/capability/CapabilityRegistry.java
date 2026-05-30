@@ -45,13 +45,13 @@ public final class CapabilityRegistry {
      * Resolve the highest-priority action for the given context.
      *
      * @param player      the player
-     * @param heldItem    the item stack held in the given hand
+     * @param heldItem    the item stack held in the given InteractionHand
      * @param targetState the block state being targeted
-     * @param hand        the hand used (unused in resolution but available for future use)
+     * @param InteractionHand        the InteractionHand used (unused in resolution but available for future use)
      * @return the resolved action type, or {@link ActionType#VANILLA_FALLBACK}
      */
-    public static ActionType resolve(PlayerEntity player, ItemStack heldItem,
-                                      BlockState targetState, Hand hand) {
+    public static ActionType resolve(Player player, ItemStack heldItem,
+                                      BlockState targetState, InteractionHand InteractionHand) {
         for (ItemActionCapability cap : CAPABILITIES) {
             if (cap.canPerform(heldItem, targetState, player)) {
                 return cap.getActionType();

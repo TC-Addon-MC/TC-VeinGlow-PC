@@ -51,7 +51,7 @@ public class GeneralTab implements MenuTab {
     @Override
     public void render(GuiGraphics ctx, MainMenuScreen screen, int cx, int cy, int cw, int ch, int mouseX, int mouseY, float delta) {
         DrawHelper.drawCard(ctx, cx, cy, cw, 64);
-        ctx.drawTextWithShadow(screen.getTextRenderer(), Component.translatable("gui.tcveinminer.general.activation_mode").getString(), cx + 8, cy + 5, ThemeColors.TEXT_LABEL);
+        ctx.drawString(screen.getMinecraft().font, Component.translatable("gui.tcveinminer.general.activation_mode").getString(), cx + 8, cy + 5, ThemeColors.TEXT_LABEL);
 
         int dY = cy + 70;
         drawCheckRow(ctx, screen, cx, dY, cw, Component.translatable("gui.tcveinminer.general.floating_hud").getString(), screen.getState().showHud);
@@ -61,7 +61,7 @@ public class GeneralTab implements MenuTab {
 
     private void drawCheckRow(GuiGraphics ctx, MainMenuScreen screen, int rx, int ry, int rw, String label, boolean checked) {
         int labelColor = checked ? ThemeColors.GOLD : ThemeColors.TEXT_LABEL;
-        ctx.drawTextWithShadow(screen.getTextRenderer(), label, rx + 8, ry + 6, labelColor);
+        ctx.drawString(screen.getMinecraft().font, label, rx + 8, ry + 6, labelColor);
         int bx = rx + rw - 18, by = ry + 3;
         ctx.fill(bx, by, bx + 14, by + 14, ThemeColors.BG_INPUT);
         DrawHelper.drawSolidBorder(ctx, bx, by, 14, 14, checked ? ThemeColors.GOLD : ThemeColors.BORDER_DIM);

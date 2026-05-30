@@ -25,20 +25,20 @@ public final class HoeTillAction implements BlockAction {
 
     @SuppressWarnings("unchecked")
     @Override
-    public boolean execute(ServerPlayerEntity player, ServerWorld world, BlockPos pos, ActionContext ctx) {
+    public boolean execute(ServerPlayer player, ServerLevel world, BlockPos pos, ActionContext ctx) {
         if (!(ctx instanceof ActionContext.InteractContext ic)) return false;
 
         BlockState state = world.getBlockState(pos);
         Block block = state.getBlock();
-        Hand hand = ic.getInteractHand();
-        ItemStack stack = player.getStackInHand(hand);
+        InteractionHand hand = ic.getInteractHand();
+        ItemStack stack = player.getItemInHand(hand);
 
         if (!(stack.getItem() instanceof HoeItem)) return false;
 
         // Use vanilla useOnBlock — handles all tilling including tilling maps
-        BlockHitResult hitResult = new BlockHitResult(Vec3d.ofCenter(pos), Direction.UP, pos, false);
-        ActionResult result = stack.useOnBlock(new net.minecraft.world.item.context.UseOnContext(player, hand, hitResult) {});
-        if (result.isAccepted()) {
+        BlockHitResult hitResult = new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false);
+        InteractionResult result = stack.useOn(new net.minecraft.world.item.context.UseOnContext(player, hand, hitResult) {});
+        if (result.consumesAction()) {
             return true;
         }
 
@@ -56,15 +56,15 @@ public final class HoeTillAction implements BlockAction {
         }
 
         if (targetState != null) {
-            world.playSound(null, pos, SoundEvents.ITEM_HOE_TILL, SoundCategory.BLOCKS, 1.0F, 1.0F);
+            world.playSound(null, pos, SoundEvents.HOE_TILL, SoundSource.BLOCKS, 1.0F, 1.0F);
             world.setBlock(pos, targetState, 11);
-            world.emitGameEvent(GameEvent.BLOCK_CHANGE, pos, GameEvent.Emitter.of(player, targetState));
+            world.gameEvent(GameEvent.BLOCK_CHANGE, pos, GameEvent.Context.of(player, targetState));
             if (dropRoots) {
-                Block.dropStack(world, pos, new ItemStack(Items.HANGING_ROOTS));
+                Block.popResource(world, pos, new ItemStack(Items.HANGING_ROOTS));
             }
             if (!player.isCreative()) {
                 EquipmentSlot slot = (hand == InteractionHand.MAIN_HAND) ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND;
-                stack.damage(1, player, slot);
+                stack.hurtAndBreak(1, player, slot);
             }
             return true;
         }

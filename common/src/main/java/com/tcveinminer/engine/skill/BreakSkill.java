@@ -13,11 +13,11 @@ public final class BreakSkill {
     /**
      * Xử lý hành động đập vỡ block cơ bản (áp dụng cho đập quặng, chặt cây thông thường).
      */
-    public static boolean breakBlock(ServerPlayerEntity spe, ServerWorld world, BlockPos pos, BlockState currentState) {
-        boolean success = spe.interactionManager.tryBreakBlock(pos);
+    public static boolean breakBlock(ServerPlayer spe, ServerLevel world, BlockPos pos, BlockState currentState) {
+        boolean success = spe.gameMode.destroyBlock(pos);
         if (success) {
             // Hiển thị hiệu ứng đập block cho chính người chơi (vì server tự đập nên client không có)
-            world.syncWorldEvent(null, 2001, pos, Block.getRawIdFromState(currentState));
+            world.levelEvent(null, 2001, pos, Block.getId(currentState));
         }
         return success;
     }

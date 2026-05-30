@@ -8,16 +8,17 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.core.BlockPos;
 import java.util.Optional;
 
-public record ActivationRequestPayload(boolean active, Optional<BlockPos> targetPos) implements CustomPayload {
-    public static final Id<ActivationRequestPayload> ID =
-        new Id<>(ResourceLocation.parse("tc_veinminer", "activation_request"));
+public record ActivationRequestPayload(boolean active, Optional<BlockPos> targetPos) implements CustomPacketPayload {
+    public static final Type<ActivationRequestPayload> ID =
+        new Type<>(ResourceLocation.fromNamespaceAndPath("tc_veinminer", "activation_request"));
 
-    public static final PacketCodec<RegistryByteBuf, ActivationRequestPayload> CODEC = PacketCodec.tuple(
-            PacketCodecs.BOOL, ActivationRequestPayload::active,
-            PacketCodecs.optional(BlockPos.PACKET_CODEC), ActivationRequestPayload::targetPos,
+    public static final StreamCodec<RegistryFriendlyByteBuf, ActivationRequestPayload> CODEC = StreamCodec.composite(
+            ByteBufCodecs.BOOL, ActivationRequestPayload::active,
+            ByteBufCodecs.optional(BlockPos.STREAM_CODEC), ActivationRequestPayload::targetPos,
             ActivationRequestPayload::new
     );
 
-    @Override
-    public Id<? extends CustomPayload> getId() { return ID; }
+    @Override public Type<? extends CustomPacketPayload> type() { return ID; }
+
+    public String channelId() { return ID.id().toString(); }
 }

@@ -66,7 +66,7 @@ public final class Traversal {
      * Iterative BFS from origin.
      * origin is NOT included in results.
      */
-    public static List<BlockPos> bfs(World world, BlockPos origin, int maxBlocks,
+    public static List<BlockPos> bfs(Level world, BlockPos origin, int maxBlocks,
             int[][] adjacency, BiPredicate<BlockPos, BlockState> matcher) {
         List<BlockPos> result = new ArrayList<>(Math.min(maxBlocks, 256));
         LongOpenHashSet visited = new LongOpenHashSet(Math.min(maxBlocks * 4, MAX_VISITED));
@@ -82,7 +82,7 @@ public final class Traversal {
             for (int[] d : adjacency) {
                 if (result.size() >= maxBlocks)
                     break;
-                BlockPos nb = cur.add(d[0], d[1], d[2]);
+                BlockPos nb = cur.offset(d[0], d[1], d[2]);
                 if (!visited.add(nb.asLong()))
                     continue;
                 BlockState nbState = world.getBlockState(nb);
@@ -99,7 +99,7 @@ public final class Traversal {
      * Iterative DFS from origin. Uses explicit stack — no recursion.
      * origin is NOT included in results.
      */
-    public static List<BlockPos> dfs(World world, BlockPos origin, int maxBlocks,
+    public static List<BlockPos> dfs(Level world, BlockPos origin, int maxBlocks,
             int[][] adjacency, BiPredicate<BlockPos, BlockState> matcher) {
         List<BlockPos> result = new ArrayList<>(Math.min(maxBlocks, 256));
         LongOpenHashSet visited = new LongOpenHashSet(Math.min(maxBlocks * 4, MAX_VISITED));
@@ -115,7 +115,7 @@ public final class Traversal {
             for (int[] d : adjacency) {
                 if (result.size() >= maxBlocks)
                     break;
-                BlockPos nb = cur.add(d[0], d[1], d[2]);
+                BlockPos nb = cur.offset(d[0], d[1], d[2]);
                 if (!visited.add(nb.asLong()))
                     continue;
                 BlockState nbState = world.getBlockState(nb);
@@ -133,14 +133,14 @@ public final class Traversal {
      * All offsets are in world space. No traversal — flat iteration.
      * Used by AreaStrategy and shape-mining modes.
      */
-    public static List<BlockPos> collectBox(World world, BlockPos origin,
+    public static List<BlockPos> collectBox(Level world, BlockPos origin,
             int[][] worldOffsets, int maxBlocks,
             BiPredicate<BlockPos, BlockState> matcher) {
         List<BlockPos> result = new ArrayList<>();
         for (int[] off : worldOffsets) {
             if (result.size() >= maxBlocks)
                 break;
-            BlockPos nb = origin.add(off[0], off[1], off[2]);
+            BlockPos nb = origin.offset(off[0], off[1], off[2]);
             BlockState state = world.getBlockState(nb);
             if (matcher.test(nb, state))
                 result.add(nb);
@@ -174,7 +174,7 @@ public final class Traversal {
             for (int u = -halfSide; u <= halfSide; u++) {
                 if (s == 0 && u == 0)
                     continue;
-                BlockPos off = ctx.planeOffset(BlockPos.ORIGIN, s, u);
+                BlockPos off = ctx.planeOffset(BlockPos.ZERO, s, u);
                 offsets[idx++] = new int[] { off.getX(), off.getY(), off.getZ() };
             }
         }
@@ -191,7 +191,7 @@ public final class Traversal {
         for (int f = 1; f <= depth; f++) {
             for (int s = -halfW; s <= halfW; s++) {
                 for (int u = -halfH; u <= halfH; u++) {
-                    BlockPos off = ctx.offset(BlockPos.ORIGIN, f, s, u);
+                    BlockPos off = ctx.offset(BlockPos.ZERO, f, s, u);
                     offsets.add(new int[] { off.getX(), off.getY(), off.getZ() });
                 }
             }

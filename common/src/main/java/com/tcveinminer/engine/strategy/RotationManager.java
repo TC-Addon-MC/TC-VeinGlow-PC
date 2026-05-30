@@ -12,10 +12,11 @@ import java.util.List;
  * Quản lý các chế độ xoay mặt theo hướng người chơi.
  *
  * Cung cấp:
- *   - fromPlayer()    : tạo OrientationContext từ pitch + yaw của player
- *   - from()          : tạo từ hitFace + playerFacing tường minh
- *   - planeOffsets()  : mảng offset 2D trong mặt phẳng hitFace (dùng cho Shape/Area)
- *   - boxOffsets()    : mảng offset 3D có chiều sâu cố định (dùng cho Shape 3D)
+ * - fromPlayer() : tạo OrientationContext từ pitch + yaw của player
+ * - from() : tạo từ hitFace + playerFacing tường minh
+ * - planeOffsets() : mảng offset 2D trong mặt phẳng hitFace (dùng cho
+ * Shape/Area)
+ * - boxOffsets() : mảng offset 3D có chiều sâu cố định (dùng cho Shape 3D)
  *
  * Tất cả rotation logic đều đi qua đây — các Strategy không cần biết
  * OrientationContext hoạt động ra sao bên trong.
@@ -28,9 +29,9 @@ public final class RotationManager {
      * Pitch < -60° → đang nhìn trần (hitFace = DOWN).
      * Còn lại → tường theo yaw.
      */
-    public static OrientationContext fromPlayer(PlayerEntity player) {
+    public static OrientationContext fromPlayer(Player player) {
         Direction hitFace = approximateHitFace(player);
-        Direction facing  = OrientationContext.facingFromYaw(player.getYaw());
+        Direction facing = OrientationContext.facingFromYaw(player.getYRot());
         return OrientationContext.of(hitFace, facing);
     }
 
@@ -51,39 +52,44 @@ public final class RotationManager {
         int idx = 0;
         for (int s = -halfSide; s <= halfSide; s++) {
             for (int u = -halfSide; u <= halfSide; u++) {
-                if (s == 0 && u == 0) continue; // skip origin
-                BlockPos off = ctx.planeOffset(BlockPos.ORIGIN, s, u);
-                offsets[idx++] = new int[]{off.getX(), off.getY(), off.getZ()};
+                if (s == 0 && u == 0)
+                    continue; // skip origin
+                BlockPos off = ctx.planeOffset(BlockPos.ZERO, s, u);
+                offsets[idx++] = new int[] { off.getX(), off.getY(), off.getZ() };
             }
         }
         return offsets;
     }
 
     /**
-     * Tạo mảng offset 3D: tiết diện (sMin..sMax) × (uMin..uMax), kéo dài depth tầng.
+     * Tạo mảng offset 3D: tiết diện (sMin..sMax) × (uMin..uMax), kéo dài depth
+     * tầng.
      * Dùng cho tunnel có chiều sâu cố định. Depth bắt đầu từ f=1 (bỏ qua origin).
      */
     public static int[][] boxOffsets(OrientationContext ctx,
-                                     int sMin, int sMax, int uMin, int uMax, int depth) {
+            int sMin, int sMax, int uMin, int uMax, int depth) {
         List<int[]> list = new ArrayList<>();
         for (int f = 1; f <= depth; f++) {
             for (int s = sMin; s <= sMax; s++) {
                 for (int u = uMin; u <= uMax; u++) {
-                    BlockPos off = ctx.offset(BlockPos.ORIGIN, f, s, u);
-                    list.add(new int[]{off.getX(), off.getY(), off.getZ()});
+                    BlockPos off = ctx.offset(BlockPos.ZERO, f, s, u);
+                    list.add(new int[] { off.getX(), off.getY(), off.getZ() });
                 }
             }
         }
         return list.toArray(new int[0][]);
     }
 
-    public static Direction approximateHitFace(PlayerEntity player) {
-        float pitch = player.getPitch();
-        if (pitch > 60f)  return Direction.UP;
-        if (pitch < -60f) return Direction.DOWN;
+    public static Direction approximateHitFace(Player player) {
+        float pitch = player.getXRot();
+        if (pitch > 60f)
+            return Direction.UP;
+        if (pitch < -60f)
+            return Direction.DOWN;
         // Thay đổi ở đây: lấy hướng ngược lại cho mặt tường
-        return OrientationContext.facingFromYaw(player.getYaw()).getOpposite();
+        return OrientationContext.facingFromYaw(player.getYRot()).getOpposite();
     }
 
-    private RotationManager() {}
+    private RotationManager() {
+    }
 }

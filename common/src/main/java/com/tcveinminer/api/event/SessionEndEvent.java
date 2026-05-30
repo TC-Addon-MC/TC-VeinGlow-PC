@@ -8,8 +8,8 @@ import net.minecraft.world.level.Level;
  * Event data when a mining session ends (either finished naturally or cancelled).
  */
 public record SessionEndEvent(
-        PlayerEntity player,
-        World world,
+        Player player,
+        Level world,
         ActionType actionType,
         int processedBlocks,
         int targetBlocks,

@@ -4,7 +4,7 @@ import com.tcveinminer.engine.action.ActionType;
 import com.tcveinminer.engine.capability.ItemActionCapability;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.item.*;
+import net.minecraft.world.item.*;
 
 /**
  * Detects items that have explicit vanilla use behavior and should
@@ -15,7 +15,7 @@ import net.minecraft.item.*;
 public final class UseItemCapability implements ItemActionCapability {
 
     @Override
-    public boolean canPerform(ItemStack stack, BlockState targetState, PlayerEntity player) {
+    public boolean canPerform(ItemStack stack, BlockState targetState, Player player) {
         if (stack.isEmpty()) return false;
         Item item = stack.getItem();
 

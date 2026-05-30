@@ -14,7 +14,7 @@ import net.minecraft.core.BlockPos;
 public final class HarvestCropAction implements BlockAction {
 
     @Override
-    public boolean execute(ServerPlayerEntity player, ServerWorld world, BlockPos pos, ActionContext ctx) {
+    public boolean execute(ServerPlayer player, ServerLevel world, BlockPos pos, ActionContext ctx) {
         return CropHarvestSkill.harvest(player, world, pos, world.getBlockState(pos));
     }
 

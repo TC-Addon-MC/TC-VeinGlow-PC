@@ -10,8 +10,8 @@ import net.minecraft.world.level.Level;
  * Event data for individual block processing during a mining session.
  */
 public record BlockBreakEvent(
-        PlayerEntity player,
-        World world,
+        Player player,
+        Level world,
         BlockPos pos,
         BlockState state,
         ActionType actionType

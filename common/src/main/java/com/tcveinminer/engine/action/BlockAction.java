@@ -22,7 +22,7 @@ public interface BlockAction {
      * @param ctx    action context carrying session-specific data (may be subclassed)
      * @return {@code true} if the action succeeded (block was processed)
      */
-    boolean execute(ServerPlayerEntity player, ServerWorld world, BlockPos pos, ActionContext ctx);
+    boolean execute(ServerPlayer player, ServerLevel world, BlockPos pos, ActionContext ctx);
 
     /**
      * @return unique identifier for this action (used for logging/debugging)

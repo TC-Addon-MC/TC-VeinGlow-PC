@@ -5,8 +5,6 @@ import com.tcveinminer.engine.traversal.TraversalUtils;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.item.Item;
-import com.tcveinminer.engine.state.EngineState;
 
 import java.util.*;
 
@@ -73,16 +71,16 @@ public final class SpreadModeManager extends BaseBfsStrategy {
         while (!queue.isEmpty() && result.size() < req.maxBlocks()) {
             SearchNode cur = queue.poll();
             for (int[] d : TraversalUtils.D26) {
-                BlockPos nb = cur.pos().add(d[0], d[1], d[2]);
+                BlockPos nb = cur.pos().offset(d[0], d[1], d[2]);
                 if (!visitedLogs.add(nb)) continue;
 
-                if (!req.world().isChunkLoaded(nb.getX() >> 4, nb.getZ() >> 4)) continue;
-                BlockState state = req.world().getBlockState(nb);
-                if (!state.isIn(BlockTags.LOGS)) continue;
+                if (!req.Level().hasChunk(nb.getX() >> 4, nb.getZ() >> 4)) continue;
+                BlockState state = req.Level().getBlockState(nb);
+                if (!state.is(BlockTags.LOGS)) continue;
 
                 int dist = Math.abs(nb.getX() - req.origin().getX()) + Math.abs(nb.getY() - req.origin().getY()) + Math.abs(nb.getZ() - req.origin().getZ());
                 FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
-                        req.world(), req.player(), req.tool(), req.origin(), nb,
+                        req.Level(), req.player(), req.tool(), req.origin(), nb,
                         req.targetState(), state, TraversalUtils.getApproachDirection(d[0], d[1], d[2]), cur.depth() + 1, dist,
                         result.size(), getModeType(), req.cache(), req.blacklist(), req.requireHarvestCapability()
                 );
@@ -100,10 +98,10 @@ public final class SpreadModeManager extends BaseBfsStrategy {
         outer:
         for (BlockPos log : foundLogs) {
             for (int[] d : TraversalUtils.D6) {
-                BlockPos nb = log.add(d[0], d[1], d[2]);
-                if (!req.world().isChunkLoaded(nb.getX() >> 4, nb.getZ() >> 4)) continue;
-                BlockState state = req.world().getBlockState(nb);
-                if (state.isIn(BlockTags.LEAVES)) {
+                BlockPos nb = log.offset(d[0], d[1], d[2]);
+                if (!req.Level().hasChunk(nb.getX() >> 4, nb.getZ() >> 4)) continue;
+                BlockState state = req.Level().getBlockState(nb);
+                if (state.is(BlockTags.LEAVES)) {
                     canonicalLeafBlock = state.getBlock();
                     break outer;
                 }
@@ -112,10 +110,10 @@ public final class SpreadModeManager extends BaseBfsStrategy {
         // Cũng kiểm tra origin (gỗ ban đầu)
         if (canonicalLeafBlock == null) {
             for (int[] d : TraversalUtils.D6) {
-                BlockPos nb = req.origin().add(d[0], d[1], d[2]);
-                if (!req.world().isChunkLoaded(nb.getX() >> 4, nb.getZ() >> 4)) continue;
-                BlockState state = req.world().getBlockState(nb);
-                if (state.isIn(BlockTags.LEAVES)) {
+                BlockPos nb = req.origin().offset(d[0], d[1], d[2]);
+                if (!req.Level().hasChunk(nb.getX() >> 4, nb.getZ() >> 4)) continue;
+                BlockState state = req.Level().getBlockState(nb);
+                if (state.is(BlockTags.LEAVES)) {
                     canonicalLeafBlock = state.getBlock();
                     break;
                 }
@@ -136,11 +134,11 @@ public final class SpreadModeManager extends BaseBfsStrategy {
             while (!queue.isEmpty() && result.size() < req.maxBlocks()) {
                 SearchNode cur = queue.poll();
                 for (int[] d : TraversalUtils.D6) {
-                    BlockPos nb = cur.pos().add(d[0], d[1], d[2]);
+                    BlockPos nb = cur.pos().offset(d[0], d[1], d[2]);
                     if (!visitedLeaves.add(nb)) continue;
 
-                    if (!req.world().isChunkLoaded(nb.getX() >> 4, nb.getZ() >> 4)) continue;
-                    BlockState state = req.world().getBlockState(nb);
+                    if (!req.Level().hasChunk(nb.getX() >> 4, nb.getZ() >> 4)) continue;
+                    BlockState state = req.Level().getBlockState(nb);
                     // Chỉ lấy đúng loại lá này, tránh lan sang cây khác
                     if (state.getBlock() != leafBlock) continue;
 
@@ -149,7 +147,7 @@ public final class SpreadModeManager extends BaseBfsStrategy {
                     if (cur.depth() >= 6) continue;
 
                     FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
-                            req.world(), req.player(), req.tool(), req.origin(), nb,
+                            req.Level(), req.player(), req.tool(), req.origin(), nb,
                             req.targetState(), state, TraversalUtils.getApproachDirection(d[0], d[1], d[2]), cur.depth() + 1, dist,
                             result.size(), getModeType(), req.cache(), req.blacklist(), req.requireHarvestCapability()
                     );

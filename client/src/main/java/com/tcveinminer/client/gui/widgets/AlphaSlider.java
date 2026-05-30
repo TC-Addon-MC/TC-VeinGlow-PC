@@ -10,7 +10,7 @@ import net.minecraft.network.chat.Component;
  * Hiển thị gradient từ trong suốt → màu outline hiện tại.
  * Phạm vi: 0 (ẩn hoàn toàn) → 255 (không trong suốt).
  */
-public class AlphaSlider extends SliderWidget {
+public class AlphaSlider extends AbstractSliderButton {
 
     private final MenuState state;
 
@@ -62,7 +62,7 @@ public class AlphaSlider extends SliderWidget {
         ctx.fill(getX() + getWidth() - 1, getY(), getX() + getWidth(), getY() + getHeight(), 0xFF334155);
 
         // Handle (thanh kéo)
-        int hx = getX() + (int)(value * (getWidth() - 8));
+        int hx = getX() + (int) (value * (getWidth() - 8));
         ctx.fill(hx, getY(), hx + 8, getY() + getHeight(), 0xFFFFFFFF);
         ctx.fill(hx + 1, getY() + 1, hx + 7, getY() + getHeight() - 1, 0xFF94A3B8);
     }

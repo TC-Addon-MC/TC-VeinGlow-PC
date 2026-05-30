@@ -6,8 +6,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.world.item.Item;
-import com.tcveinminer.engine.state.EngineState;
 
 import java.util.*;
 
@@ -66,7 +64,7 @@ public abstract class BaseBfsStrategy implements MiningStrategy {
             SearchNode cur = queue.poll();
 
             for (int[] d : directions) {
-                BlockPos nb = cur.pos().add(d[0], d[1], d[2]);
+                BlockPos nb = cur.pos().offset(d[0], d[1], d[2]);
                 if (!visited.add(nb)) continue;
 
                 int[] proj = TraversalUtils.project(nb, req.origin(), req.orientCtx());
@@ -74,14 +72,14 @@ public abstract class BaseBfsStrategy implements MiningStrategy {
 
                 if (!isWithinShape(nb, req.origin(), req.orientCtx(), f, s, u)) continue;
 
-                if (!req.world().isChunkLoaded(nb.getX() >> 4, nb.getZ() >> 4)) continue;
-                BlockState nbState = req.world().getBlockState(nb);
+                if (!req.Level().hasChunk(nb.getX() >> 4, nb.getZ() >> 4)) continue;
+                BlockState nbState = req.Level().getBlockState(nb);
 
                 Direction approach = TraversalUtils.getApproachDirection(d[0], d[1], d[2]);
-                double distance = Math.sqrt(nb.getSquaredDistance(req.origin()));
+                double distance = Math.sqrt(nb.distSqr(req.origin()));
 
                 FilterModeManager.FilterContext fCtx = new FilterModeManager.FilterContext(
-                        req.world(), req.player(), req.tool(), req.origin(), nb,
+                        req.Level(), req.player(), req.tool(), req.origin(), nb,
                         req.targetState(), nbState, approach, cur.depth() + 1, distance,
                         result.size(), getModeType(), req.cache(), req.blacklist(), req.requireHarvestCapability()
                 );
@@ -101,7 +99,7 @@ public abstract class BaseBfsStrategy implements MiningStrategy {
 
                 SearchNode nextNode = new SearchNode(nb, cur.depth() + 1, f, s, u, approach);
 
-                if (isTree && passedFilter && nbState.isIn(BlockTags.LEAVES)) {
+                if (isTree && passedFilter && nbState.is(BlockTags.LEAVES)) {
                     // TreeCapitator logic: lá không lan tiếp
                     continue;
                 }

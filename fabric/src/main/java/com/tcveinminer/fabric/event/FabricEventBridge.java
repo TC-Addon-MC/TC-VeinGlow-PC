@@ -15,8 +15,8 @@ import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.ActionResult;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.InteractionResult;
 
 import java.util.ArrayList;
 import java.util.UUID;
@@ -41,8 +41,8 @@ public final class FabricEventBridge {
     private static void registerPlayerEvents() {
         // Left click break → vein mine trigger
         PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, be) -> {
-            if (world instanceof ServerWorld sw) {
-                MiningEngine.forPlayer(player.getUuid()).onBreakTrigger(player, sw, pos, state);
+            if (world instanceof ServerLevel sw) {
+                MiningEngine.forPlayer(player.getUUID()).onBreakTrigger(player, sw, pos, state);
             }
         });
 
@@ -52,31 +52,31 @@ public final class FabricEventBridge {
 
         // Right click block → interact/harvest/plant trigger
         UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
-            if (world.isClient)
-                return ActionResult.PASS;
+            if (world.isClientSide)
+                return InteractionResult.PASS;
             if (com.tcveinminer.engine.right.RightClickEngine.isProcessingInternal()) {
-                return ActionResult.PASS;
+                return InteractionResult.PASS;
             }
-            if (player instanceof net.minecraft.server.network.ServerPlayerEntity spe) {
-                MiningEngine engine = MiningEngine.forPlayer(spe.getUuid());
+            if (player instanceof net.minecraft.server.level.ServerPlayer spe) {
+                MiningEngine engine = MiningEngine.forPlayer(spe.getUUID());
                 if (!engine.isWorking() && !engine.right().isProcessing()) {
-                    boolean started = engine.onInteractTrigger(spe, (ServerWorld) world, hand, hitResult);
+                    boolean started = engine.onInteractTrigger(spe, (ServerLevel) world, hand, hitResult);
                     if (started)
-                        return ActionResult.SUCCESS;
+                        return InteractionResult.SUCCESS;
                 }
             }
-            return ActionResult.PASS;
+            return InteractionResult.PASS;
         });
     }
 
-    // ── World / Server Tick ───────────────────────────────────────────────
+    // ── Level / Server Tick ───────────────────────────────────────────────
 
     private static void registerWorldEvents() {
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             ActionSessionManager.checkTimeouts(System.currentTimeMillis(), 5000);
-            for (ServerWorld world : server.getWorlds()) {
-                for (var player : world.getPlayers()) {
-                    UUID uuid = player.getUuid();
+            for (ServerLevel world : server.getAllLevels()) {
+                for (var player : world.players()) {
+                    UUID uuid = player.getUUID();
                     if (MiningEngine.hasEngine(uuid)) {
                         MiningEngine.forPlayer(uuid).onServerTick(player, world);
                     }
@@ -98,7 +98,7 @@ public final class FabricEventBridge {
 
         // Cleanup on disconnect
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
-            UUID uuid = handler.player.getUuid();
+            UUID uuid = handler.player.getUUID();
             server.execute(() -> {
                 PlayerStateRegistry.cleanup(uuid);
                 MiningEngine.removePlayer(uuid);
@@ -112,7 +112,7 @@ public final class FabricEventBridge {
     private static void registerIncomingPackets() {
         // HoldKey C→S
         ServerPlayNetworking.registerGlobalReceiver(
-                FabricPacketChannel.FabricHoldKeyPayload.ID,
+                com.tcveinminer.fabric.network.FabricPacketChannel.FabricHoldKeyPayload.ID,
                 (payload, context) -> {
                     var data = new com.tcveinminer.network.payload.HoldKeyData(
                             payload.isHolding(), payload.shapeId(), payload.maxBlocks(),
@@ -122,7 +122,7 @@ public final class FabricEventBridge {
 
         // ActivationRequest C→S
         ServerPlayNetworking.registerGlobalReceiver(
-                FabricPacketChannel.FabricActivationRequestPayload.ID,
+                com.tcveinminer.fabric.network.FabricPacketChannel.FabricActivationRequestPayload.ID,
                 (payload, context) -> {
                     var data = new com.tcveinminer.network.payload.ActivationRequestData(
                             payload.active(),

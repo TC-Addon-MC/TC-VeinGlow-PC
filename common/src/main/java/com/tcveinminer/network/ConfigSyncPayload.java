@@ -11,24 +11,23 @@ import java.util.List;
 public record ConfigSyncPayload(
         int maxBlocks,
         List<String> blacklistedBlocks
-) implements CustomPayload {
+) implements CustomPacketPayload {
 
-    public static final Id<ConfigSyncPayload> ID =
-            new Id<>(ResourceLocation.parse("tc_veinminer", "config_sync"));
+    public static final Type<ConfigSyncPayload> ID =
+            new Type<>(ResourceLocation.fromNamespaceAndPath("tc_veinminer", "config_sync"));
 
-    public static final PacketCodec<RegistryByteBuf, ConfigSyncPayload> CODEC =
-            PacketCodec.tuple(
-                    PacketCodecs.INTEGER,
+    public static final StreamCodec<RegistryFriendlyByteBuf, ConfigSyncPayload> CODEC =
+            StreamCodec.composite(
+                    ByteBufCodecs.INT,
                     ConfigSyncPayload::maxBlocks,
 
-                    PacketCodecs.STRING.collect(PacketCodecs.toList()),
+                    ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()),
                     ConfigSyncPayload::blacklistedBlocks,
 
                     ConfigSyncPayload::new
             );
 
-    @Override
-    public Id<? extends CustomPayload> getId() {
-        return ID;
-    }
+    @Override public Type<? extends CustomPacketPayload> type() { return ID; }
+
+    public String channelId() { return ID.id().toString(); }
 }

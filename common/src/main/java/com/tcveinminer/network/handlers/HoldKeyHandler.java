@@ -12,16 +12,16 @@ import java.util.UUID;
 /**
  * Server-side handler for {@link HoldKeyData} packets.
  * <p>
- * Loader event bridges call {@link #handle(ServerPlayerEntity, HoldKeyData)}
+ * Loader event bridges call {@link #handle(ServerPlayer, HoldKeyData)}
  * after decoding the packet. All game logic lives here — no loader coupling.
  */
 public final class HoldKeyHandler {
     public static void handleRaw(Object player, HoldKeyData data) {
-        handle((ServerPlayerEntity) player, data);
+        handle((ServerPlayer) player, data);
     }
 
-    public static void handle(ServerPlayerEntity player, HoldKeyData data) {
-        UUID uuid = player.getUuid();
+    public static void handle(ServerPlayer player, HoldKeyData data) {
+        UUID uuid = player.getUUID();
 
         // Validate shapeId length
         if (data.shapeId() == null || data.shapeId().length() > 128) return;

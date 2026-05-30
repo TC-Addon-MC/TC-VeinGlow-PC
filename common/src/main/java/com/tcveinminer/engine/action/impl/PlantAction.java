@@ -14,22 +14,22 @@ import net.minecraft.core.BlockPos;
 public final class PlantAction implements BlockAction {
 
     @Override
-    public boolean execute(ServerPlayerEntity player, ServerWorld world, BlockPos pos, ActionContext ctx) {
+    public boolean execute(ServerPlayer player, ServerLevel world, BlockPos pos, ActionContext ctx) {
         if (!(ctx instanceof ActionContext.InteractContext ic)) return false;
 
-        BlockPos plantPos = pos.up();
+        BlockPos plantPos = pos.above();
         if (!world.getBlockState(plantPos).isAir()) {
             return false;
         }
 
-        Hand hand = ic.getInteractHand();
-        ItemStack seedStack = player.getStackInHand(hand);
+        InteractionHand hand = ic.getInteractHand();
+        ItemStack seedStack = player.getItemInHand(hand);
         if (seedStack.isEmpty()) return false;
 
         if (seedStack.getItem() instanceof BlockItem blockItem) {
             BlockState plantState = blockItem.getBlock().defaultBlockState();
             world.setBlock(plantPos, plantState, 3);
-            world.playSound(null, plantPos, plantState.getSoundGroup().getPlaceSound(), SoundCategory.BLOCKS, 1.0F, 1.0F);
+            world.playSound(null, plantPos, plantState.getSoundType().getPlaceSound(), SoundSource.BLOCKS, 1.0F, 1.0F);
             if (!player.isCreative()) {
                 seedStack.shrink(1);
             }

@@ -16,20 +16,20 @@ import java.util.List;
 
 public final class VeinMinerCommand {
 
-    public static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
-        dispatcher.register(CommandManager.literal("tcveinminer")
-            .requires(src -> src.hasPermissionLevel(2))
-            .then(CommandManager.literal("config")
-                .then(CommandManager.literal("reload")
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        dispatcher.register(Commands.literal("tcveinminer")
+            .requires(src -> src.hasPermission(2))
+            .then(Commands.literal("config")
+                .then(Commands.literal("reload")
                     .executes(ctx -> {
                         ConfigManager.load();
-                        broadcastConfigSync(ctx.getSource().getServer().getPlayerManager().getPlayerList());
-                        ctx.getSource().sendFeedback(() -> Component.literal("[TC VeinGlow] Config reloaded!"), false);
+                        broadcastConfigSync(ctx.getSource().getServer().getPlayerList().getPlayers());
+                        ctx.getSource().sendSuccess(() -> Component.literal("[TC VeinGlow] Config reloaded!"), false);
                         return 1;
                     })
                 )
-                .then(CommandManager.literal("set")
-                    .then(CommandManager.argument("property", StringArgumentType.string())
+                .then(Commands.literal("set")
+                    .then(Commands.argument("property", StringArgumentType.string())
                         .suggests((ctx, builder) -> {
                             List<String> fields = new ArrayList<>();
                             for (var f : ModConfig.class.getFields()) {
@@ -37,15 +37,15 @@ public final class VeinMinerCommand {
                                     fields.add(f.getName());
                                 }
                             }
-                            return net.minecraft.commands.SharedSuggestionProvider.suggestMatching(fields, builder);
+                            return net.minecraft.commands.SharedSuggestionProvider.suggest(fields, builder);
                         })
-                        .then(CommandManager.argument("value", StringArgumentType.string())
+                        .then(Commands.argument("value", StringArgumentType.string())
                             .suggests((ctx, builder) -> {
                                 try {
                                     String prop = StringArgumentType.getString(ctx, "property");
                                     var field = ModConfig.class.getField(prop);
                                     if (field.getType() == boolean.class) {
-                                        return net.minecraft.commands.SharedSuggestionProvider.suggestMatching(
+                                        return net.minecraft.commands.SharedSuggestionProvider.suggest(
                                                 List.of("true", "false"), builder);
                                     }
                                 } catch (Exception ignored) {}
@@ -63,18 +63,18 @@ public final class VeinMinerCommand {
                                     } else if (field.getType() == String.class) {
                                         field.set(ConfigManager.get(), val);
                                     } else {
-                                        ctx.getSource().sendError(Component.literal("Unsupported property type."));
+                                        ctx.getSource().sendFailure(Component.literal("Unsupported property type."));
                                         return 0;
                                     }
                                     ConfigManager.save();
-                                    broadcastConfigSync(ctx.getSource().getServer().getPlayerManager().getPlayerList());
-                                    ctx.getSource().sendFeedback(
+                                    broadcastConfigSync(ctx.getSource().getServer().getPlayerList().getPlayers());
+                                    ctx.getSource().sendSuccess(
                                             () -> Component.literal("[TC VeinGlow] Set " + prop + " = " + val), true);
                                     return 1;
                                 } catch (NoSuchFieldException e) {
-                                    ctx.getSource().sendError(Component.literal("Property not found: " + prop));
+                                    ctx.getSource().sendFailure(Component.literal("Property not found: " + prop));
                                 } catch (Exception e) {
-                                    ctx.getSource().sendError(Component.literal("Error setting property: " + e.getMessage()));
+                                    ctx.getSource().sendFailure(Component.literal("Error setting property: " + e.getMessage()));
                                 }
                                 return 0;
                             })
@@ -85,7 +85,7 @@ public final class VeinMinerCommand {
         );
     }
 
-    private static void broadcastConfigSync(List<ServerPlayerEntity> players) {
+    private static void broadcastConfigSync(List<ServerPlayer> players) {
         var cfg = ConfigManager.get();
         var packet = new ConfigSyncData(cfg.maxBlocks, new ArrayList<>(cfg.blacklistedBlocks));
         for (var player : players) {

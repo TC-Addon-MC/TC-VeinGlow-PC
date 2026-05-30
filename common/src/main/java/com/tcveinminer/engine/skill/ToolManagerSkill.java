@@ -28,18 +28,18 @@ public final class ToolManagerSkill {
      */
     public static String getSpecialEnchantSig(ItemStack stack) {
         if (stack.isEmpty()) return "";
-        ItemEnchantmentsComponent enchants = stack.getOrDefault(
-                DataComponentTypes.ENCHANTMENTS,
-                ItemEnchantmentsComponent.DEFAULT);
+        ItemEnchantments enchants = stack.getOrDefault(
+                DataComponents.ENCHANTMENTS,
+                ItemEnchantments.EMPTY);
 
         int fortuneLevel = 0;
         boolean hasSilkTouch = false;
 
-        for (RegistryEntry<Enchantment> entry : enchants.getEnchantments()) {
-            String path = entry.getKey()
-                    .map(k -> k.getValue().getPath())
+        for (it.unimi.dsi.fastutil.objects.Object2IntMap.Entry<Holder<Enchantment>> entry : enchants.entrySet()) {
+            String path = entry.getKey().unwrapKey()
+                    .map(k -> k.location().getPath())
                     .orElse("");
-            int level = enchants.getLevel(entry);
+            int level = entry.getIntValue();
             if ("fortune".equals(path)) fortuneLevel = level;
             else if ("silk_touch".equals(path)) hasSilkTouch = true;
         }
@@ -53,8 +53,8 @@ public final class ToolManagerSkill {
 
     /** Kiểm tra xem tool hiện tại có sắp vỡ không (remaining ≤ threshold) */
     public static boolean isToolNearBreaking(ItemStack stack, int threshold) {
-        if (!stack.isDamageable()) return false;
-        return (stack.getMaxDamage() - stack.getDamage()) <= threshold;
+        if (!stack.isDamageableItem()) return false;
+        return (stack.getMaxDamage() - stack.getDamageValue()) <= threshold;
     }
 
     // ── Replacement Search ────────────────────────────────────────────────
@@ -81,22 +81,22 @@ public final class ToolManagerSkill {
      * @param protectThreshold nếu > -1, bỏ qua những tool có độ bền còn lại <= threshold
      * @return slot index [0,35] hoặc -1 nếu không tìm thấy
      */
-    public static int findReplacementTool(ServerPlayerEntity player, Item oldItem, String originalSig, int protectThreshold) {
-        PlayerInventory inv = player.getInventory();
-        int currentSlot = inv.selectedSlot;
+    public static int findReplacementTool(ServerPlayer player, Item oldItem, String originalSig, int protectThreshold) {
+        Inventory inv = player.getInventory();
+        int currentSlot = inv.selected;
         Class<?> toolClass = oldItem.getClass();
 
         // ── Priority 1: Cùng item + cùng enchant sig (hotbar) ────────────
         for (int i = 0; i < 9; i++) {
             if (i == currentSlot) continue;
-            ItemStack stack = inv.getStack(i);
+            ItemStack stack = inv.getItem(i);
             if (stack.isEmpty() || stack.getItem() != oldItem || !originalSig.equals(getSpecialEnchantSig(stack))) continue;
             if (protectThreshold >= 0 && isToolNearBreaking(stack, protectThreshold)) continue;
             return i;
         }
         // ── Priority 1b: (inventory thường) ──────────────────────────────
         for (int i = 9; i < 36; i++) {
-            ItemStack stack = inv.getStack(i);
+            ItemStack stack = inv.getItem(i);
             if (stack.isEmpty() || stack.getItem() != oldItem || !originalSig.equals(getSpecialEnchantSig(stack))) continue;
             if (protectThreshold >= 0 && isToolNearBreaking(stack, protectThreshold)) continue;
             return i;
@@ -105,14 +105,14 @@ public final class ToolManagerSkill {
         // ── Priority 2: Cùng class + cùng enchant sig (hotbar) ───────────
         for (int i = 0; i < 9; i++) {
             if (i == currentSlot) continue;
-            ItemStack stack = inv.getStack(i);
+            ItemStack stack = inv.getItem(i);
             if (stack.isEmpty() || stack.getItem().getClass() != toolClass || !originalSig.equals(getSpecialEnchantSig(stack))) continue;
             if (protectThreshold >= 0 && isToolNearBreaking(stack, protectThreshold)) continue;
             return i;
         }
         // ── Priority 2b: (inventory thường) ──────────────────────────────
         for (int i = 9; i < 36; i++) {
-            ItemStack stack = inv.getStack(i);
+            ItemStack stack = inv.getItem(i);
             if (stack.isEmpty() || stack.getItem().getClass() != toolClass || !originalSig.equals(getSpecialEnchantSig(stack))) continue;
             if (protectThreshold >= 0 && isToolNearBreaking(stack, protectThreshold)) continue;
             return i;
@@ -127,16 +127,16 @@ public final class ToolManagerSkill {
      * Đưa item từ slot chỉ định VỀ slot tay hiện tại (selectedSlot không đổi).
      * Item cũ ở tay (vỡ/empty) sẽ được đặt sang slot nguồn.
      */
-    public static boolean equipToolFromSlot(ServerPlayerEntity player, int slot) {
-        PlayerInventory inv = player.getInventory();
+    public static boolean equipToolFromSlot(ServerPlayer player, int slot) {
+        Inventory inv = player.getInventory();
         if (slot < 0 || slot >= 36) return false;
 
-        int currentSlot = inv.selectedSlot; // giữ nguyên tay, KHÔNG đổi selectedSlot
-        ItemStack currentStack = inv.getStack(currentSlot).copy();
-        ItemStack targetStack  = inv.getStack(slot).copy();
+        int currentSlot = inv.selected; // giữ nguyên tay, KHÔNG đổi selectedSlot
+        ItemStack currentStack = inv.getItem(currentSlot).copy();
+        ItemStack targetStack  = inv.getItem(slot).copy();
 
-        inv.setStack(currentSlot, targetStack); // đặt tool mới vào tay
-        inv.setStack(slot, currentStack);        // đặt tool cũ/vỡ về slot nguồn
+        inv.setItem(currentSlot, targetStack); // đặt tool mới vào tay
+        inv.setItem(slot, currentStack);        // đặt tool cũ/vỡ về slot nguồn
         return true;
     }
 
@@ -146,7 +146,7 @@ public final class ToolManagerSkill {
      * Hook chính — gọi sau mỗi block break trong AbstractActionEngine.
      */
     public static ToolAction handleToolState(
-            ServerPlayerEntity player, ModConfig config,
+            ServerPlayer player, ModConfig config,
             Item initialItem, ActionSession session) {
 
         ItemStack mainHand = player.getMainHandItem();
@@ -165,11 +165,11 @@ public final class ToolManagerSkill {
                     session.setInitialItem(newItem);
                     session.setInitialEnchantSig(newSig);
                     HudNotifier.notifyAt = System.currentTimeMillis() + 2500;
-                    player.sendMessage(Component.translatable("msg.tcveinminer.tool_swap_broken", newItem.getName().getString()), true);
+                    player.sendSystemMessage(Component.translatable("msg.tcveinminer.tool_swap_broken", newItem.getDescription().getString()), true);
                     return ToolAction.SWAPPED;
                 } else {
                     HudNotifier.notifyAt = System.currentTimeMillis() + 2500;
-                    player.sendMessage(Component.translatable("msg.tcveinminer.tool_swap_no_tool_broken"), true);
+                    player.sendSystemMessage(Component.translatable("msg.tcveinminer.tool_swap_no_tool_broken"), true);
                     return ToolAction.STOP;
                 }
             }
@@ -188,19 +188,19 @@ public final class ToolManagerSkill {
                     session.setInitialItem(newItem);
                     session.setInitialEnchantSig(newSig);
                     HudNotifier.notifyAt = System.currentTimeMillis() + 2500;
-                    player.sendMessage(Component.translatable("msg.tcveinminer.tool_swap_protected", newItem.getName().getString()), true);
+                    player.sendSystemMessage(Component.translatable("msg.tcveinminer.tool_swap_protected", newItem.getDescription().getString()), true);
                     return ToolAction.SWAPPED;
                 } else if (config.enableToolProtectSkill) {
                     // Swap bật nhưng không có tool phù hợp, protect bật → dừng bảo vệ tool
                     HudNotifier.notifyAt = System.currentTimeMillis() + 2500;
-                    player.sendMessage(Component.translatable("msg.tcveinminer.tool_swap_no_tool_protected"), true);
+                    player.sendSystemMessage(Component.translatable("msg.tcveinminer.tool_swap_no_tool_protected"), true);
                     return ToolAction.STOP;
                 }
                 // Swap bật, không có tool thay thế, protect tắt → tiếp tục đến khi vỡ hẳn
             } else if (config.enableToolProtectSkill) {
                 // Chỉ protect, không swap → dừng
                 HudNotifier.notifyAt = System.currentTimeMillis() + 2500;
-                player.sendMessage(Component.translatable("msg.tcveinminer.tool_protected"), true);
+                player.sendSystemMessage(Component.translatable("msg.tcveinminer.tool_protected"), true);
                 return ToolAction.STOP;
             }
             // Cả 2 tắt → tiếp tục bình thường

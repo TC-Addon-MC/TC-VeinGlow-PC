@@ -32,8 +32,8 @@ public interface MiningStrategy {
      * DTO chứa toàn bộ state tĩnh cho một phiên đào.
      */
     record MiningRequest(
-            World world,
-            PlayerEntity player,
+            Level Level,
+            Player player,
             ItemStack tool,
             BlockPos origin,
             BlockState targetState,

@@ -17,12 +17,12 @@ import net.minecraft.world.item.Items;
 public final class BucketCapability implements ItemActionCapability {
 
     @Override
-    public boolean canPerform(ItemStack stack, BlockState targetState, PlayerEntity player) {
+    public boolean canPerform(ItemStack stack, BlockState targetState, Player player) {
         if (stack.isEmpty()) return false;
         if (stack.getItem() != Items.BUCKET) return false;
 
         // Target must be a fluid source block
-        return targetState.getBlock() instanceof FluidBlock
+        return targetState.getBlock() instanceof LiquidBlock
             && targetState.getFluidState().isSource();
     }
 

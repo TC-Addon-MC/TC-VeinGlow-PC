@@ -19,7 +19,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 public final class HarvestCapability implements ItemActionCapability {
 
     @Override
-    public boolean canPerform(ItemStack stack, BlockState targetState, PlayerEntity player) {
+    public boolean canPerform(ItemStack stack, BlockState targetState, Player player) {
         return isMatureCrop(targetState);
     }
 
@@ -38,13 +38,13 @@ public final class HarvestCapability implements ItemActionCapability {
      */
     public static boolean isMatureCrop(BlockState state) {
         if (state.getBlock() instanceof CropBlock crop) {
-            return crop.isMature(state);
+            return state.getValue(net.minecraft.world.level.block.CropBlock.AGE) == crop.getMaxAge();
         }
         if (state.getBlock() instanceof NetherWartBlock) {
-            return state.get(Properties.AGE_3) == 3;
+            return state.getValue(BlockStateProperties.AGE_3) == 3;
         }
         if (state.getBlock() instanceof CocoaBlock) {
-            return state.get(Properties.AGE_2) == 2;
+            return state.getValue(BlockStateProperties.AGE_2) == 2;
         }
         return false;
     }

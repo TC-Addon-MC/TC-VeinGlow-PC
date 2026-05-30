@@ -10,18 +10,18 @@ import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.util.InputUtil;
+import net.minecraft.client.KeyMapping;
+import com.mojang.blaze3d.platform.InputConstants;
 import org.lwjgl.glfw.GLFW;
 
 public class TCVeinMinerFabricClient implements ClientModInitializer {
 
-    public static KeyBinding KEY_MINE;
-    public static KeyBinding KEY_MENU;
-    public static KeyBinding KEY_NEXT_SHAPE;
-    public static KeyBinding KEY_PREV_SHAPE;
-    public static KeyBinding KEY_QUICK_CYCLE;
-    public static final KeyBinding[] KEY_QUICK_SELECT = new KeyBinding[9];
+    public static KeyMapping KEY_MINE;
+    public static KeyMapping KEY_MENU;
+    public static KeyMapping KEY_NEXT_SHAPE;
+    public static KeyMapping KEY_PREV_SHAPE;
+    public static KeyMapping KEY_QUICK_CYCLE;
+    public static final KeyMapping[] KEY_QUICK_SELECT = new KeyMapping[9];
 
     @Override
     public void onInitializeClient() {
@@ -31,22 +31,22 @@ public class TCVeinMinerFabricClient implements ClientModInitializer {
 
         VeinGlowClient.init();
 
-        KEY_MINE = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.tc_veinminer.mine", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_V, "key.categories.tc_veinminer"));
-        KEY_MENU = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.tc_veinminer.menu", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_G, "key.categories.tc_veinminer"));
-        KEY_NEXT_SHAPE = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.tc_veinminer.next_shape", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT,
+        KEY_MINE = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+                "key.tc_veinminer.mine", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, "key.categories.tc_veinminer"));
+        KEY_MENU = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+                "key.tc_veinminer.menu", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, "key.categories.tc_veinminer"));
+        KEY_NEXT_SHAPE = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+                "key.tc_veinminer.next_shape", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT,
                 "key.categories.tc_veinminer"));
-        KEY_PREV_SHAPE = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.tc_veinminer.prev_shape", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_LEFT,
+        KEY_PREV_SHAPE = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+                "key.tc_veinminer.prev_shape", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT,
                 "key.categories.tc_veinminer"));
-        KEY_QUICK_CYCLE = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.tc_veinminer.quick_cycle", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_N, "key.categories.tc_veinminer"));
+        KEY_QUICK_CYCLE = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+                "key.tc_veinminer.quick_cycle", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_N, "key.categories.tc_veinminer"));
 
         for (int i = 0; i < 9; i++) {
-            KEY_QUICK_SELECT[i] = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                    "key.tc_veinminer.quick_select_" + (i + 1), InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_1 + i,
+            KEY_QUICK_SELECT[i] = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+                    "key.tc_veinminer.quick_select_" + (i + 1), InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_1 + i,
                     "key.categories.tc_veinminer"));
         }
 
@@ -58,28 +58,28 @@ public class TCVeinMinerFabricClient implements ClientModInitializer {
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> VeinGlowClient.onDisconnect());
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            if (client.player != null && client.currentScreen == null) {
-                while (KEY_NEXT_SHAPE.wasPressed())
+            if (client.player != null && client.screen == null) {
+                while (KEY_NEXT_SHAPE.consumeClick())
                     VeinGlowClient.cycleShape(1);
-                while (KEY_PREV_SHAPE.wasPressed())
+                while (KEY_PREV_SHAPE.consumeClick())
                     VeinGlowClient.cycleShape(-1);
-                while (KEY_QUICK_CYCLE.wasPressed())
+                while (KEY_QUICK_CYCLE.consumeClick())
                     VeinGlowClient.cycleShape(1);
                 for (int i = 0; i < 9; i++) {
-                    while (KEY_QUICK_SELECT[i].wasPressed())
+                    while (KEY_QUICK_SELECT[i].consumeClick())
                         VeinGlowClient.selectShapeByIndex(i);
                 }
             }
 
-            int menuKey = KeyBindingHelper.getBoundKeyOf(KEY_MENU).getCode();
-            boolean menuKeyPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), menuKey);
+            int menuKey = KeyBindingHelper.getBoundKeyOf(KEY_MENU).getValue();
+            boolean menuKeyPressed = InputConstants.isKeyDown(client.getWindow().getWindow(), menuKey);
 
-            if (menuKeyPressed && client.currentScreen == null && client.player != null) {
+            if (menuKeyPressed && client.screen == null && client.player != null) {
                 client.setScreen(new com.tcveinminer.client.gui.screens.RadialMenuScreen(null));
             }
 
-            int mineKey = KeyBindingHelper.getBoundKeyOf(KEY_MINE).getCode();
-            boolean mineKeyPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), mineKey);
+            int mineKey = KeyBindingHelper.getBoundKeyOf(KEY_MINE).getValue();
+            boolean mineKeyPressed = InputConstants.isKeyDown(client.getWindow().getWindow(), mineKey);
 
             VeinGlowClient.onClientTick(mineKeyPressed, menuKeyPressed);
         });

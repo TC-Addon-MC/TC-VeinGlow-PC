@@ -15,8 +15,8 @@ import net.minecraft.core.BlockPos;
 public final class TreeCapAction implements BlockAction {
 
     @Override
-    public boolean execute(ServerPlayerEntity player, ServerWorld world, BlockPos pos, ActionContext ctx) {
-        return BreakSkill.destroyBlock(player, world, pos, world.getBlockState(pos));
+    public boolean execute(ServerPlayer player, ServerLevel world, BlockPos pos, ActionContext ctx) {
+        return BreakSkill.breakBlock(player, world, pos, world.getBlockState(pos));
     }
 
     @Override

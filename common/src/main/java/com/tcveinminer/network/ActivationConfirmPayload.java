@@ -6,15 +6,16 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
-public record ActivationConfirmPayload(boolean allowContinuous) implements CustomPayload {
-    public static final Id<ActivationConfirmPayload> ID =
-        new Id<>(ResourceLocation.parse("tc_veinminer", "activation_confirm"));
+public record ActivationConfirmPayload(boolean allowContinuous) implements CustomPacketPayload {
+    public static final Type<ActivationConfirmPayload> ID =
+        new Type<>(ResourceLocation.fromNamespaceAndPath("tc_veinminer", "activation_confirm"));
 
-    public static final PacketCodec<RegistryByteBuf, ActivationConfirmPayload> CODEC = PacketCodec.tuple(
-            PacketCodecs.BOOL, ActivationConfirmPayload::allowContinuous,
+    public static final StreamCodec<RegistryFriendlyByteBuf, ActivationConfirmPayload> CODEC = StreamCodec.composite(
+            ByteBufCodecs.BOOL, ActivationConfirmPayload::allowContinuous,
             ActivationConfirmPayload::new
     );
 
-    @Override
-    public Id<? extends CustomPayload> getId() { return ID; }
+    @Override public Type<? extends CustomPacketPayload> type() { return ID; }
+
+    public String channelId() { return ID.id().toString(); }
 }

@@ -22,7 +22,7 @@ public interface ItemActionCapability {
      * @param player      the player performing the action
      * @return true if this capability matches the context
      */
-    boolean canPerform(ItemStack stack, BlockState targetState, PlayerEntity player);
+    boolean canPerform(ItemStack stack, BlockState targetState, Player player);
 
     /**
      * Priority — lower values are checked first.

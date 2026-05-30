@@ -32,7 +32,7 @@ public class ShapesTab implements MenuTab {
 
         screen.addUIElement(new CustomButton(cx, cy + 2, btnW, 20,
                 Component.translatable("gui.tcveinminer.shapes.add_custom"), btn -> {
-            MinecraftClient.getInstance().setScreen(
+            Minecraft.getInstance().setScreen(
                     new CustomShapeDesignerScreen(screen, null));
         }));
 
@@ -104,7 +104,7 @@ public class ShapesTab implements MenuTab {
 
         // Cảnh báo server chặn custom
         if (isCustomBlockedByServer()) {
-            ctx.drawTextWithShadow(screen.getTextRenderer(),
+            ctx.drawString(screen.getMinecraft().font,
                     Component.translatable("gui.tcveinminer.error.server_blocked_custom").getString(),
                     cx, cy - 10, ThemeColors.TEXT_ERROR);
         }
@@ -125,7 +125,7 @@ public class ShapesTab implements MenuTab {
                 ctx.fill(cx, ry, cx + cw, ry + 22, DrawHelper.BG_CARD);
                 DrawHelper.drawSolidBorder(ctx, cx, ry, cw, 22, DrawHelper.BORDER_MODERN);
 
-                ctx.drawTextWithShadow(screen.getTextRenderer(), Component.translatable("tc_veinminer.mode." + s.name()).getString(),
+                ctx.drawString(screen.getMinecraft().font, Component.translatable("tc_veinminer.mode." + s.name()).getString(),
                         cx + 8, ry + 7, 0xFFA0AEC0);
             }
             rowIndex++;
@@ -146,7 +146,7 @@ public class ShapesTab implements MenuTab {
                 DrawHelper.drawSolidBorder(ctx, cx, ry, cw, 22, borderColor);
 
                 String label = entry.name;
-                ctx.drawTextWithShadow(screen.getTextRenderer(), label, cx + 8, ry + 7, textColor);
+                ctx.drawString(screen.getMinecraft().font, label, cx + 8, ry + 7, textColor);
             }
             rowIndex++;
         }

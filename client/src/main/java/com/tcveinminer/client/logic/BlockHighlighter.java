@@ -5,11 +5,20 @@ import com.tcveinminer.client.config.ClientConfig;
 import com.tcveinminer.client.config.ClientConfigManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.render.*;
+import net.minecraft.client.renderer.GameRenderer;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.BufferUploader;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.Camera;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.VoxelShape;
+import net.minecraft.world.level.block.state.BlockState;
 import org.joml.Matrix4f;
 
 import java.util.*;
@@ -26,22 +35,22 @@ public class BlockHighlighter {
         // Registration should happen in loader-specific entrypoints
     }
 
-    public static void onDrawFluidHighlight(MatrixStack matrices, Camera camera, VertexConsumerProvider consumers) {
+    public static void onDrawFluidHighlight(PoseStack matrices, Camera camera, MultiBufferSource consumers) {
         if (!VeinGlowClient.holdKeyDown)
             return;
         if (!ClientConfigManager.instance.showOutline)
             return;
 
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.level == null || minecraft.player == null)
+        Minecraft client = Minecraft.getInstance();
+        if (client.level == null || client.player == null)
             return;
         if (client.player.getMainHandItem().getItem() != net.minecraft.world.item.Items.BUCKET)
             return;
         if (lookedAtBlock == null)
             return;
 
-        var fluidState = minecraft.level.getFluidState(lookedAtBlock);
-        if (fluidState.isEmpty() || !fluidState.isStill())
+        var fluidState = client.level.getFluidState(lookedAtBlock);
+        if (fluidState.isEmpty() || !fluidState.isSource())
             return;
 
         Set<BlockPos> toHighlight = new HashSet<>();
@@ -54,15 +63,15 @@ public class BlockHighlighter {
         drawOutlines(matrices, camera, client, toHighlight, !allowHighlight);
     }
 
-    public static boolean onDrawOutline(MatrixStack matrices, Camera camera, VertexConsumerProvider consumers) {
+    public static boolean onDrawOutline(PoseStack matrices, Camera camera, MultiBufferSource consumers) {
         if (!VeinGlowClient.holdKeyDown || lookedAtBlock == null) {
             return true;
         }
         if (!ClientConfigManager.instance.showOutline)
             return true;
 
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.level == null || minecraft.player == null)
+        Minecraft client = Minecraft.getInstance();
+        if (client.level == null || client.player == null)
             return true;
 
         Set<BlockPos> toHighlight = new HashSet<>();
@@ -80,21 +89,21 @@ public class BlockHighlighter {
 
     // ── Rendering ─────────────────────────────────────────────────────────────
 
-    private static void drawOutlines(MatrixStack matrices, Camera camera,
-            MinecraftClient client, Set<BlockPos> blockSet, boolean isTargetInvalid) {
+    private static void drawOutlines(PoseStack matrices, Camera camera,
+            Minecraft client, Set<BlockPos> blockSet, boolean isTargetInvalid) {
         Map<Long, EdgeData> edgeCount = new HashMap<>();
         for (BlockPos pos : blockSet) {
-            var state = minecraft.level.getBlockState(pos);
-            var shape = state.getOutlineShape(client.level, pos);
+            BlockState state = client.level.getBlockState(pos);
+            VoxelShape shape = state.getShape(client.level, pos);
             if (shape.isEmpty()) {
-                var fluidState = minecraft.level.getFluidState(pos);
+                var fluidState = client.level.getFluidState(pos);
                 if (!fluidState.isEmpty()) {
                     shape = fluidState.getShape(client.level, pos);
                 }
             }
             if (shape.isEmpty())
                 continue;
-            Box box = shape.getBoundingBox();
+            AABB box = shape.bounds();
             addAllEdges(edgeCount, pos, box);
         }
 
@@ -106,11 +115,11 @@ public class BlockHighlighter {
         float alpha = Math.max(0f, Math.min(1f, cfg.outlineAlpha / 255f));
         float alphaXray = alpha * 0.25f;
 
-        Vec3d cameraPos = camera.getPos();
+        Vec3 cameraPos = camera.getPosition();
 
-        matrices.push();
+        matrices.pushPose();
         matrices.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
-        Matrix4f mat = matrices.peek().getPositionMatrix();
+        Matrix4f mat = matrices.last().pose();
 
         float camX = (float) cameraPos.x;
         float camY = (float) cameraPos.y;
@@ -118,7 +127,7 @@ public class BlockHighlighter {
 
         float maxQuadLen = 0.05f;
 
-        Tessellator tessellator = Tessellator.getInstance();
+        Tesselator tessellator = Tesselator.getInstance();
 
         // ── Xray pass (depth ALWAYS, alpha thấp) ──────────────────────────────
         RenderSystem.enableBlend();
@@ -129,8 +138,8 @@ public class BlockHighlighter {
         RenderSystem.depthFunc(515); // GL_ALWAYS = 519, GL_LEQUAL = 515 — xray dùng ALWAYS
         RenderSystem.depthFunc(519); // GL_ALWAYS
 
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        BufferBuilder xrayBuf = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+        BufferBuilder xrayBuf = tessellator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
 
         renderEdges(xrayBuf, mat, edgeCount, cfg, isTargetInvalid, fallbackRgb, alphaXray,
                 camX, camY, camZ, maxQuadLen);
@@ -139,16 +148,16 @@ public class BlockHighlighter {
             renderInvalidX(xrayBuf, mat, blockSet, client, cfg, camX, camY, camZ, r, g, b, alphaXray);
         }
 
-        var builtXray = xrayBuf.endNullable();
+        var builtXray = xrayBuf.build();
         if (builtXray != null) {
-            BufferRenderer.drawWithGlobalProgram(builtXray);
+            BufferUploader.drawWithShader(builtXray);
         }
 
         // ── Solid pass (depth LEQUAL, alpha đầy đủ) ───────────────────────────
         RenderSystem.depthFunc(515); // GL_LEQUAL
 
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        BufferBuilder solidBuf = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+        BufferBuilder solidBuf = tessellator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
 
         renderEdges(solidBuf, mat, edgeCount, cfg, isTargetInvalid, fallbackRgb, alpha,
                 camX, camY, camZ, maxQuadLen);
@@ -157,9 +166,9 @@ public class BlockHighlighter {
             renderInvalidX(solidBuf, mat, blockSet, client, cfg, camX, camY, camZ, r, g, b, alpha);
         }
 
-        var builtSolid = solidBuf.endNullable();
+        var builtSolid = solidBuf.build();
         if (builtSolid != null) {
-            BufferRenderer.drawWithGlobalProgram(builtSolid);
+            BufferUploader.drawWithShader(builtSolid);
         }
 
         // ── Restore GL state ──────────────────────────────────────────────────
@@ -168,7 +177,7 @@ public class BlockHighlighter {
         RenderSystem.disableBlend();
         RenderSystem.depthFunc(515); // restore to LEQUAL
 
-        matrices.pop();
+        matrices.popPose();
     }
 
     private static void renderEdges(BufferBuilder buf, Matrix4f mat,
@@ -226,23 +235,24 @@ public class BlockHighlighter {
                 float p2x = bx - ox, p2y = by - oy, p2z = bz - oz;
                 float p3x = bx + ox, p3y = by + oy, p3z = bz + oz;
 
-                buf.vertex(mat, p0x, p0y, p0z).color(rgbA[0], rgbA[1], rgbA[2], alpha);
-                buf.vertex(mat, p1x, p1y, p1z).color(rgbA[0], rgbA[1], rgbA[2], alpha);
-                buf.vertex(mat, p2x, p2y, p2z).color(rgbB[0], rgbB[1], rgbB[2], alpha);
-                buf.vertex(mat, p3x, p3y, p3z).color(rgbB[0], rgbB[1], rgbB[2], alpha);
+                buf.addVertex(mat, p0x, p0y, p0z).setColor(rgbA[0], rgbA[1], rgbA[2], alpha);
+                buf.addVertex(mat, p1x, p1y, p1z).setColor(rgbA[0], rgbA[1], rgbA[2], alpha);
+                buf.addVertex(mat, p2x, p2y, p2z).setColor(rgbB[0], rgbB[1], rgbB[2], alpha);
+                buf.addVertex(mat, p3x, p3y, p3z).setColor(rgbB[0], rgbB[1], rgbB[2], alpha);
             }
         }
     }
 
     private static void renderInvalidX(BufferBuilder buf, Matrix4f mat,
-            Set<BlockPos> blockSet, MinecraftClient client, ClientConfig cfg,
+            Set<BlockPos> blockSet, Minecraft client, ClientConfig cfg,
             float camX, float camY, float camZ,
             float r, float g, float b, float alpha) {
         for (BlockPos pos : blockSet) {
-            var shape = minecraft.level.getBlockState(pos).getOutlineShape(client.level, pos);
+            BlockState state = client.level.getBlockState(pos);
+            VoxelShape shape = state.getShape(client.level, pos);
             if (shape.isEmpty())
                 continue;
-            Box box = shape.getBoundingBox();
+            AABB box = shape.bounds();
             float x0 = (float) (pos.getX() + box.minX), x1 = (float) (pos.getX() + box.maxX);
             float y1f = (float) (pos.getY() + box.maxY);
             float z0 = (float) (pos.getZ() + box.minZ), z1 = (float) (pos.getZ() + box.maxZ);
@@ -280,10 +290,10 @@ public class BlockHighlighter {
         oy *= inv;
         oz *= inv;
 
-        buf.vertex(mat, ax + ox, ay + oy, az + oz).color(r, g, b, alpha);
-        buf.vertex(mat, ax - ox, ay - oy, az - oz).color(r, g, b, alpha);
-        buf.vertex(mat, bx - ox, by - oy, bz - oz).color(r, g, b, alpha);
-        buf.vertex(mat, bx + ox, by + oy, bz + oz).color(r, g, b, alpha);
+        buf.addVertex(mat, ax + ox, ay + oy, az + oz).setColor(r, g, b, alpha);
+        buf.addVertex(mat, ax - ox, ay - oy, az - oz).setColor(r, g, b, alpha);
+        buf.addVertex(mat, bx - ox, by - oy, bz - oz).setColor(r, g, b, alpha);
+        buf.addVertex(mat, bx + ox, by + oy, bz + oz).setColor(r, g, b, alpha);
     }
 
     // ── Color Utilities ───────────────────────────────────────────────────────
@@ -357,7 +367,7 @@ public class BlockHighlighter {
 
     // ── Edge Merging Logic ────────────────────────────────────────────────────
 
-    private static void addAllEdges(Map<Long, EdgeData> edgeCount, BlockPos pos, Box box) {
+    private static void addAllEdges(Map<Long, EdgeData> edgeCount, BlockPos pos, AABB box) {
         int bx2 = pos.getX() * 2, by2 = pos.getY() * 2, bz2 = pos.getZ() * 2;
         int x0 = bx2 + (int) (box.minX * 2), x1 = bx2 + (int) (box.maxX * 2);
         int y0 = by2 + (int) (box.minY * 2), y1 = by2 + (int) (box.maxY * 2);

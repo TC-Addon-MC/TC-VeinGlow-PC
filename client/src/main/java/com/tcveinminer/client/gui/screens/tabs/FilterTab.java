@@ -1,6 +1,5 @@
 package com.tcveinminer.client.gui.screens.tabs;
 
-import com.tcveinminer.client.gui.CustomButton;
 import com.tcveinminer.client.gui.screens.MainMenuScreen;
 import com.tcveinminer.client.gui.widgets.AmberButton;
 import com.tcveinminer.engine.strategy.FilterModeManager;
@@ -29,10 +28,10 @@ public class FilterTab implements MenuTab {
         int inputW = (cw / 2) - 60;
 
         if (blockInput == null) {
-            blockInput = new EditBox(screen.getTextRenderer(), cx + 6, splitY + 22, inputW, 16, Component.empty());
+            blockInput = new EditBox(screen.getMinecraft().font, cx + 6, splitY + 22, inputW, 16, Component.empty());
             blockInput.setMaxLength(100);
             FilterModeManager.updateBlockSearch("");
-            blockInput.setChangedListener(text -> {
+            blockInput.setResponder(text -> {
                 FilterModeManager.updateBlockSearch(text);
                 searchScroll = 0;
                 blError = "";
@@ -49,8 +48,8 @@ public class FilterTab implements MenuTab {
     }
 
     private void addBlock(MainMenuScreen screen) {
-        String input = blockInput.getText();
-        Identifier validId = FilterModeManager.validateAndParseBlock(input);
+        String input = blockInput.getValue();
+        ResourceLocation validId = FilterModeManager.validateAndParseBlock(input);
 
         if (validId == null) {
             blError = Component.translatable("gui.tcveinminer.error.unknown_block").getString();
@@ -65,7 +64,7 @@ public class FilterTab implements MenuTab {
         }
 
         screen.getState().blacklist.add(validId);
-        blockInput.setText("");
+        blockInput.setValue("");
         FilterModeManager.updateBlockSearch("");
         blError = "";
     }
@@ -84,15 +83,15 @@ public class FilterTab implements MenuTab {
 
         // VẼ KHUNG GỢI Ý TĨNH (BÊN TRÁI)
         DrawHelper.drawCard(ctx, cx, splitY, halfW, splitH);
-        ctx.drawTextWithShadow(screen.getTextRenderer(), Component.translatable("gui.tcveinminer.filter.suggestion_title").getString(), cx + 8, splitY + 8, 0xFFFFFFFF);
-        if (blockInput.getText().isEmpty()) {
-            ctx.drawTextWithShadow(screen.getTextRenderer(), Component.translatable("gui.tcveinminer.filter.search_prompt").getString(), cx + 8, listY + 5, 0xFF6B7280);
+        ctx.drawString(screen.getMinecraft().font, Component.translatable("gui.tcveinminer.filter.suggestion_title").getString(), cx + 8, splitY + 8, 0xFFFFFFFF);
+        if (blockInput.getValue().isEmpty()) {
+            ctx.drawString(screen.getMinecraft().font, Component.translatable("gui.tcveinminer.filter.search_prompt").getString(), cx + 8, listY + 5, 0xFF6B7280);
         }
 
         // VẼ KHUNG BLACKLIST TĨNH (BÊN PHẢI)
         DrawHelper.drawCard(ctx, rightX, splitY, halfW, splitH);
         String rightTitle = Component.translatable("gui.tcveinminer.filter.blacklist_title").getString() + " (" + screen.getState().blacklist.size() + ")";
-        ctx.drawTextWithShadow(screen.getTextRenderer(), rightTitle, rightX + 8, splitY + 8, 0xFFFFFFFF);
+        ctx.drawString(screen.getMinecraft().font, rightTitle, rightX + 8, splitY + 8, 0xFFFFFFFF);
         if (!blError.isEmpty()) {
             long elapsed = (errorTime == 0) ? 0 : (System.currentTimeMillis() - errorTime);
             int charsToShow = (int) (elapsed / 40); // mỗi 40ms hiển thị thêm 1 ký tự
@@ -100,23 +99,23 @@ public class FilterTab implements MenuTab {
             String animatedError = blError.substring(0, charsToShow);
 
             // Giữ nguyên width(blError) gốc để vị trí chữ không bị dịch chuyển khi gõ
-            int textX = rightX + halfW - 8 - screen.getTextRenderer().getWidth(blError);
-            ctx.drawTextWithShadow(screen.getTextRenderer(), animatedError, textX, splitY + 8, ThemeColors.TEXT_ERROR);
+            int textX = rightX + halfW - 8 - screen.getMinecraft().font.width(blError);
+            ctx.drawString(screen.getMinecraft().font, animatedError, textX, splitY + 8, ThemeColors.TEXT_ERROR);
         }
 
-        List<Identifier> bl = new ArrayList<>(screen.getState().blacklist);
+        List<ResourceLocation> bl = new ArrayList<>(screen.getState().blacklist);
         if (bl.isEmpty()) {
-            ctx.drawTextWithShadow(screen.getTextRenderer(), Component.translatable("gui.tcveinminer.filter.empty").getString(), rightX + 8, listY + 6, 0xFF6B7280);
+            ctx.drawString(screen.getMinecraft().font, Component.translatable("gui.tcveinminer.filter.empty").getString(), rightX + 8, listY + 6, 0xFF6B7280);
         } else {
             int startBl = Math.max(0, Math.min(blScroll, bl.size() - maxItems));
             for (int i = startBl; i < Math.min(bl.size(), startBl + maxItems); i++) {
                 int ry = listY + (i - startBl) * 20;
-                Identifier id = bl.get(i);
+                ResourceLocation id = bl.get(i);
                 boolean hovered = mouseX >= rightX + 4 && mouseX <= rightX + halfW - 4 && mouseY >= ry && mouseY < ry + 20;
                 if (hovered) {
                     ctx.fill(rightX + 4, ry, rightX + halfW - 4, ry + 20, 0x4DFF0000);
                 }
-                ctx.drawTextWithShadow(screen.getTextRenderer(), id.toString(), rightX + 8, ry + 5, hovered ? 0xFFFFFFFF : 0xFFFF7171);
+                ctx.drawString(screen.getMinecraft().font, id.toString(), rightX + 8, ry + 5, hovered ? 0xFFFFFFFF : 0xFFFF7171);
             }
         }
     }
@@ -132,8 +131,8 @@ public class FilterTab implements MenuTab {
         int splitH = H - 70;
 
         // 1. HIỂN THỊ DANH SÁCH GỢI Ý (BÊN NGOÀI LỀ TRÁI - TỰ CO GIÃN THEO MÀN HÌNH)
-        List<Identifier> suggestions = FilterModeManager.getBlockSearchCache();
-        boolean hasQuery = blockInput != null && !blockInput.getText().isEmpty();
+        List<ResourceLocation> suggestions = FilterModeManager.getBlockSearchCache();
+        boolean hasQuery = blockInput != null && !blockInput.getValue().isEmpty();
         if (hasQuery) {
             // Tự động tính toán chiều rộng dựa trên khoảng trống lề trái, tối đa là 150px
             int ovW = Math.min(150, px - 10);
@@ -151,16 +150,16 @@ public class FilterTab implements MenuTab {
 
             ctx.fill(ovX, ovY, ovX + ovW, ovY + ovH, 0xFF12121A);
             DrawHelper.drawSolidBorder(ctx, ovX, ovY, ovW, ovH, 0xFF6366F1);
-            ctx.drawTextWithShadow(screen.getTextRenderer(), Component.translatable("gui.tcveinminer.filter.suggestion_title").getString() + " (" + suggestions.size() + ")", ovX + 6, ovY + 4, 0xFF6366F1);
+            ctx.drawString(screen.getMinecraft().font, Component.translatable("gui.tcveinminer.filter.suggestion_title").getString() + " (" + suggestions.size() + ")", ovX + 6, ovY + 4, 0xFF6366F1);
 
             if (suggestions.isEmpty()) {
-                ctx.drawTextWithShadow(screen.getTextRenderer(), Component.translatable("gui.tcveinminer.filter.empty_dots").getString(), ovX + 6, ovY + ovPad + 4, 0xFF6B7280);
+                ctx.drawString(screen.getMinecraft().font, Component.translatable("gui.tcveinminer.filter.empty_dots").getString(), ovX + 6, ovY + ovPad + 4, 0xFF6B7280);
             } else {
                 int startIdx = Math.max(0, Math.min(searchScroll, suggestions.size() - visibleCount));
                 for (int i = 0; i < visibleCount; i++) {
                     int idx = startIdx + i;
                     if (idx >= suggestions.size()) break;
-                    Identifier id = suggestions.get(idx);
+                    ResourceLocation id = suggestions.get(idx);
                     int ry = ovY + ovPad + 12 + (i * ovItemH);
 
                     boolean hov = mouseX >= ovX + 2 && mouseX <= ovX + ovW - 2 && mouseY >= ry && mouseY < ry + ovItemH;
@@ -169,15 +168,15 @@ public class FilterTab implements MenuTab {
                     String renderTxt = id.toString();
                     int maxTextW = ovW - 12; // Chiều rộng tối đa chữ được phép chiếm
 
-                    if (screen.getTextRenderer().getWidth(renderTxt) > maxTextW) {
+                    if (screen.getMinecraft().font.width(renderTxt) > maxTextW) {
                         renderTxt = "..." + id.getPath(); // Bỏ namespace, thay bằng ...
 
                         // Nếu sau khi đổi thành "..." + path mà vẫn dài hơn ô, tiến hành cắt đuôi
-                        if (screen.getTextRenderer().getWidth(renderTxt) > maxTextW) {
-                            renderTxt = screen.getTextRenderer().trimToWidth(renderTxt, maxTextW - 10) + "...";
+                        if (screen.getMinecraft().font.width(renderTxt) > maxTextW) {
+                            renderTxt = screen.getMinecraft().font.plainSubstrByWidth(renderTxt, maxTextW - 10) + "...";
                         }
                     }
-                    ctx.drawTextWithShadow(screen.getTextRenderer(), renderTxt, ovX + 6, ry + (ovItemH - 8) / 2, hov ? 0xFFFFFFFF : 0xFFA0AEC0);
+                    ctx.drawString(screen.getMinecraft().font, renderTxt, ovX + 6, ry + (ovItemH - 8) / 2, hov ? 0xFFFFFFFF : 0xFFA0AEC0);
                 }
             }
         }
@@ -194,8 +193,8 @@ public class FilterTab implements MenuTab {
         int rightX = lastCx + halfW + 10;
 
         // CLICK KHUNG GỢI Ý PHỤ NGOÀI LỀ TRÁI (Cập nhật đồng bộ theo tọa độ co giãn mới)
-        List<Identifier> suggestions = FilterModeManager.getBlockSearchCache();
-        boolean hasQuery = blockInput != null && !blockInput.getText().isEmpty();
+        List<ResourceLocation> suggestions = FilterModeManager.getBlockSearchCache();
+        boolean hasQuery = blockInput != null && !blockInput.getValue().isEmpty();
         if (hasQuery && !suggestions.isEmpty()) {
             int ovW = Math.min(150, px - 10);
             if (ovW < 50) ovW = Math.max(50, px - 4);
@@ -212,7 +211,7 @@ public class FilterTab implements MenuTab {
                 int i = (int)((my - (ovY + ovPad + 12)) / ovItemH);
                 int idx = startIdx + i;
                 if (idx >= 0 && idx < suggestions.size()) {
-                    blockInput.setText(suggestions.get(idx).toString());
+                    blockInput.setValue(suggestions.get(idx).toString());
                     addBlock(screen);
                     return true;
                 }
@@ -220,7 +219,7 @@ public class FilterTab implements MenuTab {
         }
 
         // CLICK XÓA ITEM BLACKLIST
-        List<Identifier> bl = new ArrayList<>(screen.getState().blacklist);
+        List<ResourceLocation> bl = new ArrayList<>(screen.getState().blacklist);
         if (!bl.isEmpty() && mx >= rightX + 4 && mx <= rightX + halfW - 4 && my >= listY && my < listY + maxItems * 20) {
             int startBl = Math.max(0, Math.min(blScroll, bl.size() - maxItems));
             int clickedRow = (int) ((my - listY) / 20);
@@ -241,9 +240,9 @@ public class FilterTab implements MenuTab {
         int splitY = lastCy + 10;
 
         // CUỘN TRONG BẢNG GỢI Ý (Bên lề trái)
-        boolean hasQuery = blockInput != null && !blockInput.getText().isEmpty();
+        boolean hasQuery = blockInput != null && !blockInput.getValue().isEmpty();
         if (hasQuery) {
-            List<Identifier> suggestions = FilterModeManager.getBlockSearchCache(); // Thêm dòng này để hết lỗi
+            List<ResourceLocation> suggestions = FilterModeManager.getBlockSearchCache(); // Thêm dòng này để hết lỗi
             int ovW = Math.min(150, px - 10);
             if (ovW < 50) ovW = Math.max(50, px - 4);
             int ovX = Math.max(2, px - ovW - 4);

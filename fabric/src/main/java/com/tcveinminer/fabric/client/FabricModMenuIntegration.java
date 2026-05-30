@@ -7,7 +7,7 @@ import com.tcveinminer.config.ConfigManager;
 import me.shedaniel.clothconfig2.api.ConfigBuilder;
 import me.shedaniel.clothconfig2.api.ConfigCategory;
 import me.shedaniel.clothconfig2.api.ConfigEntryBuilder;
-import net.minecraft.text.Text;
+import net.minecraft.network.chat.Component;
 
 public class FabricModMenuIntegration implements ModMenuApi {
 
@@ -16,17 +16,17 @@ public class FabricModMenuIntegration implements ModMenuApi {
         return parent -> {
             ConfigBuilder builder = ConfigBuilder.create()
                     .setParentScreen(parent)
-                    .setTitle(Text.translatable("title.tcveinminer.config"));
+                    .setTitle(Component.translatable("title.tcveinminer.config"));
 
             builder.setSavingRunnable(() -> {
                 ClientConfigManager.save();
                 ConfigManager.save();
             });
 
-            ConfigCategory general = builder.getOrCreateCategory(Text.translatable("category.tcveinminer.general"));
+            ConfigCategory general = builder.getOrCreateCategory(Component.translatable("category.tcveinminer.general"));
             ConfigEntryBuilder entryBuilder = builder.entryBuilder();
 
-            general.addEntry(entryBuilder.startBooleanToggle(Text.translatable("option.tcveinminer.enable"), ConfigManager.get().enabled)
+            general.addEntry(entryBuilder.startBooleanToggle(Component.translatable("option.tcveinminer.enable"), ConfigManager.get().enabled)
                     .setDefaultValue(true)
                     .setSaveConsumer(newValue -> ConfigManager.get().enabled = newValue)
                     .build());

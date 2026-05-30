@@ -3,7 +3,6 @@ package com.tcveinminer.engine;
 import com.tcveinminer.api.TCVeinMinerEvents;
 import com.tcveinminer.api.event.BlockBreakEvent;
 import com.tcveinminer.api.event.SessionEndEvent;
-import com.tcveinminer.TCVeinMinerMod;
 import com.tcveinminer.config.ConfigManager;
 import com.tcveinminer.config.ModConfig;
 import com.tcveinminer.engine.action.ActionContext;
@@ -17,7 +16,6 @@ import com.tcveinminer.engine.state.EngineStateMachine;
 import com.tcveinminer.engine.strategy.CustomEquationStrategy;
 import com.tcveinminer.engine.strategy.FilterModeManager;
 import com.tcveinminer.engine.strategy.MiningStrategy;
-import com.tcveinminer.engine.strategy.StrategyRegistry;
 import com.tcveinminer.logic.HudNotifier;
 import com.tcveinminer.network.NetworkManager;
 import com.tcveinminer.network.payload.HighlightDeltaData;
@@ -29,7 +27,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.tags.BlockTags;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.core.BlockPos;
@@ -85,7 +82,7 @@ public abstract class AbstractActionEngine {
     protected abstract String getSourceId();
 
     /** Resolve which ActionType to use for the given context */
-    protected abstract ActionType resolveActionType(PlayerEntity player, ServerWorld world,
+    protected abstract ActionType resolveActionType(Player player, ServerLevel world,
             BlockPos origin, BlockState state);
 
     /** Build the filter pipeline for the resolved action */
@@ -93,21 +90,21 @@ public abstract class AbstractActionEngine {
             MiningStrategy strategy, int maxBlocks);
 
     /** Create the appropriate ActionContext for the resolved action */
-    protected abstract ActionContext createContext(ActionType type, PlayerEntity player,
-            ServerWorld world, BlockPos origin, BlockState state);
+    protected abstract ActionContext createContext(ActionType type, Player player,
+            ServerLevel world, BlockPos origin, BlockState state);
 
     /** Select mining strategy for block collection */
     protected abstract MiningStrategy selectStrategy(ActionType type);
 
     /** Engine-specific validation before starting a session */
-    protected abstract boolean validateTrigger(PlayerEntity player, ServerWorld world,
+    protected abstract boolean validateTrigger(Player player, ServerLevel world,
             BlockPos origin, BlockState state, ModConfig config);
 
     /**
      * Called after session completes successfully (e.g., tree replant). Override
      * for hooks.
      */
-    protected void onSessionFinalized(PlayerEntity player, ServerWorld world) {
+    protected void onSessionFinalized(Player player, ServerLevel world) {
     }
 
     /**
@@ -130,7 +127,7 @@ public abstract class AbstractActionEngine {
      * Main tick processor — drain queue, execute actions, update snapshot.
      * Called once per server tick per engine.
      */
-    public void onServerTick(PlayerEntity player, ServerWorld world) {
+    public void onServerTick(Player player, ServerLevel world) {
         // Cleanup terminal states
         if (stateMachine.is(EngineState.FINISHED) || stateMachine.is(EngineState.CANCELLED)) {
             stateMachine.force(EngineState.IDLE);
@@ -158,13 +155,13 @@ public abstract class AbstractActionEngine {
         }
 
         // Key hold check
-        if (!com.tcveinminer.engine.state.PlayerStateRegistry.isHoldingKey(player.getUuid())) {
+        if (!com.tcveinminer.engine.state.PlayerStateRegistry.isHoldingKey(player.getUUID())) {
             stop(player);
             return;
         }
 
         // Hunger constraint
-        if (c.consumeHunger && !player.isCreative() && player.getHungerManager().getFoodLevel() <= 0) {
+        if (c.consumeHunger && !player.isCreative() && player.getFoodData().getFoodLevel() <= 0) {
             stop(player);
             return;
         }
@@ -208,7 +205,7 @@ public abstract class AbstractActionEngine {
             com.tcveinminer.engine.right.RightClickEngine.setProcessingInternal(true);
         }
 
-        if (player instanceof ServerPlayerEntity spe) {
+        if (player instanceof ServerPlayer spe) {
             NetworkManager.sendToPlayer(spe,
                     new MiningStateData(1, session.getProcessedCount(), session.getTargetCount()));
         }
@@ -221,7 +218,7 @@ public abstract class AbstractActionEngine {
             }
 
             for (BlockActionQueue.ActionEntry e : batch) {
-                if (!(player instanceof ServerPlayerEntity spe))
+                if (!(player instanceof ServerPlayer spe))
                     break;
 
                 BlockState currentState = world.getBlockState(e.pos());
@@ -236,7 +233,7 @@ public abstract class AbstractActionEngine {
                 BlockBreakEvent preEvent = new BlockBreakEvent(player, world, e.pos(), currentState,
                         session.getActionType());
                 if (TCVeinMinerEvents.BLOCK_BREAK_PRE.invoker()
-                        .onBlockBreakPre(preEvent) != net.minecraft.world.InteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION) {
+                        .onBlockBreakPre(preEvent) != net.minecraft.world.InteractionResult.PASS) {
                     session.removeFromSnapshot(e.pos());
                     removed.add(e.pos());
                     continue;
@@ -271,7 +268,7 @@ public abstract class AbstractActionEngine {
                 }
 
                 if (c.consumeHunger && c.blocksPerHunger > 0) {
-                    player.addExhaustion(4.0F / c.blocksPerHunger);
+                    player.causeFoodExhaustion(4.0F / c.blocksPerHunger);
                 }
             }
         } finally {
@@ -294,7 +291,7 @@ public abstract class AbstractActionEngine {
     /**
      * Stop/cancel the current session.
      */
-    protected void stop(PlayerEntity player) {
+    protected void stop(Player player) {
         List<BlockPos> removed = session != null ? new ArrayList<>(session.getRenderSnapshot())
                 : Collections.emptyList();
 
@@ -305,7 +302,7 @@ public abstract class AbstractActionEngine {
             session.clear();
         }
         stateMachine.force(EngineState.CANCELLED);
-        if (player instanceof ServerPlayerEntity spe) {
+        if (player instanceof ServerPlayer spe) {
             NetworkManager.sendToPlayer(spe, new MiningStateData(3,
                     session != null ? session.getProcessedCount() : 0,
                     session != null ? session.getTargetCount() : 0));
@@ -317,7 +314,7 @@ public abstract class AbstractActionEngine {
     /**
      * Finalize a completed session — HUD, stats, cleanup, hooks.
      */
-    protected void finalizeMining(PlayerEntity player, ServerWorld world) {
+    protected void finalizeMining(Player player, ServerLevel world) {
         int processed = session != null ? session.getProcessedCount() : 0;
         int target = session != null ? session.getTargetCount() : 0;
 
@@ -327,7 +324,7 @@ public abstract class AbstractActionEngine {
 
         stateMachine.force(EngineState.FINISHED);
 
-        if (player instanceof ServerPlayerEntity spe) {
+        if (player instanceof ServerPlayer spe) {
             NetworkManager.sendToPlayer(spe, new MiningStateData(2, processed, target));
             List<BlockPos> removed = session != null ? new ArrayList<>(session.getRenderSnapshot())
                     : Collections.emptyList();
@@ -348,8 +345,8 @@ public abstract class AbstractActionEngine {
     /**
      * Send highlight update packet to the minecraft.
      */
-    protected void sendHighlightUpdate(PlayerEntity player, List<BlockPos> removedBlocks) {
-        if (session != null && player instanceof ServerPlayerEntity spe) {
+    protected void sendHighlightUpdate(Player player, List<BlockPos> removedBlocks) {
+        if (session != null && player instanceof ServerPlayer spe) {
             NetworkManager.sendToPlayer(spe, new HighlightDeltaData(
                     Collections.emptyList(), removedBlocks.stream().map(BlockPos::asLong).toList(), playerShape,
                     getSourceId()));

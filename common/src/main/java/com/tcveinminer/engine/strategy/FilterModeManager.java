@@ -14,6 +14,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.border.WorldBorder;
@@ -41,7 +42,7 @@ public final class FilterModeManager {
     }
 
     private static final int DEFAULT_SEARCH_LIMIT = 100;
-    private static volatile List<Identifier> blockSearchCache = new ArrayList<>();
+    private static volatile List<ResourceLocation> blockSearchCache = new ArrayList<>();
     private static volatile String lastBlockSearchQuery = "";
 
     // ==========================================
@@ -58,8 +59,8 @@ public final class FilterModeManager {
      * Record đảm bảo tính bất biến, an toàn trong môi trường đa luồng nếu cần.
      */
     public record FilterContext(
-            World world,
-            PlayerEntity player,
+            Level Level,
+            Player player,
             ItemStack tool,
             BlockPos originPos,
             BlockPos currentPos,
@@ -95,7 +96,7 @@ public final class FilterModeManager {
 
         Set<String> normalized = new HashSet<>();
         for (String raw : input) {
-            Identifier id = validateAndParseBlock(raw);
+            ResourceLocation id = validateAndParseBlock(raw);
             if (id != null) {
                 normalized.add(id.toString());
             }
@@ -103,12 +104,12 @@ public final class FilterModeManager {
         return normalized;
     }
 
-    public static Set<String> normalizeIdentifierBlacklist(Set<Identifier> input) {
+    public static Set<String> normalizeIdentifierBlacklist(Set<ResourceLocation> input) {
         if (input == null || input.isEmpty())
             return Collections.emptySet();
 
         Set<String> normalized = new LinkedHashSet<>();
-        for (Identifier id : input) {
+        for (ResourceLocation id : input) {
             if (id != null && BuiltInRegistries.BLOCK.containsKey(id)) {
                 normalized.add(id.toString());
             }
@@ -120,11 +121,11 @@ public final class FilterModeManager {
         searchBlocks(query, DEFAULT_SEARCH_LIMIT);
     }
 
-    public static List<Identifier> getBlockSearchCache() {
+    public static List<ResourceLocation> getBlockSearchCache() {
         return blockSearchCache;
     }
 
-    public static synchronized List<Identifier> searchBlocks(String query, int limit) {
+    public static synchronized List<ResourceLocation> searchBlocks(String query, int limit) {
         String lowerQuery = query == null ? "" : query.toLowerCase().trim();
         if (lowerQuery.equals(lastBlockSearchQuery)) {
             return blockSearchCache;
@@ -137,14 +138,14 @@ public final class FilterModeManager {
         }
 
         int safeLimit = Math.max(1, limit);
-        blockSearchCache = Registries.BLOCK.getIds().stream()
+        blockSearchCache = BuiltInRegistries.BLOCK.keySet().stream()
                 .filter(id -> id.toString().contains(lowerQuery) || id.getPath().contains(lowerQuery))
                 .limit(safeLimit)
                 .collect(Collectors.toList());
         return blockSearchCache;
     }
 
-    public static Identifier validateAndParseBlock(String input) {
+    public static ResourceLocation validateAndParseBlock(String input) {
         if (input == null)
             return null;
 
@@ -155,11 +156,11 @@ public final class FilterModeManager {
             value = "minecraft:" + value;
         }
 
-        Identifier id = ResourceLocation.tryParse(value);
+        ResourceLocation id = ResourceLocation.tryParse(value);
         if (id == null || !BuiltInRegistries.BLOCK.containsKey(id))
             return null;
 
-        Block block = Registries.BLOCK.get(id);
+        Block block = BuiltInRegistries.BLOCK.get(id);
         return block == net.minecraft.world.level.block.Blocks.AIR ? null : id;
     }
 
@@ -172,12 +173,12 @@ public final class FilterModeManager {
         public final boolean preventMiningNearFluids = ConfigManager.get().preventMiningNearFluids;
 
         public float getHardness(BlockState state) {
-            return hardnessCache.computeIfAbsent(state.getBlock(), b -> state.getBlock().getHardness());
+            return hardnessCache.computeIfAbsent(state.getBlock(), b -> state.getDestroySpeed(null, null));
         }
 
-        public boolean hasBlockEntity(World world, BlockPos pos, BlockState state) {
+        public boolean hasBlockEntity(Level Level, BlockPos pos, BlockState state) {
             if (state.hasBlockEntity()) {
-                return blockEntityCache.computeIfAbsent(pos, p -> world.getBlockEntity(p) != null);
+                return blockEntityCache.computeIfAbsent(pos, p -> Level.getBlockEntity(p) != null);
             }
             return false;
         }
@@ -237,31 +238,38 @@ public final class FilterModeManager {
 
         // --- SINGLETONS CƠ BẢN (Không cấp phát rác) ---
         public static final BlockFilter NOT_AIR = ctx -> !ctx.currentState().isAir();
-        public static final BlockFilter SOLID_ONLY = ctx -> ctx.currentState().isSolidBlock(ctx.world(),
+        public static final BlockFilter SOLID_ONLY = ctx -> ctx.currentState().isRedstoneConductor(ctx.Level(),
                 ctx.currentPos());
         public static final BlockFilter BREAKABLE_ONLY = ctx -> ctx.cache().getHardness(ctx.currentState()) >= 0;
         public static final BlockFilter ORES_ONLY = ctx -> {
             BlockState s = ctx.currentState();
-            return s.isIn(BlockTags.COAL_ORES) || s.isIn(BlockTags.IRON_ORES) || s.isIn(BlockTags.GOLD_ORES)
-                    || s.isIn(BlockTags.DIAMOND_ORES) || s.isIn(BlockTags.REDSTONE_ORES) || s.isIn(BlockTags.LAPIS_ORES)
-                    || s.isIn(BlockTags.EMERALD_ORES) || s.isIn(BlockTags.COPPER_ORES);
+            return s.is(BlockTags.COAL_ORES) || s.is(BlockTags.IRON_ORES) || s.is(BlockTags.GOLD_ORES)
+                    || s.is(BlockTags.DIAMOND_ORES) || s.is(BlockTags.REDSTONE_ORES) || s.is(BlockTags.LAPIS_ORES)
+                    || s.is(BlockTags.EMERALD_ORES) || s.is(BlockTags.COPPER_ORES);
         };
-        public static final BlockFilter LOGS_ONLY = ctx -> ctx.currentState().isIn(BlockTags.LOGS);
-        public static final BlockFilter LEAVES_ONLY = ctx -> ctx.currentState().isIn(BlockTags.LEAVES);
+        public static final BlockFilter LOGS_ONLY = ctx -> ctx.currentState().is(BlockTags.LOGS);
+        public static final BlockFilter LEAVES_ONLY = ctx -> ctx.currentState().is(BlockTags.LEAVES);
 
         // --- 3.1 BASIC FILTERS ---
         public static BlockFilter sameBlock() {
             return ctx -> {
-                if (ctx.currentState().getBlock() != ctx.targetState().getBlock()) return false;
+                if (ctx.currentState().getBlock() != ctx.targetState().getBlock())
+                    return false;
                 Block b = ctx.currentState().getBlock();
                 if (b instanceof net.minecraft.world.level.block.CropBlock crop) {
-                    return crop.isMature(ctx.currentState()) == crop.isMature(ctx.targetState());
+                    return crop.isMaxAge(ctx.currentState()) == crop.isMaxAge(ctx.targetState());
                 } else if (b instanceof net.minecraft.world.level.block.NetherWartBlock) {
-                    return ctx.currentState().get(net.minecraft.world.level.block.state.properties.BlockStateProperties.AGE_3).equals(
-                           ctx.targetState().get(net.minecraft.world.level.block.state.properties.BlockStateProperties.AGE_3));
+                    return ctx.currentState()
+                            .getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.AGE_3)
+                            .equals(
+                                    ctx.targetState().getValue(
+                                            net.minecraft.world.level.block.state.properties.BlockStateProperties.AGE_3));
                 } else if (b instanceof net.minecraft.world.level.block.CocoaBlock) {
-                    return ctx.currentState().get(net.minecraft.world.level.block.state.properties.BlockStateProperties.AGE_2).equals(
-                           ctx.targetState().get(net.minecraft.world.level.block.state.properties.BlockStateProperties.AGE_2));
+                    return ctx.currentState()
+                            .getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.AGE_2)
+                            .equals(
+                                    ctx.targetState().getValue(
+                                            net.minecraft.world.level.block.state.properties.BlockStateProperties.AGE_2));
                 }
                 return true;
             };
@@ -272,7 +280,7 @@ public final class FilterModeManager {
         }
 
         public static BlockFilter tag(TagKey<Block> tag) {
-            return ctx -> ctx.currentState().isIn(tag);
+            return ctx -> ctx.currentState().is(tag);
         }
 
         public static BlockFilter hardnessBelow(float max) {
@@ -289,21 +297,21 @@ public final class FilterModeManager {
 
         // --- 3.2 TOOL FILTERS ---
         public static BlockFilter harvestableByTool() {
-            return ctx -> ctx.player().canHarvest(ctx.currentState());
+            return ctx -> ctx.player().hasCorrectToolForDrops(ctx.currentState());
         }
 
         public static BlockFilter durabilitySafe(int minRemaining) {
             return ctx -> {
                 ItemStack tool = ctx.tool();
-                if (!tool.isDamageable())
+                if (!tool.isDamageableItem())
                     return true;
-                return (tool.getMaxDamage() - tool.getDamage()) > minRemaining;
+                return (tool.getMaxDamage() - tool.getDamageValue()) > minRemaining;
             };
         }
 
         // --- 3.3 SAFETY FILTERS ---
         public static BlockFilter avoidTileEntity() {
-            return ctx -> !ctx.cache().hasBlockEntity(ctx.world(), ctx.currentPos(), ctx.currentState());
+            return ctx -> !ctx.cache().hasBlockEntity(ctx.Level(), ctx.currentPos(), ctx.currentState());
         }
 
         public static BlockFilter avoidFallingBlocks() {
@@ -320,13 +328,13 @@ public final class FilterModeManager {
                     return true;
                 }
                 for (Direction dir : Direction.values()) {
-                    BlockPos adjPos = ctx.currentPos().offset(dir);
+                    BlockPos adjPos = ctx.currentPos().relative(dir);
                     if (dir.getAxis() != Direction.Axis.Y
-                            && !ctx.world().isChunkLoaded(adjPos.getX() >> 4, adjPos.getZ() >> 4)) {
+                            && !ctx.Level().hasChunk(adjPos.getX() >> 4, adjPos.getZ() >> 4)) {
                         return false;
                     }
-                    BlockState adjState = ctx.world().getBlockState(adjPos);
-                    if (adjState.getBlock() instanceof FluidBlock || !adjState.getFluidState().isEmpty()) {
+                    BlockState adjState = ctx.Level().getBlockState(adjPos);
+                    if (adjState.getBlock() instanceof LiquidBlock || !adjState.getFluidState().isEmpty()) {
                         return false;
                     }
                 }
@@ -344,7 +352,7 @@ public final class FilterModeManager {
         }
 
         public static BlockFilter chunkLoadedOnly() {
-            return ctx -> ctx.world().isChunkLoaded(ctx.currentPos().getX() >> 4, ctx.currentPos().getZ() >> 4);
+            return ctx -> ctx.Level().hasChunk(ctx.currentPos().getX() >> 4, ctx.currentPos().getZ() >> 4);
         }
 
         public static BlockFilter maxVisited(int maxLimit) {
@@ -367,13 +375,14 @@ public final class FilterModeManager {
         }
 
         public static <T extends Comparable<T>> BlockFilter stateProperty(Property<T> property, T value) {
-            return ctx -> ctx.currentState().contains(property) && ctx.currentState().get(property).equals(value);
+            return ctx -> ctx.currentState().hasProperty(property)
+                    && ctx.currentState().getValue(property).equals(value);
         }
 
         // --- 3.7 ADVANCED SERVER-SIDE FILTERS ---
         public static BlockFilter survivalModeOnly() {
             return ctx -> {
-                if (ctx.player() instanceof ServerPlayerEntity spe) {
+                if (ctx.player() instanceof ServerPlayer spe) {
                     return !spe.isCreative();
                 }
                 return true; // Assume survival if not server player
@@ -386,14 +395,14 @@ public final class FilterModeManager {
 
         public static BlockFilter withinWorldBorder() {
             return ctx -> {
-                WorldBorder border = ctx.world().getWorldBorder();
-                return border.contains(ctx.currentPos());
+                WorldBorder border = ctx.Level().getWorldBorder();
+                return border.isWithinBounds(ctx.currentPos());
             };
         }
 
         public static BlockFilter allowedByExplosionResistance(float minResistance) {
             return ctx -> {
-                float resistance = ctx.currentState().getBlock().getBlastResistance();
+                float resistance = ctx.currentState().getBlock().getExplosionResistance();
                 return resistance >= minResistance;
             };
         }
@@ -402,7 +411,7 @@ public final class FilterModeManager {
             return ctx -> {
                 // Kiểm tra xem block có bị piston khóa không
                 BlockState state = ctx.currentState();
-                return state.getPistonPushReaction() != net.minecraft.world.level.block.piston.PistonBehavior.BLOCK;
+                return state.getPistonPushReaction() != PushReaction.BLOCK;
             };
         }
 
@@ -411,7 +420,7 @@ public final class FilterModeManager {
         public static BlockFilter canHarvestBlock() {
             return ctx -> {
                 BlockState state = ctx.currentState();
-                PlayerEntity player = ctx.player();
+                Player player = ctx.player();
                 ItemStack tool = ctx.tool();
 
                 // Nếu không cần validate tool
@@ -421,21 +430,21 @@ public final class FilterModeManager {
 
                 // Tay không
                 if (tool.isEmpty()) {
-                    return !state.isToolRequired();
+                    return !state.requiresCorrectToolForDrops();
                 }
 
-                float speed = tool.getMiningSpeedMultiplier(state);
+                float speed = tool.getDestroySpeed(state);
 
                 // Block yêu cầu tool thật sự
-                if (state.isToolRequired()) {
-                    return player.canHarvest(state)
-                        && (speed > HAND_MINING_SPEED || tool.isSuitableFor(state));
+                if (state.requiresCorrectToolForDrops()) {
+                    return player.hasCorrectToolForDrops(state)
+                            && (speed > HAND_MINING_SPEED || tool.isCorrectToolForDrops(state));
                 }
 
                 // Block không yêu cầu tool
                 return speed > HAND_MINING_SPEED
-                    || tool.isSuitableFor(state)
-                    || player.canHarvest(state);
+                        || tool.isCorrectToolForDrops(state)
+                        || player.hasCorrectToolForDrops(state);
             };
         }
 
@@ -451,7 +460,7 @@ public final class FilterModeManager {
 
         public static BlockFilter chunkLoadedForBreak() {
             return ctx -> {
-                return ctx.world().isChunkLoaded(ctx.currentPos().getX() >> 4, ctx.currentPos().getZ() >> 4);
+                return ctx.Level().hasChunk(ctx.currentPos().getX() >> 4, ctx.currentPos().getZ() >> 4);
             };
         }
     }
@@ -503,8 +512,7 @@ public final class FilterModeManager {
                     Filters.maxVisited(maxBlocks),
                     Filters.sameBlock(),
                     ctx -> ctx.currentState().getFluidState().isSource(),
-                    ctx -> Filters.blacklist(ctx.blacklist()).test(ctx)
-            );
+                    ctx -> Filters.blacklist(ctx.blacklist()).test(ctx));
         }
 
         /**

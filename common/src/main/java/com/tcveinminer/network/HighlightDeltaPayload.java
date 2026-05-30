@@ -9,18 +9,19 @@ import net.minecraft.core.BlockPos;
 
 import java.util.List;
 
-public record HighlightDeltaPayload(List<BlockPos> addedBlocks, List<BlockPos> removedBlocks, String highlightStyle, String source) implements CustomPayload {
-    public static final Id<HighlightDeltaPayload> ID =
-        new Id<>(ResourceLocation.parse("tc_veinminer", "highlight_delta"));
+public record HighlightDeltaPayload(List<BlockPos> addedBlocks, List<BlockPos> removedBlocks, String highlightStyle, String source) implements CustomPacketPayload {
+    public static final Type<HighlightDeltaPayload> ID =
+        new Type<>(ResourceLocation.fromNamespaceAndPath("tc_veinminer", "highlight_delta"));
 
-    public static final PacketCodec<RegistryByteBuf, HighlightDeltaPayload> CODEC = PacketCodec.tuple(
-            BlockPos.PACKET_CODEC.collect(PacketCodecs.toList()), HighlightDeltaPayload::addedBlocks,
-            BlockPos.PACKET_CODEC.collect(PacketCodecs.toList()), HighlightDeltaPayload::removedBlocks,
-            PacketCodecs.STRING, HighlightDeltaPayload::highlightStyle,
-            PacketCodecs.STRING, HighlightDeltaPayload::source,
+    public static final StreamCodec<RegistryFriendlyByteBuf, HighlightDeltaPayload> CODEC = StreamCodec.composite(
+            BlockPos.STREAM_CODEC.apply(ByteBufCodecs.list()), HighlightDeltaPayload::addedBlocks,
+            BlockPos.STREAM_CODEC.apply(ByteBufCodecs.list()), HighlightDeltaPayload::removedBlocks,
+            ByteBufCodecs.STRING_UTF8, HighlightDeltaPayload::highlightStyle,
+            ByteBufCodecs.STRING_UTF8, HighlightDeltaPayload::source,
             HighlightDeltaPayload::new
     );
 
-    @Override
-    public Id<? extends CustomPayload> getId() { return ID; }
+    @Override public Type<? extends CustomPacketPayload> type() { return ID; }
+
+    public String channelId() { return ID.id().toString(); }
 }

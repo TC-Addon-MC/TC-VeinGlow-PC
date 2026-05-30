@@ -13,11 +13,11 @@ import net.minecraft.network.chat.Component;
 
 public class VeinMinerHudOverlay {
 
-    public void onHudRender(GuiGraphics ctx, RenderTickCounter tickCounter) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client == null || minecraft.options == null) return;
+    public void onHudRender(GuiGraphics ctx, DeltaTracker tickCounter) {
+        Minecraft client = Minecraft.getInstance();
+        if (client == null || client.options == null) return;
         if (!ClientConfigManager.instance.showHud) return;
-        if (client.options.hudHidden) return;
+        if (client.options.hideGui) return;
         if (client.screen != null) return;
 
         boolean holding = VeinGlowClient.holdKeyDown;
@@ -34,7 +34,7 @@ public class VeinMinerHudOverlay {
 
         // Tên phím (giữ nguyên case từ Minecraft, không toUpperCase)
         int actMode = ClientConfigManager.instance.activationMode;
-        String keyName = VeinGlowClient.KEY_MINE == null ? "V" : VeinGlowClient.KEY_MINE.getBoundKeyLocalizedText().getString();
+        String keyName = VeinGlowClient.KEY_MINE == null ? "V" : VeinGlowClient.KEY_MINE.getTranslatedKeyMessage().getString();
 
         String keyHint = switch (actMode) {
             case 2 -> Component.translatable("hud.tcveinminer.hint.hold_sneak",  keyName).getString();
@@ -55,14 +55,14 @@ public class VeinMinerHudOverlay {
             statusText = Component.translatable("hud.tcveinminer.waiting", keyHint, modeLabel).getString();
         }
 
-        int textW  = minecraft.font.width(statusText);
+        int textW  = client.font.width(statusText);
         int pillW  = textW + 16;
         int x      = ClientConfigManager.instance.hudPositionX;
         int y      = ClientConfigManager.instance.hudPositionY;
 
         DrawHelper.drawHudPill(ctx, x, y, pillW, 14, holding);
         int textColor = holding ? ThemeColors.HUD_ON_TEXT : ThemeColors.HUD_OFF_TEXT;
-        ctx.drawTextWithShadow(client.textRenderer, statusText, x + 8, y + 3, textColor);
+        ctx.drawString(client.font, statusText, x + 8, y + 3, textColor);
 
         // Dòng 2: thông báo kết quả đào (hiện trong 2.5s sau khi đào xong)
         if (System.currentTimeMillis() < HudNotifier.notifyAt) {
@@ -81,12 +81,12 @@ public class VeinMinerHudOverlay {
                         String.valueOf(HudNotifier.lastMax)).getString();
             }
 
-            int msgW     = minecraft.font.width(msg);
+            int msgW     = client.font.width(msg);
             int msgPillW = msgW + 16;
             int msgY     = y + 18;
 
             DrawHelper.drawHudPill(ctx, x, msgY, msgPillW, 14, true);
-            ctx.drawTextWithShadow(client.textRenderer, msg, x + 8, msgY + 3,
+            ctx.drawString(client.font, msg, x + 8, msgY + 3,
                     (ThemeColors.TEXT_VALUE & 0x00FFFFFF) | alphaInt);
         }
     }

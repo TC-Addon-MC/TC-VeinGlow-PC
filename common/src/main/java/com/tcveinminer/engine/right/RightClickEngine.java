@@ -2,7 +2,6 @@ package com.tcveinminer.engine.right;
 
 import com.tcveinminer.api.TCVeinMinerEvents;
 import com.tcveinminer.api.event.SessionStartEvent;
-import com.tcveinminer.TCVeinMinerMod;
 import com.tcveinminer.config.ConfigManager;
 import com.tcveinminer.config.ModConfig;
 import com.tcveinminer.engine.AbstractActionEngine;
@@ -10,7 +9,6 @@ import com.tcveinminer.engine.action.ActionContext;
 import com.tcveinminer.engine.action.ActionType;
 import com.tcveinminer.engine.capability.CapabilityRegistry;
 import com.tcveinminer.engine.filter.RightClickFilterPipeline;
-import com.tcveinminer.engine.queue.BlockActionQueue;
 import com.tcveinminer.engine.session.ActionSession;
 import com.tcveinminer.engine.state.EngineState;
 import com.tcveinminer.engine.strategy.FilterModeManager;
@@ -22,7 +20,6 @@ import com.tcveinminer.network.payload.MiningStateData;
 import com.tcveinminer.util.SessionStats;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -44,7 +41,7 @@ import java.util.*;
  * <p>
  * Uses {@link CapabilityRegistry} for action resolution (no hardcoded if/else).
  * <p>
- * Entry point: {@link #onInteractTrigger(PlayerEntity, ServerWorld, Hand, BlockHitResult)}
+ * Entry point: {@link #onInteractTrigger(Player, ServerLevel, InteractionHand, BlockHitResult)}
  * from {@code UseBlockCallback}.
  */
 public final class RightClickEngine extends AbstractActionEngine {
@@ -76,8 +73,8 @@ public final class RightClickEngine extends AbstractActionEngine {
      *
      * @return true if the mod handled the interaction (cancel vanilla)
      */
-    public boolean onInteractTrigger(PlayerEntity player, ServerWorld world,
-                                      Hand hand, BlockHitResult hitResult) {
+    public boolean onInteractTrigger(Player player, ServerLevel world,
+                                      InteractionHand InteractionHand, BlockHitResult hitResult) {
         // Re-entry guard
         if (session != null && session.isProcessing()) return false;
         if (isProcessingInternal()) return false;
@@ -90,17 +87,17 @@ public final class RightClickEngine extends AbstractActionEngine {
         ModConfig c = ConfigManager.get();
         if (!c.enabled) return false;
         
-        boolean holdingV = com.tcveinminer.engine.state.PlayerStateRegistry.isHoldingKey(player.getUuid());
+        boolean holdingV = com.tcveinminer.engine.state.PlayerStateRegistry.isHoldingKey(player.getUUID());
 
         BlockPos origin = hitResult.getBlockPos();
         BlockState originState = world.getBlockState(origin);
 
         if (c.requireSneak && !player.isShiftKeyDown()) return false;
-        if (!checkCooldown(player.getUuid(), world.getTime(), c)) return false;
+        if (!checkCooldown(player.getUUID(), world.getGameTime(), c)) return false;
 
         // Resolve action via capability system
-        ItemStack heldItem = player.getStackInHand(hand);
-        ActionType actionType = CapabilityRegistry.resolve(player, heldItem, originState, hand);
+        ItemStack heldItem = player.getItemInHand(InteractionHand);
+        ActionType actionType = CapabilityRegistry.resolve(player, heldItem, originState, InteractionHand);
 
         // USE_ITEM and VANILLA_FALLBACK → let vanilla handle
         if (actionType == ActionType.VANILLA_FALLBACK || actionType == ActionType.USE_ITEM) {
@@ -154,7 +151,7 @@ public final class RightClickEngine extends AbstractActionEngine {
 
         // Collect blocks
         Direction hitFace = approximateHitFace(player);
-        OrientationContext ctx = OrientationContext.of(hitFace, OrientationContext.facingFromYaw(player.getYaw()));
+        OrientationContext ctx = OrientationContext.of(hitFace, OrientationContext.facingFromYaw(player.getYRot()));
 
         MiningStrategy.MiningRequest req = new MiningStrategy.MiningRequest(
                 world, player, heldItem,
@@ -187,7 +184,7 @@ public final class RightClickEngine extends AbstractActionEngine {
         session.initSnapshot(new HashSet<>(found));
 
         SessionStartEvent startEvent = new SessionStartEvent(player, world, origin, actionType, session.getTargetCount());
-        if (TCVeinMinerEvents.SESSION_START.invoker().onSessionStart(startEvent) != net.minecraft.world.InteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION) {
+        if (TCVeinMinerEvents.SESSION_START.invoker().onSessionStart(startEvent) != net.minecraft.world.InteractionResult.PASS) {
             session = null;
             stateMachine.force(EngineState.IDLE);
             return false;
@@ -195,7 +192,7 @@ public final class RightClickEngine extends AbstractActionEngine {
 
         stateMachine.force(EngineState.PROCESSING);
         SessionStats.onVeinMineStart();
-        if (player instanceof ServerPlayerEntity spe) {
+        if (player instanceof ServerPlayer spe) {
             NetworkManager.sendToPlayer(spe, new MiningStateData(1, 0, session.getTargetCount()));
         }
 
@@ -205,7 +202,7 @@ public final class RightClickEngine extends AbstractActionEngine {
     // ── Template Method Implementations ───────────────────────────────────
 
     @Override
-    protected ActionType resolveActionType(PlayerEntity player, ServerWorld world,
+    protected ActionType resolveActionType(Player player, ServerLevel world,
                                             BlockPos origin, BlockState state) {
         return CapabilityRegistry.resolve(player, player.getMainHandItem(), state, InteractionHand.MAIN_HAND);
     }
@@ -217,8 +214,8 @@ public final class RightClickEngine extends AbstractActionEngine {
     }
 
     @Override
-    protected ActionContext createContext(ActionType type, PlayerEntity player,
-                                          ServerWorld world, BlockPos origin, BlockState state) {
+    protected ActionContext createContext(ActionType type, Player player,
+                                          ServerLevel world, BlockPos origin, BlockState state) {
         Item initialItem = player.getMainHandItem().getItem();
         return switch (type) {
             case FLUID_SCOOP -> new ActionContext.BucketContext(state, initialItem,
@@ -238,11 +235,11 @@ public final class RightClickEngine extends AbstractActionEngine {
     }
 
     @Override
-    protected boolean validateTrigger(PlayerEntity player, ServerWorld world,
+    protected boolean validateTrigger(Player player, ServerLevel world,
                                        BlockPos origin, BlockState state, ModConfig config) {
         // Block TREE_CAP shape from vein-stripping logs
-        if ("TREE_CAP".equals(playerShape) && state.isIn(BlockTags.LOGS)) return false;
-        if (config.consumeHunger && !player.isCreative() && player.getHungerManager().getFoodLevel() <= 0)
+        if ("TREE_CAP".equals(playerShape) && state.is(BlockTags.LOGS)) return false;
+        if (config.consumeHunger && !player.isCreative() && player.getFoodData().getFoodLevel() <= 0)
             return false;
         return true;
     }
@@ -259,10 +256,10 @@ public final class RightClickEngine extends AbstractActionEngine {
         };
     }
 
-    private static int countBuckets(PlayerEntity player) {
+    private static int countBuckets(Player player) {
         int count = 0;
-        for (int i = 0; i < player.getInventory().size(); i++) {
-            ItemStack stack = player.getInventory().getStack(i);
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+            ItemStack stack = player.getInventory().getItem(i);
             if (!stack.isEmpty() && stack.getItem() == Items.BUCKET) {
                 count += stack.getCount();
             }
@@ -272,14 +269,14 @@ public final class RightClickEngine extends AbstractActionEngine {
 
     private static BlockHitResult createDummyHitResult(BlockPos pos) {
         return new BlockHitResult(
-                net.minecraft.world.phys.Vec3.ofCenter(pos),
+                net.minecraft.world.phys.Vec3.atCenterOf(pos),
                 Direction.UP, pos, false);
     }
 
-    private static Direction approximateHitFace(PlayerEntity player) {
-        float pitch = player.getPitch();
+    private static Direction approximateHitFace(Player player) {
+        float pitch = player.getXRot();
         if (pitch > 60f) return Direction.UP;
         if (pitch < -60f) return Direction.DOWN;
-        return OrientationContext.facingFromYaw(player.getYaw()).getOpposite();
+        return OrientationContext.facingFromYaw(player.getYRot()).getOpposite();
     }
 }

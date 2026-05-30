@@ -18,7 +18,7 @@ public final class InteractSkill {
      * @deprecated Use direct execution actions instead.
      */
     @Deprecated
-    public static boolean interact(ServerPlayerEntity spe, ServerWorld world, BlockPos pos, Hand interactHand, BlockHitResult originalHit) {
+    public static boolean interact(ServerPlayer spe, ServerLevel world, BlockPos pos, InteractionHand interactHand, BlockHitResult originalHit) {
         // Deprecated: Simulated interactions trigger infinite callbacks.
         return false;
     }

@@ -9,23 +9,23 @@ import net.minecraft.network.chat.Component;
  * RGBSlider — Thanh trượt chọn màu kênh R / G / B.
  *
  * Cải tiến từ bản cũ:
- *  - Gradient nền theo kênh (đen → đỏ / xanh lá / xanh lam)
- *  - Handle hình chữ nhật có viền trắng, shadow tối
- *  - Disabled: nền xám mờ, handle bị khoá
+ * - Gradient nền theo kênh (đen → đỏ / xanh lá / xanh lam)
+ * - Handle hình chữ nhật có viền trắng, shadow tối
+ * - Disabled: nền xám mờ, handle bị khoá
  */
-public class RGBSlider extends SliderWidget {
+public class RGBSlider extends AbstractSliderButton {
 
     private final MenuState state;
     private final char channel; // 'R', 'G', 'B'
 
     public RGBSlider(int x, int y, int w, int h, char channel, MenuState state,
-                     double initValue, boolean disabled) {
+            double initValue, boolean disabled) {
         super(x, y, w, h,
                 Component.literal(String.valueOf((int) (initValue * 255))),
                 initValue);
-        this.state   = state;
+        this.state = state;
         this.channel = channel;
-        this.active  = !disabled;
+        this.active = !disabled;
     }
 
     @Override
@@ -67,7 +67,7 @@ public class RGBSlider extends SliderWidget {
         int endColor = switch (channel) {
             case 'R' -> 0xFFFF3030;
             case 'G' -> 0xFF30D060;
-            default  -> 0xFF4080FF; // B
+            default -> 0xFF4080FF; // B
         };
         ctx.fillGradient(x + 1, y + 1, x + w - 1, y + h - 1, 0xFF101010, endColor);
 
@@ -75,7 +75,7 @@ public class RGBSlider extends SliderWidget {
         int borderColor = switch (channel) {
             case 'R' -> 0xFF7F1D1D;
             case 'G' -> 0xFF14532D;
-            default  -> 0xFF1E3A5F;
+            default -> 0xFF1E3A5F;
         };
         ctx.fill(x, y, x + w, y + 1, borderColor);
         ctx.fill(x, y + h - 1, x + w, y + h, borderColor);
@@ -83,7 +83,7 @@ public class RGBSlider extends SliderWidget {
         ctx.fill(x + w - 1, y, x + w, y + h, borderColor);
 
         // Handle (thanh kéo trắng)
-        int hx = x + 1 + (int)(value * (w - 8));
+        int hx = x + 1 + (int) (value * (w - 8));
         hx = Math.max(x + 1, Math.min(hx, x + w - 7));
 
         // Shadow handle

@@ -16,7 +16,7 @@ public final class TreeCapitatorSkill {
 
     private TreeCapitatorSkill() {}
 
-    public static void autoReplant(ServerWorld sw, PlayerEntity player, BlockPos treeOriginPos, BlockState treeSaplingType) {
+    public static void autoReplant(ServerLevel sw, Player player, BlockPos treeOriginPos, BlockState treeSaplingType) {
         if (treeOriginPos == null || treeSaplingType == null) return;
 
         BlockState saplingState = treeSaplingType;
@@ -34,22 +34,22 @@ public final class TreeCapitatorSkill {
         }
     }
 
-    private static void placeSapling(ServerWorld sw, BlockPos start, BlockState saplingState) {
+    private static void placeSapling(ServerLevel sw, BlockPos start, BlockState saplingState) {
         BlockPos groundPos = findGround(sw, start);
-        if (groundPos != null && saplingState.canPlaceAt(sw, groundPos)) {
+        if (groundPos != null && saplingState.canSurvive(sw, groundPos)) {
             sw.setBlock(groundPos, saplingState, 3);
         }
     }
 
-    private static BlockPos findGround(ServerWorld sw, BlockPos start) {
-        BlockPos.Mutable mutable = start.mutableCopy();
+    private static BlockPos findGround(ServerLevel sw, BlockPos start) {
+        BlockPos.MutableBlockPos mutable = start.mutable();
         // Bắn ray xuống tối đa 15 block để tìm đất
         for (int i = 0; i < 15; i++) {
             BlockState current = sw.getBlockState(mutable);
-            BlockState below = sw.getBlockState(mutable.down());
+            BlockState below = sw.getBlockState(mutable.below());
             // Nếu block hiện tại trống (hoặc có thể bị thay thế) và block dưới cứng
-            if ((current.isAir() || current.isReplaceable()) && !below.isAir() && !below.isReplaceable()) {
-                return mutable.toImmutable();
+            if ((current.isAir() || current.canBeReplaced()) && !below.isAir() && !below.canBeReplaced()) {
+                return mutable.immutable();
             }
             mutable.move(Direction.DOWN);
         }
@@ -75,7 +75,7 @@ public final class TreeCapitatorSkill {
     }
 
     public static BlockState getSaplingForBlock(Block block) {
-        Identifier id = BuiltInRegistries.BLOCK.getKey(block);
+        ResourceLocation id = BuiltInRegistries.BLOCK.getKey(block);
         String path = id.getPath();
         if (path.contains("oak") && !path.contains("dark_oak")) return Blocks.OAK_SAPLING.defaultBlockState();
         if (path.contains("spruce")) return Blocks.SPRUCE_SAPLING.defaultBlockState();

@@ -4,13 +4,14 @@ import com.tcveinminer.network.PacketChannel;
 import com.tcveinminer.network.payload.*;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.network.RegistryByteBuf;
-import net.minecraft.network.codec.PacketCodec;
-import net.minecraft.network.codec.PacketCodecs;
-import net.minecraft.network.packet.CustomPayload;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload.Type;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.BlockPos;
 
 import java.util.List;
 import java.util.Optional;
@@ -25,100 +26,100 @@ public final class FabricPacketChannel implements PacketChannel {
 
     // ── S→C Payload wrappers (inner records per payload type) ─────────────
 
-    public record FabricConfigSyncPayload(int maxBlocks, List<String> blacklistedBlocks) implements CustomPayload {
-        public static final Id<FabricConfigSyncPayload> ID = new Id<>(Identifier.of("tc_veinminer", "config_sync"));
-        public static final PacketCodec<RegistryByteBuf, FabricConfigSyncPayload> CODEC = PacketCodec.tuple(
-                PacketCodecs.INTEGER, FabricConfigSyncPayload::maxBlocks,
-                PacketCodecs.STRING.collect(PacketCodecs.toList()), FabricConfigSyncPayload::blacklistedBlocks,
+    public record FabricConfigSyncPayload(int maxBlocks, List<String> blacklistedBlocks) implements CustomPacketPayload {
+        public static final Type<FabricConfigSyncPayload> ID = new Type<>(ResourceLocation.fromNamespaceAndPath("tc_veinminer", "config_sync"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, FabricConfigSyncPayload> CODEC = StreamCodec.composite(
+                ByteBufCodecs.INT, FabricConfigSyncPayload::maxBlocks,
+                ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), FabricConfigSyncPayload::blacklistedBlocks,
                 FabricConfigSyncPayload::new);
 
         @Override
-        public Id<? extends CustomPayload> getId() {
+        public Type<? extends CustomPacketPayload> type() {
             return ID;
         }
     }
 
-    public record FabricMiningStatePayload(int state, int broken, int target) implements CustomPayload {
-        public static final Id<FabricMiningStatePayload> ID = new Id<>(Identifier.of("tc_veinminer", "mining_state"));
-        public static final PacketCodec<RegistryByteBuf, FabricMiningStatePayload> CODEC = PacketCodec.tuple(
-                PacketCodecs.INTEGER, FabricMiningStatePayload::state,
-                PacketCodecs.INTEGER, FabricMiningStatePayload::broken,
-                PacketCodecs.INTEGER, FabricMiningStatePayload::target,
+    public record FabricMiningStatePayload(int state, int broken, int target) implements CustomPacketPayload {
+        public static final Type<FabricMiningStatePayload> ID = new Type<>(ResourceLocation.fromNamespaceAndPath("tc_veinminer", "mining_state"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, FabricMiningStatePayload> CODEC = StreamCodec.composite(
+                ByteBufCodecs.INT, FabricMiningStatePayload::state,
+                ByteBufCodecs.INT, FabricMiningStatePayload::broken,
+                ByteBufCodecs.INT, FabricMiningStatePayload::target,
                 FabricMiningStatePayload::new);
 
         @Override
-        public Id<? extends CustomPayload> getId() {
+        public Type<? extends CustomPacketPayload> type() {
             return ID;
         }
     }
 
-    public record FabricActivationConfirmPayload(boolean allowContinuous) implements CustomPayload {
-        public static final Id<FabricActivationConfirmPayload> ID = new Id<>(
-                Identifier.of("tc_veinminer", "activation_confirm"));
-        public static final PacketCodec<RegistryByteBuf, FabricActivationConfirmPayload> CODEC = PacketCodec.tuple(
-                PacketCodecs.BOOL, FabricActivationConfirmPayload::allowContinuous,
+    public record FabricActivationConfirmPayload(boolean allowContinuous) implements CustomPacketPayload {
+        public static final Type<FabricActivationConfirmPayload> ID = new Type<>(
+                ResourceLocation.fromNamespaceAndPath("tc_veinminer", "activation_confirm"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, FabricActivationConfirmPayload> CODEC = StreamCodec.composite(
+                ByteBufCodecs.BOOL, FabricActivationConfirmPayload::allowContinuous,
                 FabricActivationConfirmPayload::new);
 
         @Override
-        public Id<? extends CustomPayload> getId() {
+        public Type<? extends CustomPacketPayload> type() {
             return ID;
         }
     }
 
-    public record FabricLookedAtBlockPayload(Optional<BlockPos> pos) implements CustomPayload {
-        public static final Id<FabricLookedAtBlockPayload> ID = new Id<>(
-                Identifier.of("tc_veinminer", "looked_at_block"));
-        public static final PacketCodec<RegistryByteBuf, FabricLookedAtBlockPayload> CODEC = PacketCodec.tuple(
-                PacketCodecs.optional(BlockPos.PACKET_CODEC), FabricLookedAtBlockPayload::pos,
+    public record FabricLookedAtBlockPayload(Optional<BlockPos> pos) implements CustomPacketPayload {
+        public static final Type<FabricLookedAtBlockPayload> ID = new Type<>(
+                ResourceLocation.fromNamespaceAndPath("tc_veinminer", "looked_at_block"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, FabricLookedAtBlockPayload> CODEC = StreamCodec.composite(
+                ByteBufCodecs.optional(BlockPos.STREAM_CODEC), FabricLookedAtBlockPayload::pos,
                 FabricLookedAtBlockPayload::new);
 
         @Override
-        public Id<? extends CustomPayload> getId() {
+        public Type<? extends CustomPacketPayload> type() {
             return ID;
         }
     }
 
-    public record FabricFilterResultPayload(boolean allowHighlight) implements CustomPayload {
-        public static final Id<FabricFilterResultPayload> ID = new Id<>(Identifier.of("tc_veinminer", "filter_result"));
-        public static final PacketCodec<RegistryByteBuf, FabricFilterResultPayload> CODEC = PacketCodec.tuple(
-                PacketCodecs.BOOL, FabricFilterResultPayload::allowHighlight,
+    public record FabricFilterResultPayload(boolean allowHighlight) implements CustomPacketPayload {
+        public static final Type<FabricFilterResultPayload> ID = new Type<>(ResourceLocation.fromNamespaceAndPath("tc_veinminer", "filter_result"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, FabricFilterResultPayload> CODEC = StreamCodec.composite(
+                ByteBufCodecs.BOOL, FabricFilterResultPayload::allowHighlight,
                 FabricFilterResultPayload::new);
 
         @Override
-        public Id<? extends CustomPayload> getId() {
+        public Type<? extends CustomPacketPayload> type() {
             return ID;
         }
     }
 
     public record FabricHighlightBlockListPayload(List<BlockPos> blocks, String highlightStyle, String source)
-            implements CustomPayload {
-        public static final Id<FabricHighlightBlockListPayload> ID = new Id<>(
-                Identifier.of("tc_veinminer", "highlight_block_list"));
-        public static final PacketCodec<RegistryByteBuf, FabricHighlightBlockListPayload> CODEC = PacketCodec.tuple(
-                BlockPos.PACKET_CODEC.collect(PacketCodecs.toList()), FabricHighlightBlockListPayload::blocks,
-                PacketCodecs.STRING, FabricHighlightBlockListPayload::highlightStyle,
-                PacketCodecs.STRING, FabricHighlightBlockListPayload::source,
+            implements CustomPacketPayload {
+        public static final Type<FabricHighlightBlockListPayload> ID = new Type<>(
+                ResourceLocation.fromNamespaceAndPath("tc_veinminer", "highlight_block_list"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, FabricHighlightBlockListPayload> CODEC = StreamCodec.composite(
+                BlockPos.STREAM_CODEC.apply(ByteBufCodecs.list()), FabricHighlightBlockListPayload::blocks,
+                ByteBufCodecs.STRING_UTF8, FabricHighlightBlockListPayload::highlightStyle,
+                ByteBufCodecs.STRING_UTF8, FabricHighlightBlockListPayload::source,
                 FabricHighlightBlockListPayload::new);
 
         @Override
-        public Id<? extends CustomPayload> getId() {
+        public Type<? extends CustomPacketPayload> type() {
             return ID;
         }
     }
 
     public record FabricHighlightDeltaPayload(List<BlockPos> addedBlocks, List<BlockPos> removedBlocks,
-            String highlightStyle, String source) implements CustomPayload {
-        public static final Id<FabricHighlightDeltaPayload> ID = new Id<>(
-                Identifier.of("tc_veinminer", "highlight_delta"));
-        public static final PacketCodec<RegistryByteBuf, FabricHighlightDeltaPayload> CODEC = PacketCodec.tuple(
-                BlockPos.PACKET_CODEC.collect(PacketCodecs.toList()), FabricHighlightDeltaPayload::addedBlocks,
-                BlockPos.PACKET_CODEC.collect(PacketCodecs.toList()), FabricHighlightDeltaPayload::removedBlocks,
-                PacketCodecs.STRING, FabricHighlightDeltaPayload::highlightStyle,
-                PacketCodecs.STRING, FabricHighlightDeltaPayload::source,
+            String highlightStyle, String source) implements CustomPacketPayload {
+        public static final Type<FabricHighlightDeltaPayload> ID = new Type<>(
+                ResourceLocation.fromNamespaceAndPath("tc_veinminer", "highlight_delta"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, FabricHighlightDeltaPayload> CODEC = StreamCodec.composite(
+                BlockPos.STREAM_CODEC.apply(ByteBufCodecs.list()), FabricHighlightDeltaPayload::addedBlocks,
+                BlockPos.STREAM_CODEC.apply(ByteBufCodecs.list()), FabricHighlightDeltaPayload::removedBlocks,
+                ByteBufCodecs.STRING_UTF8, FabricHighlightDeltaPayload::highlightStyle,
+                ByteBufCodecs.STRING_UTF8, FabricHighlightDeltaPayload::source,
                 FabricHighlightDeltaPayload::new);
 
         @Override
-        public Id<? extends CustomPayload> getId() {
+        public Type<? extends CustomPacketPayload> type() {
             return ID;
         }
     }
@@ -128,33 +129,33 @@ public final class FabricPacketChannel implements PacketChannel {
     // Kept here so all Fabric networking is in one place.
 
     public record FabricHoldKeyPayload(boolean isHolding, String shapeId, int maxBlocks,
-            String equation, List<String> blacklist) implements CustomPayload {
-        public static final Id<FabricHoldKeyPayload> ID = new Id<>(Identifier.of("tc_veinminer", "hold_key"));
-        public static final PacketCodec<RegistryByteBuf, FabricHoldKeyPayload> CODEC = PacketCodec.tuple(
-                PacketCodecs.BOOL, FabricHoldKeyPayload::isHolding,
-                PacketCodecs.STRING, FabricHoldKeyPayload::shapeId,
-                PacketCodecs.INTEGER, FabricHoldKeyPayload::maxBlocks,
-                PacketCodecs.STRING, FabricHoldKeyPayload::equation,
-                PacketCodecs.STRING.collect(PacketCodecs.toList()), FabricHoldKeyPayload::blacklist,
+            String equation, List<String> blacklist) implements CustomPacketPayload {
+        public static final Type<FabricHoldKeyPayload> ID = new Type<>(ResourceLocation.fromNamespaceAndPath("tc_veinminer", "hold_key"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, FabricHoldKeyPayload> CODEC = StreamCodec.composite(
+                ByteBufCodecs.BOOL, FabricHoldKeyPayload::isHolding,
+                ByteBufCodecs.STRING_UTF8, FabricHoldKeyPayload::shapeId,
+                ByteBufCodecs.INT, FabricHoldKeyPayload::maxBlocks,
+                ByteBufCodecs.STRING_UTF8, FabricHoldKeyPayload::equation,
+                ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), FabricHoldKeyPayload::blacklist,
                 FabricHoldKeyPayload::new);
 
         @Override
-        public Id<? extends CustomPayload> getId() {
+        public Type<? extends CustomPacketPayload> type() {
             return ID;
         }
     }
 
     public record FabricActivationRequestPayload(boolean active, Optional<BlockPos> targetPos)
-            implements CustomPayload {
-        public static final Id<FabricActivationRequestPayload> ID = new Id<>(
-                Identifier.of("tc_veinminer", "activation_request"));
-        public static final PacketCodec<RegistryByteBuf, FabricActivationRequestPayload> CODEC = PacketCodec.tuple(
-                PacketCodecs.BOOL, FabricActivationRequestPayload::active,
-                PacketCodecs.optional(BlockPos.PACKET_CODEC), FabricActivationRequestPayload::targetPos,
+            implements CustomPacketPayload {
+        public static final Type<FabricActivationRequestPayload> ID = new Type<>(
+                ResourceLocation.fromNamespaceAndPath("tc_veinminer", "activation_request"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, FabricActivationRequestPayload> CODEC = StreamCodec.composite(
+                ByteBufCodecs.BOOL, FabricActivationRequestPayload::active,
+                ByteBufCodecs.optional(BlockPos.STREAM_CODEC), FabricActivationRequestPayload::targetPos,
                 FabricActivationRequestPayload::new);
 
         @Override
-        public Id<? extends CustomPayload> getId() {
+        public Type<? extends CustomPacketPayload> type() {
             return ID;
         }
     }
@@ -180,24 +181,24 @@ public final class FabricPacketChannel implements PacketChannel {
 
     @Override
     public void sendToPlayer(Object player, NetworkPacket packet) {
-        ServerPlayNetworking.send((ServerPlayerEntity) player, toFabricPayload(packet));
+        ServerPlayNetworking.send((ServerPlayer) player, toFabricPayload(packet));
     }
 
     @Override
     public void sendToAll(NetworkPacket packet, Iterable<?> players) {
-        CustomPayload fabricPayload = toFabricPayload(packet);
+        CustomPacketPayload fabricPayload = toFabricPayload(packet);
         for (var player : players) {
-            ServerPlayNetworking.send((ServerPlayerEntity) player, fabricPayload);
+            ServerPlayNetworking.send((ServerPlayer) player, fabricPayload);
         }
     }
 
     @Override
     public boolean canSendToPlayer(Object player) {
-        return ServerPlayNetworking.canSend((ServerPlayerEntity) player, FabricConfigSyncPayload.ID);
+        return ServerPlayNetworking.canSend((ServerPlayer) player, FabricConfigSyncPayload.ID);
     }
 
-    /** Adapter: common NetworkPacket → Fabric CustomPayload. */
-    private CustomPayload toFabricPayload(NetworkPacket packet) {
+    /** Adapter: common NetworkPacket → Fabric CustomPacketPayload. */
+    private CustomPacketPayload toFabricPayload(NetworkPacket packet) {
         return switch (packet) {
 
             case ConfigSyncData d ->
@@ -217,7 +218,7 @@ public final class FabricPacketChannel implements PacketChannel {
 
             case LookedAtBlockData d ->
                 new FabricLookedAtBlockPayload(
-                        d.pos().map(pos -> BlockPos.fromLong(pos)));
+                        d.pos().map(pos -> BlockPos.of(pos)));
 
             case FilterResultData d ->
                 new FabricFilterResultPayload(
@@ -227,7 +228,7 @@ public final class FabricPacketChannel implements PacketChannel {
                 new FabricHighlightBlockListPayload(
                         d.blocks()
                                 .stream()
-                                .map(pos -> BlockPos.fromLong(pos))
+                                .map(pos -> BlockPos.of(pos))
                                 .toList(),
                         d.highlightStyle(),
                         d.source());
@@ -236,12 +237,12 @@ public final class FabricPacketChannel implements PacketChannel {
                 new FabricHighlightDeltaPayload(
                         d.addedBlocks()
                                 .stream()
-                                .map(pos -> BlockPos.fromLong(pos))
+                                .map(pos -> BlockPos.of(pos))
                                 .toList(),
 
                         d.removedBlocks()
                                 .stream()
-                                .map(pos -> BlockPos.fromLong(pos))
+                                .map(pos -> BlockPos.of(pos))
                                 .toList(),
 
                         d.highlightStyle(),

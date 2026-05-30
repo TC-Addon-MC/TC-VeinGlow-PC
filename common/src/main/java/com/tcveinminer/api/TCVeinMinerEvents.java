@@ -15,17 +15,17 @@ public final class TCVeinMinerEvents {
 
     /**
      * Fired when a mining session is about to start.
-     * Return ActionResult.FAIL to cancel the session.
+     * Return InteractionResult.FAIL to cancel the session.
      */
     public static final Event<SessionStartCallback> SESSION_START = Event.createArrayBacked(SessionStartCallback.class,
         (listeners) -> (event) -> {
             for (SessionStartCallback listener : listeners) {
-                ActionResult result = listener.onSessionStart(event);
-                if (result != ActionResult.PASS) {
+                InteractionResult result = listener.onSessionStart(event);
+                if (result != InteractionResult.PASS) {
                     return result;
                 }
             }
-            return ActionResult.PASS;
+            return InteractionResult.PASS;
         });
 
     /**
@@ -40,17 +40,17 @@ public final class TCVeinMinerEvents {
 
     /**
      * Fired right before each block is broken/processed during a session.
-     * Return ActionResult.FAIL to skip processing this specific block (it won't cancel the whole session).
+     * Return InteractionResult.FAIL to skip processing this specific block (it won't cancel the whole session).
      */
     public static final Event<BlockBreakCallback> BLOCK_BREAK_PRE = Event.createArrayBacked(BlockBreakCallback.class,
         (listeners) -> (event) -> {
             for (BlockBreakCallback listener : listeners) {
-                ActionResult result = listener.onBlockBreakPre(event);
-                if (result != ActionResult.PASS) {
+                InteractionResult result = listener.onBlockBreakPre(event);
+                if (result != InteractionResult.PASS) {
                     return result;
                 }
             }
-            return ActionResult.PASS;
+            return InteractionResult.PASS;
         });
 
     /**
@@ -65,7 +65,7 @@ public final class TCVeinMinerEvents {
 
     @FunctionalInterface
     public interface SessionStartCallback {
-        ActionResult onSessionStart(SessionStartEvent event);
+        InteractionResult onSessionStart(SessionStartEvent event);
     }
 
     @FunctionalInterface
@@ -75,7 +75,7 @@ public final class TCVeinMinerEvents {
 
     @FunctionalInterface
     public interface BlockBreakCallback {
-        ActionResult onBlockBreakPre(BlockBreakEvent event);
+        InteractionResult onBlockBreakPre(BlockBreakEvent event);
     }
 
     @FunctionalInterface

@@ -2,7 +2,6 @@ package com.tcveinminer.engine.left;
 
 import com.tcveinminer.api.TCVeinMinerEvents;
 import com.tcveinminer.api.event.SessionStartEvent;
-import com.tcveinminer.TCVeinMinerMod;
 import com.tcveinminer.config.ConfigManager;
 import com.tcveinminer.config.ModConfig;
 import com.tcveinminer.engine.AbstractActionEngine;
@@ -39,7 +38,7 @@ import java.util.*;
  * NEVER touches: interact, crop, bucket, hoe, planting.
  * <p>
  * Entry point:
- * {@link #onBreakTrigger(PlayerEntity, ServerWorld, BlockPos, BlockState)}
+ * {@link #onBreakTrigger(Player, ServerLevel, BlockPos, BlockState)}
  * from {@code PlayerBlockBreakEvents.AFTER}.
  */
 public final class LeftClickEngine extends AbstractActionEngine {
@@ -54,7 +53,7 @@ public final class LeftClickEngine extends AbstractActionEngine {
     /**
      * Called when a player breaks a block (from PlayerBlockBreakEvents.AFTER).
      */
-    public void onBreakTrigger(PlayerEntity player, ServerWorld world,
+    public void onBreakTrigger(Player player, ServerLevel world,
             BlockPos origin, BlockState originState) {
         // Re-entry guard: if we are already processing, the AFTER event
         // from our own tryBreakBlock() must be ignored
@@ -66,7 +65,7 @@ public final class LeftClickEngine extends AbstractActionEngine {
             if (session != null && session.getLockedSnapshot().contains(origin)) {
                 session.removeFromSnapshot(origin);
                 session.updateRenderSnapshot();
-                if (player instanceof ServerPlayerEntity spe) {
+                if (player instanceof ServerPlayer spe) {
                     NetworkManager.sendToPlayer(spe, new HighlightBlockListData(
                             session.getRenderSnapshot().stream().map(BlockPos::asLong).toList(), playerShape, getSourceId()));
                 }
@@ -83,12 +82,12 @@ public final class LeftClickEngine extends AbstractActionEngine {
         ModConfig c = ConfigManager.get();
         if (!c.enabled)
             return;
-        if (!com.tcveinminer.engine.state.PlayerStateRegistry.isHoldingKey(player.getUuid()))
+        if (!com.tcveinminer.engine.state.PlayerStateRegistry.isHoldingKey(player.getUUID()))
             return;
 
         if (c.requireSneak && !player.isShiftKeyDown())
             return;
-        if (!checkCooldown(player.getUuid(), world.getTime(), c))
+        if (!checkCooldown(player.getUUID(), world.getGameTime(), c))
             return;
 
         if (!validateTrigger(player, world, origin, originState, c))
@@ -127,7 +126,7 @@ public final class LeftClickEngine extends AbstractActionEngine {
         Item initialItem = player.getMainHandItem().getItem();
 
         Direction hitFace = approximateHitFace(player);
-        OrientationContext ctx = OrientationContext.of(hitFace, OrientationContext.facingFromYaw(player.getYaw()));
+        OrientationContext ctx = OrientationContext.of(hitFace, OrientationContext.facingFromYaw(player.getYRot()));
 
         MiningStrategy.MiningRequest req = new MiningStrategy.MiningRequest(
                 world, player, player.getMainHandItem(),
@@ -148,7 +147,7 @@ public final class LeftClickEngine extends AbstractActionEngine {
             Map<Block, Integer> leafCounts = new HashMap<>();
             for (BlockPos pos : found) {
                 BlockState state = world.getBlockState(pos);
-                if (state.isIn(BlockTags.LEAVES)) {
+                if (state.is(BlockTags.LEAVES)) {
                     leafCounts.merge(state.getBlock(), 1, Integer::sum);
                 }
             }
@@ -169,7 +168,7 @@ public final class LeftClickEngine extends AbstractActionEngine {
         session.initSnapshot(new HashSet<>(found));
 
         SessionStartEvent startEvent = new SessionStartEvent(player, world, origin, actionType, session.getTargetCount());
-        if (TCVeinMinerEvents.SESSION_START.invoker().onSessionStart(startEvent) != net.minecraft.world.InteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION) {
+        if (TCVeinMinerEvents.SESSION_START.invoker().onSessionStart(startEvent) != net.minecraft.world.InteractionResult.PASS) {
             session = null;
             stateMachine.force(EngineState.IDLE);
             return;
@@ -177,7 +176,7 @@ public final class LeftClickEngine extends AbstractActionEngine {
 
         stateMachine.force(EngineState.PROCESSING);
         SessionStats.onVeinMineStart();
-        if (player instanceof ServerPlayerEntity spe) {
+        if (player instanceof ServerPlayer spe) {
             NetworkManager.sendToPlayer(spe, new MiningStateData(1, 0, session.getTargetCount()));
         }
     }
@@ -185,9 +184,9 @@ public final class LeftClickEngine extends AbstractActionEngine {
     // ── Template Method Implementations ───────────────────────────────────
 
     @Override
-    protected ActionType resolveActionType(PlayerEntity player, ServerWorld world,
+    protected ActionType resolveActionType(Player player, ServerLevel world,
             BlockPos origin, BlockState state) {
-        if ("TREE_CAP".equals(playerShape) && state.isIn(BlockTags.LOGS)) {
+        if ("TREE_CAP".equals(playerShape) && state.is(BlockTags.LOGS)) {
             return ActionType.TREE_CAP;
         }
         return ActionType.BREAK;
@@ -200,8 +199,8 @@ public final class LeftClickEngine extends AbstractActionEngine {
     }
 
     @Override
-    protected ActionContext createContext(ActionType type, PlayerEntity player,
-            ServerWorld world, BlockPos origin, BlockState state) {
+    protected ActionContext createContext(ActionType type, Player player,
+            ServerLevel world, BlockPos origin, BlockState state) {
         Item initialItem = player.getMainHandItem().getItem();
         if (type == ActionType.TREE_CAP) {
             return new ActionContext.TreeCapContext(state, initialItem, origin, null);
@@ -215,24 +214,24 @@ public final class LeftClickEngine extends AbstractActionEngine {
     }
 
     @Override
-    protected boolean validateTrigger(PlayerEntity player, ServerWorld world,
+    protected boolean validateTrigger(Player player, ServerLevel world,
             BlockPos origin, BlockState state, ModConfig config) {
         // TREE_CAP shape + non-log = reject
-        if ("TREE_CAP".equals(playerShape) && !state.isIn(BlockTags.LOGS))
+        if ("TREE_CAP".equals(playerShape) && !state.is(BlockTags.LOGS))
             return false;
         if (!config.enableBreakSkill)
             return false;
-        if (config.consumeHunger && !player.isCreative() && player.getHungerManager().getFoodLevel() <= 0)
+        if (config.consumeHunger && !player.isCreative() && player.getFoodData().getFoodLevel() <= 0)
             return false;
         return true;
     }
 
     @Override
-    protected void onSessionFinalized(PlayerEntity player, ServerWorld world) {
+    protected void onSessionFinalized(Player player, ServerLevel world) {
         // Auto-replant for TreeCap
         if (session != null && session.getActionContext() instanceof ActionContext.TreeCapContext tc) {
             if (ConfigManager.get().enableTreeCapitatorSkill) {
-                TreeCapitatorSkill.autoReplant((ServerWorld) player.level(), player,
+                TreeCapitatorSkill.autoReplant((ServerLevel) player.level(), player,
                         tc.getTreeOriginPos(), tc.getTreeSaplingType());
             }
         }
@@ -249,7 +248,7 @@ public final class LeftClickEngine extends AbstractActionEngine {
 
         // TreeCap: allow any log or leaf type
         if (session.getActionType() == ActionType.TREE_CAP) {
-            return currentState.isIn(BlockTags.LOGS) || currentState.isIn(BlockTags.LEAVES);
+            return currentState.is(BlockTags.LOGS) || currentState.is(BlockTags.LEAVES);
         }
 
         return currentState.getBlock() == original.getBlock();
@@ -257,12 +256,12 @@ public final class LeftClickEngine extends AbstractActionEngine {
 
     // ── Utility ───────────────────────────────────────────────────────────
 
-    private static Direction approximateHitFace(PlayerEntity player) {
-        float pitch = player.getPitch();
+    private static Direction approximateHitFace(Player player) {
+        float pitch = player.getXRot();
         if (pitch > 60f)
             return Direction.UP;
         if (pitch < -60f)
             return Direction.DOWN;
-        return OrientationContext.facingFromYaw(player.getYaw()).getOpposite();
+        return OrientationContext.facingFromYaw(player.getYRot()).getOpposite();
     }
 }

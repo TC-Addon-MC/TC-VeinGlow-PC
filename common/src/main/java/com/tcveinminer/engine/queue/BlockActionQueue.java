@@ -23,10 +23,10 @@ public final class BlockActionQueue {
     private final Set<BlockPos> inQueue = new HashSet<>();
     private boolean interrupted = false;
 
-    public void enqueue(List<BlockPos> positions, ServerWorld world) {
+    public void enqueue(List<BlockPos> positions, ServerLevel world) {
         for (BlockPos pos : positions) {
             if (!inQueue.contains(pos)) {
-                if (!world.isChunkLoaded(pos.getX() >> 4, pos.getZ() >> 4)) continue;
+                if (!world.hasChunk(pos.getX() >> 4, pos.getZ() >> 4)) continue;
                 inQueue.add(pos);
                 queue.add(new ActionEntry(pos, world.getBlockState(pos)));
             }
@@ -40,7 +40,7 @@ public final class BlockActionQueue {
      * FIXED: pollLimit is snapshotted before the loop so stale/unloaded entries at
      * the front of the queue don't cause early exit.
      */
-    public List<ActionEntry> drainForTick(ServerWorld world, int maxPerTick) {
+    public List<ActionEntry> drainForTick(ServerLevel world, int maxPerTick) {
         List<ActionEntry> batch = new ArrayList<>();
         int pollLimit = queue.size();
         int polled = 0;
@@ -51,7 +51,7 @@ public final class BlockActionQueue {
             polled++;
 
             // 1. Chunk check FIRST — never force-load
-            if (!world.isChunkLoaded(e.pos().getX() >> 4, e.pos().getZ() >> 4)) continue;
+            if (!world.hasChunk(e.pos().getX() >> 4, e.pos().getZ() >> 4)) continue;
 
             // 2. Block state check after chunk is confirmed loaded
             BlockState current = world.getBlockState(e.pos());
@@ -76,7 +76,7 @@ public final class BlockActionQueue {
 
     public boolean isEmpty()       { return queue.isEmpty(); }
     public boolean isInterrupted() { return interrupted; }
-    public int size()              { return queue.size(); }
+    public int getContainerSize()              { return queue.size(); }
 
     public Set<BlockPos> snapshot() {
         return Collections.unmodifiableSet(new HashSet<>(inQueue));

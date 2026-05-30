@@ -9,8 +9,8 @@ import net.minecraft.world.level.Level;
  * Event data when a mining session starts.
  */
 public record SessionStartEvent(
-        PlayerEntity player,
-        World world,
+        Player player,
+        Level world,
         BlockPos origin,
         ActionType actionType,
         int targetBlocks

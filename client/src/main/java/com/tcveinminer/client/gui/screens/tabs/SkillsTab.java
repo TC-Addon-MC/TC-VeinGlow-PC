@@ -136,7 +136,7 @@ public class SkillsTab implements MenuTab {
         DrawHelper.drawCard(ctx, cx, cy, cw, ch);
 
         // Title
-        ctx.drawTextWithShadow(screen.getTextRenderer(),
+        ctx.drawString(screen.getMinecraft().font,
                 Component.translatable("gui.tcveinminer.skills.title").getString(),
                 cx + 8, cy + 3, ThemeColors.TEXT_LABEL);
 
@@ -208,13 +208,13 @@ public class SkillsTab implements MenuTab {
             int maxLabelW = bw - 14; // trừ dot + padding
             // Cắt bớt text nếu quá dài
             String displayLabel = label;
-            while (screen.getTextRenderer().getWidth(displayLabel) > maxLabelW && displayLabel.length() > 3) {
+            while (screen.getMinecraft().font.width(displayLabel) > maxLabelW && displayLabel.length() > 3) {
                 displayLabel = displayLabel.substring(0, displayLabel.length() - 1);
             }
             if (!displayLabel.equals(label))
                 displayLabel = displayLabel.substring(0, displayLabel.length() - 1) + "…";
 
-            ctx.drawText(screen.getTextRenderer(), displayLabel,
+            ctx.drawString(screen.getMinecraft().font, displayLabel,
                     bx + 10, by + (bh - 8) / 2, labelColor, false);
         }
 
@@ -231,49 +231,49 @@ public class SkillsTab implements MenuTab {
             boolean active = entry.getter.get();
 
             // Tên skill + badge trạng thái
-            ctx.drawTextWithShadow(screen.getTextRenderer(), name,
+            ctx.drawString(screen.getMinecraft().font, name,
                     cx + 8, descY + 4,
                     active ? ThemeColors.GOLD : ThemeColors.TEXT_BRIGHT);
 
             String badge = active ? "✔ ON" : "✘ OFF";
             int badgeColor = active ? 0xFF4ADE80 : 0xFFEF4444;
-            int badgeX = cx + cw - screen.getTextRenderer().getWidth(badge) - 8;
-            ctx.drawTextWithShadow(screen.getTextRenderer(), badge, badgeX, descY + 4, badgeColor);
+            int badgeX = cx + cw - screen.getMinecraft().font.width(badge) - 8;
+            ctx.drawString(screen.getMinecraft().font, badge, badgeX, descY + 4, badgeColor);
 
             // Mô tả
             String desc = Component.translatable(entry.descKey).getString();
-            ctx.drawText(screen.getTextRenderer(), desc,
+            ctx.drawString(screen.getMinecraft().font, desc,
                     cx + 8, descY + 16, ThemeColors.TEXT_DIM, false);
 
             // Gợi ý click
             String hint = "[Click to toggle]";
-            ctx.drawText(screen.getTextRenderer(), hint,
+            ctx.drawString(screen.getMinecraft().font, hint,
                     cx + 8, descY + DESC_H - 12, 0xFF374151, false);
 
             if (screen.getState().enableToolSwapSkill && screen.getState().enableToolProtectSkill) {
                 String comboHint = Component.translatable("gui.tcveinminer.skills.tool_combo_hint1").getString();
-                ctx.drawText(screen.getTextRenderer(), comboHint, cx + 8 + screen.getTextRenderer().getWidth(hint) + 10, descY + DESC_H - 12, 0xFF00AAFF, false);
+                ctx.drawString(screen.getMinecraft().font, comboHint, cx + 8 + screen.getMinecraft().font.width(hint) + 10, descY + DESC_H - 12, 0xFF00AAFF, false);
             }
         } else {
             // Placeholder khi không hover
-            ctx.drawText(screen.getTextRenderer(),
+            ctx.drawString(screen.getMinecraft().font,
                     "Hover over a skill to see details",
                     cx + 8, descY + (DESC_H - 8) / 2, 0xFF374151, false);
             if (screen.getState().enableToolSwapSkill && screen.getState().enableToolProtectSkill) {
                 String comboHint = Component.translatable("gui.tcveinminer.skills.tool_combo_hint2").getString();
-                ctx.drawText(screen.getTextRenderer(), comboHint, cx + 8, descY + DESC_H - 12, 0xFF00AAFF, false);
+                ctx.drawString(screen.getMinecraft().font, comboHint, cx + 8, descY + DESC_H - 12, 0xFF00AAFF, false);
             }
         }
 
         // Threshold Label
         String threshLabel = Component.translatable("gui.tcveinminer.skills.protect_threshold").getString();
-        ctx.drawTextWithShadow(screen.getTextRenderer(), threshLabel, cx + cw - 100 - 8 - screen.getTextRenderer().getWidth(threshLabel) - 4, cy + ch - DESC_H - 20, ThemeColors.TEXT_BRIGHT);
+        ctx.drawString(screen.getMinecraft().font, threshLabel, cx + cw - 100 - 8 - screen.getMinecraft().font.width(threshLabel) - 4, cy + ch - DESC_H - 20, ThemeColors.TEXT_BRIGHT);
 
         // Scrollbar hint nếu có thể cuộn
         if (maxScroll > 0) {
             String scrollHint = "↑↓ scroll";
-            ctx.drawText(screen.getTextRenderer(), scrollHint,
-                    cx + cw - screen.getTextRenderer().getWidth(scrollHint) - 6,
+            ctx.drawString(screen.getMinecraft().font, scrollHint,
+                    cx + cw - screen.getMinecraft().font.width(scrollHint) - 6,
                     descY + DESC_H - 12, 0xFF374151, false);
         }
     }

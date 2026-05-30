@@ -43,7 +43,11 @@ public class GeometryGenerator {
             case LINE:
                 generateLine(mesh, evaluator);
                 break;
-            // INFINITE / EMPTY already handled above
+            case INFINITE:
+            case EMPTY:
+            default:
+                // Already handled above
+                break;
         }
         return mesh;
     }

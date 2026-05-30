@@ -43,7 +43,7 @@ public class ModConfig {
         }
     }
 
-    public Set<Identifier> blacklist = new LinkedHashSet<>();
+    public Set<ResourceLocation> blacklist = new LinkedHashSet<>();
 
     // Cài đặt chung
     public boolean enabled = true;

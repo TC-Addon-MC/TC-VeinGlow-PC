@@ -6,7 +6,7 @@ import com.tcveinminer.network.payload.NetworkPacket;
 import com.tcveinminer.network.payload.*;
 import com.tcveinminer.fabric.network.FabricPacketChannel.*;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.core.BlockPos;
 
 public class FabricClientPacketChannel implements ClientPacketChannel {
 
@@ -64,12 +64,12 @@ public class FabricClientPacketChannel implements ClientPacketChannel {
         });
     }
 
-    private static net.minecraft.network.packet.CustomPayload toFabricPayload(NetworkPacket packet) {
+    private static net.minecraft.network.protocol.common.custom.CustomPacketPayload toFabricPayload(NetworkPacket packet) {
         return switch (packet) {
             case HoldKeyData d -> new FabricHoldKeyPayload(d.isHolding(), d.shapeId(), d.maxBlocks(), d.equation(), d.blacklist());
             case ActivationRequestData d -> new FabricActivationRequestPayload(
                     d.active(),
-                    d.targetPos().map(pos -> BlockPos.fromLong(pos))
+                    d.targetPos().map(pos -> BlockPos.of(pos))
             );
             default -> throw new IllegalArgumentException("Cannot send S2C packet from client");
         };

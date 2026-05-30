@@ -55,17 +55,17 @@ public class ActionContext {
      * Carries the hand and hit result needed by InteractSkill.
      */
     public static class InteractContext extends ActionContext {
-        private final Hand interactHand;
+        private final InteractionHand interactHand;
         private final BlockHitResult hitResult;
 
         public InteractContext(BlockState originalState, Item initialItem,
-                               Hand interactHand, BlockHitResult hitResult) {
+                               InteractionHand interactHand, BlockHitResult hitResult) {
             super(originalState, initialItem);
             this.interactHand = interactHand;
             this.hitResult = hitResult;
         }
 
-        public Hand getInteractHand() { return interactHand; }
+        public InteractionHand getInteractHand() { return interactHand; }
         public BlockHitResult getHitResult() { return hitResult; }
     }
 
@@ -74,7 +74,7 @@ public class ActionContext {
      */
     public static class PlantContext extends InteractContext {
         public PlantContext(BlockState originalState, Item initialItem,
-                            Hand interactHand, BlockHitResult hitResult) {
+                            InteractionHand interactHand, BlockHitResult hitResult) {
             super(originalState, initialItem, interactHand, hitResult);
         }
     }

@@ -1,6 +1,5 @@
 package com.tcveinminer.forge.registry;
 
-import com.tcveinminer.command.VeinMinerCommand;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
 

@@ -3,7 +3,7 @@ package com.tcveinminer.fabric.platform;
 import com.tcveinminer.platform.PlatformHelper;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +63,7 @@ public final class FabricPlatformHelper implements PlatformHelper {
     }
 
     @Override
-    public boolean isOperator(ServerPlayerEntity player) {
-        return player.hasPermissionLevel(2);
+    public boolean isOperator(ServerPlayer player) {
+        return player.hasPermissions(2);
     }
 }

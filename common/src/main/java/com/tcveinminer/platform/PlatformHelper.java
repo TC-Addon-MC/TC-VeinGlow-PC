@@ -22,7 +22,7 @@ public interface PlatformHelper {
 
     Environment getEnvironment();
 
-    default boolean isClient() { return getEnvironment() == Environment.CLIENT; }
+    default boolean isClientSide() { return getEnvironment() == Environment.CLIENT; }
 
     default boolean isServer() { return getEnvironment() == Environment.SERVER; }
 

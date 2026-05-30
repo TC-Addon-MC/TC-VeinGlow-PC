@@ -15,10 +15,10 @@ public final class CropHarvestSkill {
 
     private CropHarvestSkill() {}
 
-    public static boolean harvest(ServerPlayerEntity spe, ServerWorld world, BlockPos pos, BlockState currentState) {
-        if (!world.isClient) {
+    public static boolean harvest(ServerPlayer spe, ServerLevel world, BlockPos pos, BlockState currentState) {
+        if (!world.isClientSide) {
             // Get drops directly
-            List<ItemStack> drops = Block.getDroppedStacks(currentState, world, pos, world.getBlockEntity(pos), spe, spe.getMainHandItem());
+            List<ItemStack> drops = Block.getDrops(currentState, world, pos, world.getBlockEntity(pos), spe, spe.getMainHandItem());
             
             Item seedItem = currentState.getBlock().asItem();
             boolean seedConsumed = false;
@@ -29,16 +29,16 @@ public final class CropHarvestSkill {
                     seedConsumed = true;
                 }
                 if (!drop.isEmpty()) {
-                    Block.dropStack(world, pos, drop);
+                    Block.popResource(world, pos, drop);
                 }
             }
             
             // Break sound and particle effects
-            world.syncWorldEvent(null, 2001, pos, Block.getRawIdFromState(currentState));
+            world.levelEvent(null, 2001, pos, Block.getId(currentState));
             
             // Check below block for valid farmland/soul sand
-            BlockState below = world.getBlockState(pos.down());
-            if (below.isOf(Blocks.FARMLAND) || below.isOf(Blocks.SOUL_SAND) || below.isOf(Blocks.JUNGLE_LOG) || below.isIn(net.minecraft.tags.BlockTags.LOGS)) {
+            BlockState below = world.getBlockState(pos.below());
+            if (below.is(Blocks.FARMLAND) || below.is(Blocks.SOUL_SAND) || below.is(Blocks.JUNGLE_LOG) || below.is(net.minecraft.tags.BlockTags.LOGS)) {
                 world.setBlock(pos, currentState.getBlock().defaultBlockState(), 3);
             } else {
                 world.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);

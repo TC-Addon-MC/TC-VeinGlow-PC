@@ -9,8 +9,8 @@ import java.util.UUID;
 public final class EngineApi {
     public static void onBreakTriggerRaw(UUID uuid, Object player, Object world, Object pos, Object state) {
         MiningEngine.forPlayer(uuid).onBreakTrigger(
-                (PlayerEntity) player,
-                (ServerWorld) world,
+                (Player) player,
+                (ServerLevel) world,
                 (BlockPos) pos,
                 (BlockState) state
         );
@@ -18,8 +18,8 @@ public final class EngineApi {
     
     public static void onServerTickRaw(UUID uuid, Object player, Object world) {
         MiningEngine.forPlayer(uuid).onServerTick(
-                (PlayerEntity) player,
-                (ServerWorld) world
+                (Player) player,
+                (ServerLevel) world
         );
     }
     

@@ -9,17 +9,18 @@ import net.minecraft.core.BlockPos;
 
 import java.util.List;
 
-public record HighlightBlockListPayload(List<BlockPos> blocks, String highlightStyle, String source) implements CustomPayload {
-    public static final Id<HighlightBlockListPayload> ID =
-        new Id<>(ResourceLocation.parse("tc_veinminer", "highlight_block_list"));
+public record HighlightBlockListPayload(List<BlockPos> blocks, String highlightStyle, String source) implements CustomPacketPayload {
+    public static final Type<HighlightBlockListPayload> ID =
+        new Type<>(ResourceLocation.fromNamespaceAndPath("tc_veinminer", "highlight_block_list"));
 
-    public static final PacketCodec<RegistryByteBuf, HighlightBlockListPayload> CODEC = PacketCodec.tuple(
-            BlockPos.PACKET_CODEC.collect(PacketCodecs.toList()), HighlightBlockListPayload::blocks,
-            PacketCodecs.STRING, HighlightBlockListPayload::highlightStyle,
-            PacketCodecs.STRING, HighlightBlockListPayload::source,
+    public static final StreamCodec<RegistryFriendlyByteBuf, HighlightBlockListPayload> CODEC = StreamCodec.composite(
+            BlockPos.STREAM_CODEC.apply(ByteBufCodecs.list()), HighlightBlockListPayload::blocks,
+            ByteBufCodecs.STRING_UTF8, HighlightBlockListPayload::highlightStyle,
+            ByteBufCodecs.STRING_UTF8, HighlightBlockListPayload::source,
             HighlightBlockListPayload::new
     );
 
-    @Override
-    public Id<? extends CustomPayload> getId() { return ID; }
+    @Override public Type<? extends CustomPacketPayload> type() { return ID; }
+
+    public String channelId() { return ID.id().toString(); }
 }

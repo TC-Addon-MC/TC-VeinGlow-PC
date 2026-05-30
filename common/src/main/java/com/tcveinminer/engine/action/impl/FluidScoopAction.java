@@ -20,17 +20,17 @@ import net.minecraft.core.BlockPos;
 public final class FluidScoopAction implements BlockAction {
 
     @Override
-    public boolean execute(ServerPlayerEntity player, ServerWorld world, BlockPos pos, ActionContext ctx) {
+    public boolean execute(ServerPlayer player, ServerLevel world, BlockPos pos, ActionContext ctx) {
         if (!(ctx instanceof ActionContext.BucketContext bc)) return false;
 
         net.minecraft.world.level.block.state.BlockState state = world.getBlockState(pos);
         if (!state.getFluidState().isSource()) return false;
 
-        net.minecraft.world.level.block.Block fluidBlock = state.getBlock();
+        net.minecraft.world.level.block.Block LiquidBlock = state.getBlock();
         Item filledBucket;
-        if (fluidBlock == Blocks.WATER) {
+        if (LiquidBlock == Blocks.WATER) {
             filledBucket = Items.WATER_BUCKET;
-        } else if (fluidBlock == Blocks.LAVA) {
+        } else if (LiquidBlock == Blocks.LAVA) {
             filledBucket = Items.LAVA_BUCKET;
         } else {
             return false;
@@ -55,9 +55,9 @@ public final class FluidScoopAction implements BlockAction {
 
     // ── Inventory helpers ─────────────────────────────────────────────────
 
-    private static boolean removeSingleItem(PlayerEntity player, Item item) {
-        for (int i = 0; i < player.getInventory().size(); i++) {
-            ItemStack stack = player.getInventory().getStack(i);
+    private static boolean removeSingleItem(Player player, Item item) {
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+            ItemStack stack = player.getInventory().getItem(i);
             if (!stack.isEmpty() && stack.getItem() == item) {
                 stack.shrink(1);
                 return true;
@@ -66,10 +66,10 @@ public final class FluidScoopAction implements BlockAction {
         return false;
     }
 
-    private static void giveSingleItem(PlayerEntity player, Item item) {
+    private static void giveSingleItem(Player player, Item item) {
         ItemStack stack = new ItemStack(item, 1);
-        if (!player.getInventory().insertStack(stack)) {
-            player.dropItem(stack, false);
+        if (!player.getInventory().add(stack)) {
+            player.drop(stack, false);
         }
     }
 }
