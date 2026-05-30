@@ -3,9 +3,9 @@ package com.tcveinminer.engine.action.impl;
 import com.tcveinminer.engine.action.ActionContext;
 import com.tcveinminer.engine.action.BlockAction;
 import com.tcveinminer.engine.skill.BreakSkill;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.core.BlockPos;
 
 /**
  * Tree capitator action — breaks logs and leaves as part of a tree.
@@ -16,7 +16,7 @@ public final class TreeCapAction implements BlockAction {
 
     @Override
     public boolean execute(ServerPlayerEntity player, ServerWorld world, BlockPos pos, ActionContext ctx) {
-        return BreakSkill.breakBlock(player, world, pos, world.getBlockState(pos));
+        return BreakSkill.destroyBlock(player, world, pos, world.getBlockState(pos));
     }
 
     @Override

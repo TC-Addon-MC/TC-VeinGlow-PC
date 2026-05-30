@@ -1,6 +1,6 @@
 package com.tcveinminer.client.gui.screens;
 
-import net.minecraft.client.render.BufferBuilder;
+import com.mojang.blaze3d.vertex.BufferBuilder;
 
 import org.joml.Matrix4f;
 
@@ -32,13 +32,13 @@ public class RadialDrawingUtils {
             float cos1 = (float) Math.cos(a1), sin1 = (float) Math.sin(a1);
 
             try {
-                buf.vertex(mat, cos0 * innerR, sin0 * innerR, 0).color(r, g, b, a);
-                buf.vertex(mat, cos0 * outerR, sin0 * outerR, 0).color(r, g, b, a);
-                buf.vertex(mat, cos1 * outerR, sin1 * outerR, 0).color(r, g, b, a);
+                buf.addVertex(mat, cos0 * innerR, sin0 * innerR, 0).setColor(r, g, b, a);
+                buf.addVertex(mat, cos0 * outerR, sin0 * outerR, 0).setColor(r, g, b, a);
+                buf.addVertex(mat, cos1 * outerR, sin1 * outerR, 0).setColor(r, g, b, a);
 
-                buf.vertex(mat, cos0 * innerR, sin0 * innerR, 0).color(r, g, b, a);
-                buf.vertex(mat, cos1 * outerR, sin1 * outerR, 0).color(r, g, b, a);
-                buf.vertex(mat, cos1 * innerR, sin1 * innerR, 0).color(r, g, b, a);
+                buf.addVertex(mat, cos0 * innerR, sin0 * innerR, 0).setColor(r, g, b, a);
+                buf.addVertex(mat, cos1 * outerR, sin1 * outerR, 0).setColor(r, g, b, a);
+                buf.addVertex(mat, cos1 * innerR, sin1 * innerR, 0).setColor(r, g, b, a);
             } catch (RuntimeException ex) {
                 throw new RuntimeException(
                         "RadialDrawingUtils.fillArc: BufferBuilder likely not begun or wrong vertex format. Call Tessellator.getInstance().begin(...) before drawing.",
@@ -56,9 +56,9 @@ public class RadialDrawingUtils {
         float step = (float) (2 * Math.PI / SEGMENTS);
         for (int i = 0; i < SEGMENTS; i++) {
             float a0 = i * step, a1 = a0 + step;
-            buf.vertex(mat, 0, 0, 0).color(r, g, b, a);
-            buf.vertex(mat, (float) Math.cos(a0) * radius, (float) Math.sin(a0) * radius, 0).color(r, g, b, a);
-            buf.vertex(mat, (float) Math.cos(a1) * radius, (float) Math.sin(a1) * radius, 0).color(r, g, b, a);
+            buf.addVertex(mat, 0, 0, 0).setColor(r, g, b, a);
+            buf.addVertex(mat, (float) Math.cos(a0) * radius, (float) Math.sin(a0) * radius, 0).setColor(r, g, b, a);
+            buf.addVertex(mat, (float) Math.cos(a1) * radius, (float) Math.sin(a1) * radius, 0).setColor(r, g, b, a);
         }
     }
 
@@ -90,13 +90,13 @@ public class RadialDrawingUtils {
             float c1 = (float) Math.cos(a1), s1 = (float) Math.sin(a1);
 
             try {
-                buf.vertex(mat, c0 * r1, s0 * r1, 0).color(r, g, b, a);
-                buf.vertex(mat, c0 * r2, s0 * r2, 0).color(r, g, b, a);
-                buf.vertex(mat, c1 * r2, s1 * r2, 0).color(r, g, b, a);
+                buf.addVertex(mat, c0 * r1, s0 * r1, 0).setColor(r, g, b, a);
+                buf.addVertex(mat, c0 * r2, s0 * r2, 0).setColor(r, g, b, a);
+                buf.addVertex(mat, c1 * r2, s1 * r2, 0).setColor(r, g, b, a);
 
-                buf.vertex(mat, c0 * r1, s0 * r1, 0).color(r, g, b, a);
-                buf.vertex(mat, c1 * r2, s1 * r2, 0).color(r, g, b, a);
-                buf.vertex(mat, c1 * r1, s1 * r1, 0).color(r, g, b, a);
+                buf.addVertex(mat, c0 * r1, s0 * r1, 0).setColor(r, g, b, a);
+                buf.addVertex(mat, c1 * r2, s1 * r2, 0).setColor(r, g, b, a);
+                buf.addVertex(mat, c1 * r1, s1 * r1, 0).setColor(r, g, b, a);
             } catch (RuntimeException ex) {
                 throw new RuntimeException(
                         "RadialDrawingUtils.strokeRing: BufferBuilder likely not begun or wrong vertex format.", ex);
@@ -114,12 +114,12 @@ public class RadialDrawingUtils {
         float x0 = cos * r1, y0 = sin * r1;
         float x1 = cos * r2, y1 = sin * r2;
 
-        buf.vertex(mat, x0 - px, y0 - py, 0).color(r, g, b, a);
-        buf.vertex(mat, x0 + px, y0 + py, 0).color(r, g, b, a);
-        buf.vertex(mat, x1 + px, y1 + py, 0).color(r, g, b, a);
+        buf.addVertex(mat, x0 - px, y0 - py, 0).setColor(r, g, b, a);
+        buf.addVertex(mat, x0 + px, y0 + py, 0).setColor(r, g, b, a);
+        buf.addVertex(mat, x1 + px, y1 + py, 0).setColor(r, g, b, a);
 
-        buf.vertex(mat, x0 - px, y0 - py, 0).color(r, g, b, a);
-        buf.vertex(mat, x1 + px, y1 + py, 0).color(r, g, b, a);
-        buf.vertex(mat, x1 - px, y1 - py, 0).color(r, g, b, a);
+        buf.addVertex(mat, x0 - px, y0 - py, 0).setColor(r, g, b, a);
+        buf.addVertex(mat, x1 + px, y1 + py, 0).setColor(r, g, b, a);
+        buf.addVertex(mat, x1 - px, y1 - py, 0).setColor(r, g, b, a);
     }
 }

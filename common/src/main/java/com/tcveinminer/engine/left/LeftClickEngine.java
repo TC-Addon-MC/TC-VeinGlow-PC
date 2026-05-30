@@ -21,15 +21,15 @@ import com.tcveinminer.network.NetworkManager;
 import com.tcveinminer.network.payload.HighlightBlockListData;
 import com.tcveinminer.network.payload.MiningStateData;
 import com.tcveinminer.util.SessionStats;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.Item;
-import net.minecraft.registry.tag.BlockTags;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 
 import java.util.*;
 
@@ -86,7 +86,7 @@ public final class LeftClickEngine extends AbstractActionEngine {
         if (!com.tcveinminer.engine.state.PlayerStateRegistry.isHoldingKey(player.getUuid()))
             return;
 
-        if (c.requireSneak && !player.isSneaking())
+        if (c.requireSneak && !player.isShiftKeyDown())
             return;
         if (!checkCooldown(player.getUuid(), world.getTime(), c))
             return;
@@ -115,7 +115,7 @@ public final class LeftClickEngine extends AbstractActionEngine {
         FilterModeManager.BlockFilter filter = buildFilter(actionType, strategy, maxBlocksToMine);
 
         FilterModeManager.FilterContext fCtxOrigin = new FilterModeManager.FilterContext(
-                world, player, player.getMainHandStack(), origin, origin,
+                world, player, player.getMainHandItem(), origin, origin,
                 originState, originState, Direction.UP, 0, 0, 0,
                 strategy.getModeType(), cache, activeBlacklist, c.requireHarvestCapability);
 
@@ -124,13 +124,13 @@ public final class LeftClickEngine extends AbstractActionEngine {
             return;
         }
 
-        Item initialItem = player.getMainHandStack().getItem();
+        Item initialItem = player.getMainHandItem().getItem();
 
         Direction hitFace = approximateHitFace(player);
         OrientationContext ctx = OrientationContext.of(hitFace, OrientationContext.facingFromYaw(player.getYaw()));
 
         MiningStrategy.MiningRequest req = new MiningStrategy.MiningRequest(
-                world, player, player.getMainHandStack(),
+                world, player, player.getMainHandItem(),
                 origin, originState, maxBlocksToMine, ctx, filter, cache, activeBlacklist,
                 c.requireHarvestCapability, EngineState.PROCESSING, initialItem, c.allowHeldItemChange);
 
@@ -163,13 +163,13 @@ public final class LeftClickEngine extends AbstractActionEngine {
         session.setActionType(actionType);
         session.setActionContext(actionContext);
         session.setInitialItem(initialItem);
-        session.setInitialEnchantSig(com.tcveinminer.engine.skill.ToolManagerSkill.getSpecialEnchantSig(player.getMainHandStack()));
+        session.setInitialEnchantSig(com.tcveinminer.engine.skill.ToolManagerSkill.getSpecialEnchantSig(player.getMainHandItem()));
         session.getQueue().reset();
         session.getQueue().enqueue(found, world);
         session.initSnapshot(new HashSet<>(found));
 
         SessionStartEvent startEvent = new SessionStartEvent(player, world, origin, actionType, session.getTargetCount());
-        if (TCVeinMinerEvents.SESSION_START.invoker().onSessionStart(startEvent) != net.minecraft.util.ActionResult.PASS) {
+        if (TCVeinMinerEvents.SESSION_START.invoker().onSessionStart(startEvent) != net.minecraft.world.InteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION) {
             session = null;
             stateMachine.force(EngineState.IDLE);
             return;
@@ -202,7 +202,7 @@ public final class LeftClickEngine extends AbstractActionEngine {
     @Override
     protected ActionContext createContext(ActionType type, PlayerEntity player,
             ServerWorld world, BlockPos origin, BlockState state) {
-        Item initialItem = player.getMainHandStack().getItem();
+        Item initialItem = player.getMainHandItem().getItem();
         if (type == ActionType.TREE_CAP) {
             return new ActionContext.TreeCapContext(state, initialItem, origin, null);
         }
@@ -232,7 +232,7 @@ public final class LeftClickEngine extends AbstractActionEngine {
         // Auto-replant for TreeCap
         if (session != null && session.getActionContext() instanceof ActionContext.TreeCapContext tc) {
             if (ConfigManager.get().enableTreeCapitatorSkill) {
-                TreeCapitatorSkill.autoReplant((ServerWorld) player.getWorld(), player,
+                TreeCapitatorSkill.autoReplant((ServerWorld) player.level(), player,
                         tc.getTreeOriginPos(), tc.getTreeSaplingType());
             }
         }

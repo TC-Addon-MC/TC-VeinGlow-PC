@@ -1,7 +1,7 @@
 package com.tcveinminer.client.gui.screens;
 
 import com.tcveinminer.client.config.ClientConfig;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.ArrayList;
 
@@ -26,7 +26,7 @@ public class MenuState {
     public boolean preventMiningNearFluids;
     public float outlineThickness;
     public Set<String> enabledShapes = new LinkedHashSet<>();
-    public Set<Identifier> blacklist = new LinkedHashSet<>();
+    public Set<ResourceLocation> blacklist = new LinkedHashSet<>();
     public int colorR, colorG, colorB;
     public int outlineAlpha = 204; // 0-255, mặc định ~80%
     public boolean colorRainbow, colorDisabled;

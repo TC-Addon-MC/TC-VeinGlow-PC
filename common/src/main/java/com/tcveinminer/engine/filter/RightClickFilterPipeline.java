@@ -5,8 +5,8 @@ import com.tcveinminer.engine.capability.impl.HarvestCapability;
 import com.tcveinminer.engine.strategy.FilterModeManager;
 import com.tcveinminer.engine.strategy.FilterModeManager.Composite;
 import com.tcveinminer.engine.strategy.FilterModeManager.Filters;
-import net.minecraft.block.Block;
-import net.minecraft.block.Blocks;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 
 /**
  * Filter pipeline for right-click engine only.

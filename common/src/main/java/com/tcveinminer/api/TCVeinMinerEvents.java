@@ -4,7 +4,7 @@ import com.tcveinminer.api.event.BlockBreakEvent;
 import com.tcveinminer.api.event.SessionEndEvent;
 import com.tcveinminer.api.event.SessionStartEvent;
 import com.tcveinminer.api.Event;
-import net.minecraft.util.ActionResult;
+import net.minecraft.world.InteractionResult;
 
 /**
  * Public events exposed by TC VeinMiner.

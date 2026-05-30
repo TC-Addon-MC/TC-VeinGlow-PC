@@ -2,11 +2,11 @@ package com.tcveinminer.engine.capability.impl;
 
 import com.tcveinminer.engine.action.ActionType;
 import com.tcveinminer.engine.capability.ItemActionCapability;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.FluidBlock;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.LiquidBlock;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 /**
  * Detects empty bucket targeting a fluid source block.
@@ -23,7 +23,7 @@ public final class BucketCapability implements ItemActionCapability {
 
         // Target must be a fluid source block
         return targetState.getBlock() instanceof FluidBlock
-            && targetState.getFluidState().isStill();
+            && targetState.getFluidState().isSource();
     }
 
     @Override

@@ -255,14 +255,14 @@ public class ExpressionEvaluator {
                 case "abs": case "sqrt": case "sin": case "cos":
                     break;
                 default:
-                    throw new RuntimeException(net.minecraft.text.Text.translatable("tc_veinminer.error.unknown_function", name).getString());
+                    throw new RuntimeException(net.minecraft.network.chat.Component.translatable("tc_veinminer.error.unknown_function", name).getString());
             }
             return (x, y, z) -> {
                 double[] a = new double[n];
                 for (int i = 0; i < n; i++) {
                     Object o = args.get(i).eval(x, y, z);
                     if (!(o instanceof Double)) {
-                        throw new RuntimeException(net.minecraft.text.Text.translatable("tc_veinminer.error.invalid_argument_type", name, (i + 1)).getString());
+                        throw new RuntimeException(net.minecraft.network.chat.Component.translatable("tc_veinminer.error.invalid_argument_type", name, (i + 1)).getString());
                     }
                     a[i] = (Double) o;
                 }
@@ -273,7 +273,7 @@ public class ExpressionEvaluator {
                     case "cos":    return Math.cos(a[0]);
                     case "sphere": return Math.sqrt(x*x + y*y + z*z) <= a[0];
                     case "cube":   return Math.abs(x) <= a[0]/2.0 && Math.abs(y) <= a[0]/2.0 && Math.abs(z) <= a[0]/2.0;
-                    default: throw new RuntimeException(net.minecraft.text.Text.translatable("tc_veinminer.error.unknown_function", name).getString()); // unreachable, but compiler requires it
+                    default: throw new RuntimeException(net.minecraft.network.chat.Component.translatable("tc_veinminer.error.unknown_function", name).getString()); // unreachable, but compiler requires it
                 }
             };
         }

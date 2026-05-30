@@ -2,8 +2,8 @@ package com.tcveinminer.engine.strategy;
 
 import com.tcveinminer.engine.traversal.OrientationContext;
 import com.tcveinminer.util.ExpressionEvaluator;
-import net.minecraft.block.BlockState;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.core.BlockPos;
 
 public final class CustomEquationStrategy extends BaseBfsStrategy {
     private static final int SCAN_RANGE = 8;

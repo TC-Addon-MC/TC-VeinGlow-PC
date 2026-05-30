@@ -20,20 +20,20 @@ import com.tcveinminer.engine.traversal.OrientationContext;
 import com.tcveinminer.network.NetworkManager;
 import com.tcveinminer.network.payload.MiningStateData;
 import com.tcveinminer.util.SessionStats;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.FluidBlock;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.registry.tag.BlockTags;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.Hand;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.LiquidBlock;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 
 import java.util.*;
 
@@ -95,7 +95,7 @@ public final class RightClickEngine extends AbstractActionEngine {
         BlockPos origin = hitResult.getBlockPos();
         BlockState originState = world.getBlockState(origin);
 
-        if (c.requireSneak && !player.isSneaking()) return false;
+        if (c.requireSneak && !player.isShiftKeyDown()) return false;
         if (!checkCooldown(player.getUuid(), world.getTime(), c)) return false;
 
         // Resolve action via capability system
@@ -187,7 +187,7 @@ public final class RightClickEngine extends AbstractActionEngine {
         session.initSnapshot(new HashSet<>(found));
 
         SessionStartEvent startEvent = new SessionStartEvent(player, world, origin, actionType, session.getTargetCount());
-        if (TCVeinMinerEvents.SESSION_START.invoker().onSessionStart(startEvent) != net.minecraft.util.ActionResult.PASS) {
+        if (TCVeinMinerEvents.SESSION_START.invoker().onSessionStart(startEvent) != net.minecraft.world.InteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION) {
             session = null;
             stateMachine.force(EngineState.IDLE);
             return false;
@@ -207,7 +207,7 @@ public final class RightClickEngine extends AbstractActionEngine {
     @Override
     protected ActionType resolveActionType(PlayerEntity player, ServerWorld world,
                                             BlockPos origin, BlockState state) {
-        return CapabilityRegistry.resolve(player, player.getMainHandStack(), state, Hand.MAIN_HAND);
+        return CapabilityRegistry.resolve(player, player.getMainHandItem(), state, InteractionHand.MAIN_HAND);
     }
 
     @Override
@@ -219,14 +219,14 @@ public final class RightClickEngine extends AbstractActionEngine {
     @Override
     protected ActionContext createContext(ActionType type, PlayerEntity player,
                                           ServerWorld world, BlockPos origin, BlockState state) {
-        Item initialItem = player.getMainHandStack().getItem();
+        Item initialItem = player.getMainHandItem().getItem();
         return switch (type) {
             case FLUID_SCOOP -> new ActionContext.BucketContext(state, initialItem,
                     state.getBlock(), countBuckets(player));
             case PLANT -> new ActionContext.PlantContext(state, initialItem,
-                    Hand.MAIN_HAND, createDummyHitResult(origin));
+                    InteractionHand.MAIN_HAND, createDummyHitResult(origin));
             case HOE_TILL, INTERACT_BLOCK -> new ActionContext.InteractContext(state, initialItem,
-                    Hand.MAIN_HAND, createDummyHitResult(origin));
+                    InteractionHand.MAIN_HAND, createDummyHitResult(origin));
             default -> new ActionContext(state, initialItem);
         };
     }
@@ -272,7 +272,7 @@ public final class RightClickEngine extends AbstractActionEngine {
 
     private static BlockHitResult createDummyHitResult(BlockPos pos) {
         return new BlockHitResult(
-                net.minecraft.util.math.Vec3d.ofCenter(pos),
+                net.minecraft.world.phys.Vec3.ofCenter(pos),
                 Direction.UP, pos, false);
     }
 

@@ -4,12 +4,13 @@ plugins {
 }
 
 val minecraft_version: String by project
-val yarn_mappings: String by project
 val loader_version: String by project
 val fabric_version: String by project
 val cloth_config_version: String by project
 val modmenu_version: String by project
 val mod_version: String by project
+val parchment_version: String by project
+val parchment_mc_version: String by project
 
 version = mod_version
 base { archivesName = "tc-veinglow-${minecraft_version}-fabric" }
@@ -20,12 +21,16 @@ architectury {
 }
 
 loom {
+    silentMojangMappingsLicense()
     accessWidenerPath = project(":common").file("src/main/resources/tc_veinminer.accesswidener")
 }
 
 dependencies {
     minecraft("com.mojang:minecraft:${minecraft_version}")
-    mappings("net.fabricmc:yarn:${yarn_mappings}:v2")
+    mappings(loom.layered {
+        officialMojangMappings()
+        parchment("org.parchmentmc.data:parchment-${parchment_mc_version}:${parchment_version}@zip")
+    })
     modImplementation("net.fabricmc:fabric-loader:${loader_version}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${fabric_version}")
 

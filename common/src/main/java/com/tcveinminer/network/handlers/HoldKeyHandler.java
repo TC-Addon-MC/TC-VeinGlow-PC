@@ -5,7 +5,7 @@ import com.tcveinminer.engine.MiningEngine;
 import com.tcveinminer.engine.state.PlayerStateRegistry;
 import com.tcveinminer.engine.strategy.StrategyRegistry;
 import com.tcveinminer.network.payload.HoldKeyData;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.util.UUID;
 

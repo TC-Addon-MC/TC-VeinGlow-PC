@@ -1,13 +1,13 @@
 package com.tcveinminer.engine.skill;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.core.BlockPos;
 
 import java.util.List;
 
@@ -18,14 +18,14 @@ public final class CropHarvestSkill {
     public static boolean harvest(ServerPlayerEntity spe, ServerWorld world, BlockPos pos, BlockState currentState) {
         if (!world.isClient) {
             // Get drops directly
-            List<ItemStack> drops = Block.getDroppedStacks(currentState, world, pos, world.getBlockEntity(pos), spe, spe.getMainHandStack());
+            List<ItemStack> drops = Block.getDroppedStacks(currentState, world, pos, world.getBlockEntity(pos), spe, spe.getMainHandItem());
             
             Item seedItem = currentState.getBlock().asItem();
             boolean seedConsumed = false;
             
             for (ItemStack drop : drops) {
                 if (!seedConsumed && drop.getItem() == seedItem) {
-                    drop.decrement(1);
+                    drop.shrink(1);
                     seedConsumed = true;
                 }
                 if (!drop.isEmpty()) {
@@ -38,10 +38,10 @@ public final class CropHarvestSkill {
             
             // Check below block for valid farmland/soul sand
             BlockState below = world.getBlockState(pos.down());
-            if (below.isOf(Blocks.FARMLAND) || below.isOf(Blocks.SOUL_SAND) || below.isOf(Blocks.JUNGLE_LOG) || below.isIn(net.minecraft.registry.tag.BlockTags.LOGS)) {
-                world.setBlockState(pos, currentState.getBlock().getDefaultState(), 3);
+            if (below.isOf(Blocks.FARMLAND) || below.isOf(Blocks.SOUL_SAND) || below.isOf(Blocks.JUNGLE_LOG) || below.isIn(net.minecraft.tags.BlockTags.LOGS)) {
+                world.setBlock(pos, currentState.getBlock().defaultBlockState(), 3);
             } else {
-                world.setBlockState(pos, Blocks.AIR.getDefaultState(), 3);
+                world.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
             }
             return true;
         }

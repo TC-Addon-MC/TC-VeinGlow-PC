@@ -6,19 +6,19 @@ import com.tcveinminer.config.ModConfig;
 import com.tcveinminer.logic.HudNotifier;
 import com.tcveinminer.client.util.DrawHelper;
 import com.tcveinminer.client.util.ThemeColors;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.render.RenderTickCounter;
-import net.minecraft.text.Text;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.network.chat.Component;
 
 public class VeinMinerHudOverlay {
 
-    public void onHudRender(DrawContext ctx, RenderTickCounter tickCounter) {
+    public void onHudRender(GuiGraphics ctx, RenderTickCounter tickCounter) {
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client == null || client.options == null) return;
+        if (client == null || minecraft.options == null) return;
         if (!ClientConfigManager.instance.showHud) return;
         if (client.options.hudHidden) return;
-        if (client.currentScreen != null) return;
+        if (client.screen != null) return;
 
         boolean holding = VeinGlowClient.holdKeyDown;
 
@@ -27,7 +27,7 @@ public class VeinMinerHudOverlay {
         String modeLabel = currentShapeId;
         try {
             ModConfig.MiningShape shape = ModConfig.MiningShape.valueOf(currentShapeId);
-            modeLabel = Text.translatable("tc_veinminer.mode." + shape.name()).getString();
+            modeLabel = Component.translatable("tc_veinminer.mode." + shape.name()).getString();
         } catch (IllegalArgumentException | NullPointerException ignored) {
             // custom shape hoặc chưa set: hiện raw id
         }
@@ -37,25 +37,25 @@ public class VeinMinerHudOverlay {
         String keyName = VeinGlowClient.KEY_MINE == null ? "V" : VeinGlowClient.KEY_MINE.getBoundKeyLocalizedText().getString();
 
         String keyHint = switch (actMode) {
-            case 2 -> Text.translatable("hud.tcveinminer.hint.hold_sneak",  keyName).getString();
-            case 3 -> Text.translatable("hud.tcveinminer.hint.toggle",      keyName).getString();
-            case 4 -> Text.translatable("hud.tcveinminer.hint.toggle_sneak", keyName).getString();
-            default -> Text.translatable("hud.tcveinminer.hint.hold",       keyName).getString();
+            case 2 -> Component.translatable("hud.tcveinminer.hint.hold_sneak",  keyName).getString();
+            case 3 -> Component.translatable("hud.tcveinminer.hint.toggle",      keyName).getString();
+            case 4 -> Component.translatable("hud.tcveinminer.hint.toggle_sneak", keyName).getString();
+            default -> Component.translatable("hud.tcveinminer.hint.hold",       keyName).getString();
         };
 
         String statusText;
         if (VeinGlowClient.isMining) {
-            statusText = Text.translatable("hud.tcveinminer.mining",
+            statusText = Component.translatable("hud.tcveinminer.mining",
                     String.valueOf(HudNotifier.lastMined),
                     String.valueOf(HudNotifier.lastMax),
                     modeLabel).getString();
         } else if (holding) {
-            statusText = Text.translatable("hud.tcveinminer.ready",   keyHint, modeLabel).getString();
+            statusText = Component.translatable("hud.tcveinminer.ready",   keyHint, modeLabel).getString();
         } else {
-            statusText = Text.translatable("hud.tcveinminer.waiting", keyHint, modeLabel).getString();
+            statusText = Component.translatable("hud.tcveinminer.waiting", keyHint, modeLabel).getString();
         }
 
-        int textW  = client.textRenderer.getWidth(statusText);
+        int textW  = minecraft.font.width(statusText);
         int pillW  = textW + 16;
         int x      = ClientConfigManager.instance.hudPositionX;
         int y      = ClientConfigManager.instance.hudPositionY;
@@ -72,16 +72,16 @@ public class VeinMinerHudOverlay {
 
             String msg;
             if (HudNotifier.lastCancelled) {
-                msg = Text.translatable("hud.tcveinminer.cancelled",
+                msg = Component.translatable("hud.tcveinminer.cancelled",
                         String.valueOf(HudNotifier.lastMined),
                         String.valueOf(HudNotifier.lastMax)).getString();
             } else {
-                msg = Text.translatable("hud.tcveinminer.done",
+                msg = Component.translatable("hud.tcveinminer.done",
                         String.valueOf(HudNotifier.lastMined),
                         String.valueOf(HudNotifier.lastMax)).getString();
             }
 
-            int msgW     = client.textRenderer.getWidth(msg);
+            int msgW     = minecraft.font.width(msg);
             int msgPillW = msgW + 16;
             int msgY     = y + 18;
 

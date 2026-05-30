@@ -2,14 +2,14 @@ package com.tcveinminer.engine.action.impl;
 
 import com.tcveinminer.engine.action.ActionContext;
 import com.tcveinminer.engine.action.BlockAction;
-import net.minecraft.block.Blocks;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.core.BlockPos;
 
 /**
  * Fluid scoop action — scoops a single fluid source block.
@@ -23,10 +23,10 @@ public final class FluidScoopAction implements BlockAction {
     public boolean execute(ServerPlayerEntity player, ServerWorld world, BlockPos pos, ActionContext ctx) {
         if (!(ctx instanceof ActionContext.BucketContext bc)) return false;
 
-        net.minecraft.block.BlockState state = world.getBlockState(pos);
-        if (!state.getFluidState().isStill()) return false;
+        net.minecraft.world.level.block.state.BlockState state = world.getBlockState(pos);
+        if (!state.getFluidState().isSource()) return false;
 
-        net.minecraft.block.Block fluidBlock = state.getBlock();
+        net.minecraft.world.level.block.Block fluidBlock = state.getBlock();
         Item filledBucket;
         if (fluidBlock == Blocks.WATER) {
             filledBucket = Items.WATER_BUCKET;
@@ -40,7 +40,7 @@ public final class FluidScoopAction implements BlockAction {
         if (!removeSingleItem(player, Items.BUCKET)) return false;
 
         // Remove fluid block
-        world.setBlockState(pos, Blocks.AIR.getDefaultState(), 3);
+        world.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
 
         // Give filled bucket
         giveSingleItem(player, filledBucket);
@@ -59,7 +59,7 @@ public final class FluidScoopAction implements BlockAction {
         for (int i = 0; i < player.getInventory().size(); i++) {
             ItemStack stack = player.getInventory().getStack(i);
             if (!stack.isEmpty() && stack.getItem() == item) {
-                stack.decrement(1);
+                stack.shrink(1);
                 return true;
             }
         }

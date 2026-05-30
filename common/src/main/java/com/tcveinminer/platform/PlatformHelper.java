@@ -1,6 +1,6 @@
 package com.tcveinminer.platform;
 
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 import org.slf4j.Logger;
 
 import java.nio.file.Path;
@@ -50,5 +50,5 @@ public interface PlatformHelper {
 
     // ── Player Utilities ──────────────────────────────────────────────────
 
-    boolean isOperator(ServerPlayerEntity player);
+    boolean isOperator(ServerPlayer player);
 }

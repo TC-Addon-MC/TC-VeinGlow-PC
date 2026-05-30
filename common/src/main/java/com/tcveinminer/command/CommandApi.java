@@ -1,7 +1,7 @@
 package com.tcveinminer.command;
 
 import com.mojang.brigadier.CommandDispatcher;
-import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.commands.CommandSourceStack;
 
 public final class CommandApi {
     @SuppressWarnings("unchecked")

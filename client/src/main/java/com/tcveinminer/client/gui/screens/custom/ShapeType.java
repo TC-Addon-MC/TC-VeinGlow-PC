@@ -1,7 +1,7 @@
 // File: ShapeType.java
 package com.tcveinminer.client.gui.screens.custom;
 
-import net.minecraft.text.Text;
+import net.minecraft.network.chat.Component;
 
 public enum ShapeType {
     FINITE_VOLUME("gui.tcveinminer.shape.finite"),
@@ -12,5 +12,5 @@ public enum ShapeType {
 
     private final String translationKey;
     ShapeType(String translationKey) { this.translationKey = translationKey; }
-    public String getDisplayName() { return Text.translatable(translationKey).getString(); }
+    public String getDisplayName() { return Component.translatable(translationKey).getString(); }
 }

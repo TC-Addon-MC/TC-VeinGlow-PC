@@ -3,9 +3,9 @@ package com.tcveinminer.engine.action.impl;
 import com.tcveinminer.engine.action.ActionContext;
 import com.tcveinminer.engine.action.BlockAction;
 import com.tcveinminer.engine.skill.CropHarvestSkill;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.core.BlockPos;
 
 /**
  * Harvest mature crop action — wraps {@link CropHarvestSkill}.

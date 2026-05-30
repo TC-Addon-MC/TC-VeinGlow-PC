@@ -2,7 +2,7 @@ package com.tcveinminer.api.query;
 
 import com.tcveinminer.engine.action.ActionType;
 import com.tcveinminer.engine.state.EngineState;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.core.BlockPos;
 
 import java.util.Set;
 

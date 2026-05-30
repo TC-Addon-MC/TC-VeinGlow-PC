@@ -40,14 +40,3 @@ dependencies {
 
     modApi("me.shedaniel.cloth:cloth-config-forge:${cloth_config_version}")
 }
-
-val bundledDeps = configurations.create("bundledDeps")
-dependencies {
-    bundledDeps(project(path = ":common", configuration = "transformProductionForge"))
-    bundledDeps(project(path = ":client", configuration = "transformProductionForge"))
-}
-
-tasks.named<org.gradle.jvm.tasks.Jar>("jar") {
-    from(bundledDeps.map { if (it.isDirectory) it else zipTree(it) })
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-}

@@ -3,8 +3,8 @@ package com.tcveinminer.client.gui.screens.tabs;
 import com.tcveinminer.client.gui.screens.MainMenuScreen;
 import com.tcveinminer.client.util.DrawHelper;
 import com.tcveinminer.client.util.ThemeColors;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
 
 public class SkillsTab implements MenuTab {
 
@@ -130,14 +130,14 @@ public class SkillsTab implements MenuTab {
 
     // ── Render ───────────────────────────────────────────────────────────────
     @Override
-    public void render(DrawContext ctx, MainMenuScreen screen, int cx, int cy, int cw, int ch,
+    public void render(GuiGraphics ctx, MainMenuScreen screen, int cx, int cy, int cw, int ch,
             int mouseX, int mouseY, float delta) {
 
         DrawHelper.drawCard(ctx, cx, cy, cw, ch);
 
         // Title
         ctx.drawTextWithShadow(screen.getTextRenderer(),
-                Text.translatable("gui.tcveinminer.skills.title").getString(),
+                Component.translatable("gui.tcveinminer.skills.title").getString(),
                 cx + 8, cy + 3, ThemeColors.TEXT_LABEL);
 
         SkillEntry[] entries = buildEntries(screen);
@@ -200,7 +200,7 @@ public class SkillsTab implements MenuTab {
             ctx.fill(bx + 3, by + 3, bx + 7, by + 7, dotColor);
 
             // Label chip — tên ngắn, màu theo trạng thái
-            String label = Text.translatable(entries[i].labelKey).getString();
+            String label = Component.translatable(entries[i].labelKey).getString();
             int labelColor = active
                     ? (hovered ? 0xFFFFD875 : ThemeColors.GOLD)
                     : (hovered ? ThemeColors.TEXT_BRIGHT : ThemeColors.TEXT_DIM);
@@ -227,7 +227,7 @@ public class SkillsTab implements MenuTab {
 
         if (hoveredIndex >= 0 && hoveredIndex < count) {
             SkillEntry entry = entries[hoveredIndex];
-            String name = Text.translatable(entry.labelKey).getString();
+            String name = Component.translatable(entry.labelKey).getString();
             boolean active = entry.getter.get();
 
             // Tên skill + badge trạng thái
@@ -241,7 +241,7 @@ public class SkillsTab implements MenuTab {
             ctx.drawTextWithShadow(screen.getTextRenderer(), badge, badgeX, descY + 4, badgeColor);
 
             // Mô tả
-            String desc = Text.translatable(entry.descKey).getString();
+            String desc = Component.translatable(entry.descKey).getString();
             ctx.drawText(screen.getTextRenderer(), desc,
                     cx + 8, descY + 16, ThemeColors.TEXT_DIM, false);
 
@@ -251,7 +251,7 @@ public class SkillsTab implements MenuTab {
                     cx + 8, descY + DESC_H - 12, 0xFF374151, false);
 
             if (screen.getState().enableToolSwapSkill && screen.getState().enableToolProtectSkill) {
-                String comboHint = Text.translatable("gui.tcveinminer.skills.tool_combo_hint1").getString();
+                String comboHint = Component.translatable("gui.tcveinminer.skills.tool_combo_hint1").getString();
                 ctx.drawText(screen.getTextRenderer(), comboHint, cx + 8 + screen.getTextRenderer().getWidth(hint) + 10, descY + DESC_H - 12, 0xFF00AAFF, false);
             }
         } else {
@@ -260,13 +260,13 @@ public class SkillsTab implements MenuTab {
                     "Hover over a skill to see details",
                     cx + 8, descY + (DESC_H - 8) / 2, 0xFF374151, false);
             if (screen.getState().enableToolSwapSkill && screen.getState().enableToolProtectSkill) {
-                String comboHint = Text.translatable("gui.tcveinminer.skills.tool_combo_hint2").getString();
+                String comboHint = Component.translatable("gui.tcveinminer.skills.tool_combo_hint2").getString();
                 ctx.drawText(screen.getTextRenderer(), comboHint, cx + 8, descY + DESC_H - 12, 0xFF00AAFF, false);
             }
         }
 
         // Threshold Label
-        String threshLabel = Text.translatable("gui.tcveinminer.skills.protect_threshold").getString();
+        String threshLabel = Component.translatable("gui.tcveinminer.skills.protect_threshold").getString();
         ctx.drawTextWithShadow(screen.getTextRenderer(), threshLabel, cx + cw - 100 - 8 - screen.getTextRenderer().getWidth(threshLabel) - 4, cy + ch - DESC_H - 20, ThemeColors.TEXT_BRIGHT);
 
         // Scrollbar hint nếu có thể cuộn

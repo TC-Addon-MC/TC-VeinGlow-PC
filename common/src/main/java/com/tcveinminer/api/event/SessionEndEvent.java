@@ -1,8 +1,8 @@
 package com.tcveinminer.api.event;
 
 import com.tcveinminer.engine.action.ActionType;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.world.World;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 
 /**
  * Event data when a mining session ends (either finished naturally or cancelled).

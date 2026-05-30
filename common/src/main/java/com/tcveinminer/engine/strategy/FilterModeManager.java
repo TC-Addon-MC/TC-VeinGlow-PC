@@ -1,23 +1,23 @@
 package com.tcveinminer.engine.strategy;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.FallingBlock;
-import net.minecraft.block.FluidBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.FallingBlock;
+import net.minecraft.world.level.block.LiquidBlock;
 import com.tcveinminer.config.ConfigManager;
 
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.registry.tag.BlockTags;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.tag.TagKey;
-import net.minecraft.state.property.Property;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.world.World;
-import net.minecraft.world.border.WorldBorder;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.level.block.state.properties.Property;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.border.WorldBorder;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -109,7 +109,7 @@ public final class FilterModeManager {
 
         Set<String> normalized = new LinkedHashSet<>();
         for (Identifier id : input) {
-            if (id != null && Registries.BLOCK.containsId(id)) {
+            if (id != null && BuiltInRegistries.BLOCK.containsKey(id)) {
                 normalized.add(id.toString());
             }
         }
@@ -155,12 +155,12 @@ public final class FilterModeManager {
             value = "minecraft:" + value;
         }
 
-        Identifier id = Identifier.tryParse(value);
-        if (id == null || !Registries.BLOCK.containsId(id))
+        Identifier id = ResourceLocation.tryParse(value);
+        if (id == null || !BuiltInRegistries.BLOCK.containsKey(id))
             return null;
 
         Block block = Registries.BLOCK.get(id);
-        return block == net.minecraft.block.Blocks.AIR ? null : id;
+        return block == net.minecraft.world.level.block.Blocks.AIR ? null : id;
     }
 
     /**
@@ -230,7 +230,7 @@ public final class FilterModeManager {
             return ctx -> {
                 if (blocked == null || blocked.isEmpty())
                     return true;
-                String id = Registries.BLOCK.getId(ctx.currentState().getBlock()).toString();
+                String id = BuiltInRegistries.BLOCK.getKey(ctx.currentState().getBlock()).toString();
                 return !blocked.contains(id);
             };
         }
@@ -254,14 +254,14 @@ public final class FilterModeManager {
             return ctx -> {
                 if (ctx.currentState().getBlock() != ctx.targetState().getBlock()) return false;
                 Block b = ctx.currentState().getBlock();
-                if (b instanceof net.minecraft.block.CropBlock crop) {
+                if (b instanceof net.minecraft.world.level.block.CropBlock crop) {
                     return crop.isMature(ctx.currentState()) == crop.isMature(ctx.targetState());
-                } else if (b instanceof net.minecraft.block.NetherWartBlock) {
-                    return ctx.currentState().get(net.minecraft.state.property.Properties.AGE_3).equals(
-                           ctx.targetState().get(net.minecraft.state.property.Properties.AGE_3));
-                } else if (b instanceof net.minecraft.block.CocoaBlock) {
-                    return ctx.currentState().get(net.minecraft.state.property.Properties.AGE_2).equals(
-                           ctx.targetState().get(net.minecraft.state.property.Properties.AGE_2));
+                } else if (b instanceof net.minecraft.world.level.block.NetherWartBlock) {
+                    return ctx.currentState().get(net.minecraft.world.level.block.state.properties.BlockStateProperties.AGE_3).equals(
+                           ctx.targetState().get(net.minecraft.world.level.block.state.properties.BlockStateProperties.AGE_3));
+                } else if (b instanceof net.minecraft.world.level.block.CocoaBlock) {
+                    return ctx.currentState().get(net.minecraft.world.level.block.state.properties.BlockStateProperties.AGE_2).equals(
+                           ctx.targetState().get(net.minecraft.world.level.block.state.properties.BlockStateProperties.AGE_2));
                 }
                 return true;
             };
@@ -381,7 +381,7 @@ public final class FilterModeManager {
         }
 
         public static BlockFilter bedrock() {
-            return ctx -> ctx.currentState().getBlock() != net.minecraft.block.Blocks.BEDROCK;
+            return ctx -> ctx.currentState().getBlock() != net.minecraft.world.level.block.Blocks.BEDROCK;
         }
 
         public static BlockFilter withinWorldBorder() {
@@ -402,7 +402,7 @@ public final class FilterModeManager {
             return ctx -> {
                 // Kiểm tra xem block có bị piston khóa không
                 BlockState state = ctx.currentState();
-                return state.getPistonBehavior() != net.minecraft.block.piston.PistonBehavior.BLOCK;
+                return state.getPistonPushReaction() != net.minecraft.world.level.block.piston.PistonBehavior.BLOCK;
             };
         }
 
@@ -502,7 +502,7 @@ public final class FilterModeManager {
                     Filters.chunkLoadedOnly(),
                     Filters.maxVisited(maxBlocks),
                     Filters.sameBlock(),
-                    ctx -> ctx.currentState().getFluidState().isStill(),
+                    ctx -> ctx.currentState().getFluidState().isSource(),
                     ctx -> Filters.blacklist(ctx.blacklist()).test(ctx)
             );
         }

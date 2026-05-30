@@ -2,12 +2,12 @@ package com.tcveinminer.engine.capability.impl;
 
 import com.tcveinminer.engine.action.ActionType;
 import com.tcveinminer.engine.capability.ItemActionCapability;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.HoeItem;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.HoeItem;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * Detects hoe items targeting tillable blocks (dirt, grass, coarse dirt, etc.).

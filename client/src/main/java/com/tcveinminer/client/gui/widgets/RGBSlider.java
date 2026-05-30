@@ -1,9 +1,9 @@
 package com.tcveinminer.client.gui.widgets;
 
 import com.tcveinminer.client.gui.screens.MenuState;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.widget.SliderWidget;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractSliderButton;
+import net.minecraft.network.chat.Component;
 
 /**
  * RGBSlider — Thanh trượt chọn màu kênh R / G / B.
@@ -21,7 +21,7 @@ public class RGBSlider extends SliderWidget {
     public RGBSlider(int x, int y, int w, int h, char channel, MenuState state,
                      double initValue, boolean disabled) {
         super(x, y, w, h,
-                Text.literal(String.valueOf((int) (initValue * 255))),
+                Component.literal(String.valueOf((int) (initValue * 255))),
                 initValue);
         this.state   = state;
         this.channel = channel;
@@ -36,7 +36,7 @@ public class RGBSlider extends SliderWidget {
             case 'G' -> state.colorG = v;
             case 'B' -> state.colorB = v;
         }
-        setMessage(Text.literal(String.valueOf(v)));
+        setMessage(Component.literal(String.valueOf(v)));
     }
 
     @Override
@@ -49,7 +49,7 @@ public class RGBSlider extends SliderWidget {
     // ─────────────────────────────────────────────────────────────
 
     @Override
-    public void renderWidget(DrawContext ctx, int mouseX, int mouseY, float delta) {
+    public void renderWidget(GuiGraphics ctx, int mouseX, int mouseY, float delta) {
         int x = getX(), y = getY(), w = getWidth(), h = getHeight();
 
         if (!active) {

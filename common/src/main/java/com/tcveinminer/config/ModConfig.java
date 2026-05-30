@@ -1,6 +1,6 @@
 package com.tcveinminer.config;
 
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.*;
 

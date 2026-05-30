@@ -2,10 +2,10 @@ package com.tcveinminer.engine.strategy;
 
 import com.tcveinminer.engine.traversal.OrientationContext;
 import com.tcveinminer.engine.traversal.TraversalUtils;
-import net.minecraft.block.BlockState;
-import net.minecraft.registry.tag.BlockTags;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.item.Item;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.item.Item;
 import com.tcveinminer.engine.state.EngineState;
 
 import java.util.*;
@@ -96,7 +96,7 @@ public final class SpreadModeManager extends BaseBfsStrategy {
         }
 
         // Giai đoạn 2: Xác định loại lá đúng — lá tiếp xúc trực tiếp với gỗ
-        net.minecraft.block.Block canonicalLeafBlock = null;
+        net.minecraft.world.level.block.Block canonicalLeafBlock = null;
         outer:
         for (BlockPos log : foundLogs) {
             for (int[] d : TraversalUtils.D6) {
@@ -124,7 +124,7 @@ public final class SpreadModeManager extends BaseBfsStrategy {
 
         // Giai đoạn 3: Lan lá chỉ cùng loại với lá tiếp xúc gỗ
         if (canonicalLeafBlock != null) {
-            final net.minecraft.block.Block leafBlock = canonicalLeafBlock;
+            final net.minecraft.world.level.block.Block leafBlock = canonicalLeafBlock;
             Set<BlockPos> visitedLeaves = new HashSet<>();
             visitedLeaves.addAll(foundLogs);
             visitedLeaves.add(req.origin());

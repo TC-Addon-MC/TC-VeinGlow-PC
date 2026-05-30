@@ -74,7 +74,7 @@ public class ShapeAnalyzer {
 
         if (infiniteInAnyAxis) {
             type = ShapeType.INFINITE;
-            error = net.minecraft.text.Text.translatable("gui.tcveinminer.error.infinite_shape").getString();
+            error = net.minecraft.network.chat.Component.translatable("gui.tcveinminer.error.infinite_shape").getString();
             return;
         }
 

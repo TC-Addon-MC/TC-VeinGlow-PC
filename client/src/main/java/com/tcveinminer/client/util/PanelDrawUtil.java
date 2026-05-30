@@ -1,19 +1,19 @@
 package com.tcveinminer.client.util;
 
-import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.GuiGraphics;
 
 public final class PanelDrawUtil {
 
-    public static void panel(DrawContext ctx, int x, int y, int w, int h) {
+    public static void panel(GuiGraphics ctx, int x, int y, int w, int h) {
         DrawHelper.drawPanel(ctx, x, y, w, h);
     }
 
-    public static void card(DrawContext ctx, int x, int y, int w, int h) {
+    public static void card(GuiGraphics ctx, int x, int y, int w, int h) {
         DrawHelper.drawCard(ctx, x, y, w, h);
     }
 
     /** type: 0=gold, 1=emerald, 2=redstone, 3=stone, 4=purple */
-    public static void tag(DrawContext ctx, int x, int y, int w, int h, int type) {
+    public static void tag(GuiGraphics ctx, int x, int y, int w, int h, int type) {
         int bg, border;
         switch (type) {
             case 1  -> { bg = ThemeColors.EMERALD_FILL;   border = ThemeColors.EMERALD_BORDER;   }

@@ -25,17 +25,17 @@ import com.tcveinminer.network.payload.HighlightBlockListData;
 import com.tcveinminer.network.payload.HighlightDeltaData;
 import com.tcveinminer.network.payload.LookedAtBlockData;
 import com.tcveinminer.util.ExpressionEvaluator;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.FluidBlock;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.Hand;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.LiquidBlock;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -65,7 +65,7 @@ public final class MiningEngine implements EngineQuery {
     private final PreviewManager previewManager = new PreviewManager();
 
     // ── Preview cache ─────────────────────────────────────────────────────
-    private record PreviewCacheKey(BlockPos pos, String shape, int maxBlocks, net.minecraft.item.Item heldItem) {
+    private record PreviewCacheKey(BlockPos pos, String shape, int maxBlocks, net.minecraft.world.item.Item heldItem) {
     }
 
     private PreviewCacheKey lastPreviewKey = null;
@@ -173,8 +173,8 @@ public final class MiningEngine implements EngineQuery {
             return;
         }
 
-        if (spe.getMainHandStack().getItem() == Items.BUCKET
-                && !(targetState.getBlock() instanceof FluidBlock && targetState.getFluidState().isStill())) {
+        if (spe.getMainHandItem().getItem() == Items.BUCKET
+                && !(targetState.getBlock() instanceof FluidBlock && targetState.getFluidState().isSource())) {
             NetworkManager.sendToPlayer(spe, new ActivationConfirmData(false));
             NetworkManager.sendToPlayer(spe, new FilterResultData(false));
             ActionSession session = ActionSessionManager.getOrCreate(spe.getUuid());
@@ -205,7 +205,7 @@ public final class MiningEngine implements EngineQuery {
         int maxBlocksToMine = this.playerMaxBlocks - 1;
         FilterModeManager.BlockFilter filter;
 
-        ActionType rightAction = CapabilityRegistry.resolve(spe, spe.getMainHandStack(), targetState, Hand.MAIN_HAND);
+        ActionType rightAction = CapabilityRegistry.resolve(spe, spe.getMainHandItem(), targetState, InteractionHand.MAIN_HAND);
 
         if (rightAction != ActionType.VANILLA_FALLBACK && rightAction != ActionType.USE_ITEM) {
             strategy = (customStrategy != null) ? customStrategy : StrategyRegistry.get(this.playerShape);
@@ -228,7 +228,7 @@ public final class MiningEngine implements EngineQuery {
         } else {
             strategy = (customStrategy != null) ? customStrategy : StrategyRegistry.get(this.playerShape);
             ActionType leftAction = ("TREE_CAP".equals(this.playerShape)
-                    && targetState.isIn(net.minecraft.registry.tag.BlockTags.LOGS))
+                    && targetState.isIn(net.minecraft.tags.BlockTags.LOGS))
                             ? ActionType.TREE_CAP
                             : ActionType.BREAK;
 
@@ -238,7 +238,7 @@ public final class MiningEngine implements EngineQuery {
         FilterModeManager.FilterCache cache = new FilterModeManager.FilterCache();
 
         FilterModeManager.FilterContext fCtxTarget = new FilterModeManager.FilterContext(
-                world, spe, spe.getMainHandStack(), targetPos, targetPos,
+                world, spe, spe.getMainHandItem(), targetPos, targetPos,
                 targetState, targetState, Direction.UP, 0, 0, 0,
                 strategy.getModeType(), cache, activeBlacklist, c.requireHarvestCapability);
 
@@ -257,16 +257,16 @@ public final class MiningEngine implements EngineQuery {
 
         PreviewCacheKey key = new PreviewCacheKey(
                 targetPos, this.playerShape, this.playerMaxBlocks,
-                spe.getMainHandStack().getItem());
+                spe.getMainHandItem().getItem());
 
         List<BlockPos> found;
         if (key.equals(lastPreviewKey) && lastPreviewResult != null) {
             found = lastPreviewResult;
         } else {
             MiningStrategy.MiningRequest req = new MiningStrategy.MiningRequest(
-                    world, spe, spe.getMainHandStack(),
+                    world, spe, spe.getMainHandItem(),
                     targetPos, targetState, maxBlocksToMine, ctx, filter, cache, activeBlacklist,
-                    c.requireHarvestCapability, EngineState.PREVIEW, spe.getMainHandStack().getItem(),
+                    c.requireHarvestCapability, EngineState.PREVIEW, spe.getMainHandItem().getItem(),
                     c.allowHeldItemChange);
             found = strategy.collectBlocks(req);
             lastPreviewKey = key;
@@ -409,7 +409,7 @@ public final class MiningEngine implements EngineQuery {
     // ── Utilities ─────────────────────────────────────────────────────────
 
     private static String blockId(BlockState state) {
-        return net.minecraft.registry.Registries.BLOCK.getId(state.getBlock()).toString();
+        return net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
     }
 
     private static Set<String> mergeBlacklists(Set<String> configBlacklist, Set<String> playerBlacklist) {

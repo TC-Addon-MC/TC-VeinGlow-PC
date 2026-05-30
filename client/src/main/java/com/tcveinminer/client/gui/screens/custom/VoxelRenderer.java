@@ -1,8 +1,8 @@
 // File 6: VoxelRenderer.java
 package com.tcveinminer.client.gui.screens.custom;
 
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
 import java.util.ArrayList;
 import java.util.List;
 import com.tcveinminer.client.util.ThemeColors;
@@ -10,10 +10,11 @@ import com.tcveinminer.client.util.ThemeColors;
 public class VoxelRenderer {
     private static final int VOXEL_RANGE = 8;
 
-    public static void drawWireframe3D(DrawContext ctx, TextRenderer textRenderer, RenderMesh mesh, String errorMsg, int screenCX, int screenCY, int areaW, float rotX, float rotY) {
+    public static void drawWireframe3D(GuiGraphics ctx, Font font, RenderMesh mesh, String errorMsg, int screenCX,
+            int screenCY, int areaW, float rotX, float rotY) {
         if (mesh == null || mesh.isEmpty()) {
             String msg = errorMsg != null ? "Công thức không hợp lệ" : "Không có khối nào";
-            ctx.drawCenteredTextWithShadow(textRenderer, msg, screenCX, screenCY - 4, ThemeColors.TEXT_DIM);
+            ctx.drawCenteredString(font, msg, screenCX, screenCY - 4, ThemeColors.TEXT_DIM);
             return;
         }
 
@@ -65,11 +66,11 @@ public class VoxelRenderer {
     }
 
     private static float getTY(int y) {
-        return Math.max(0, Math.min(1, (y + VOXEL_RANGE) / (float)(VOXEL_RANGE * 2)));
+        return Math.max(0, Math.min(1, (y + VOXEL_RANGE) / (float) (VOXEL_RANGE * 2)));
     }
 
     private static float getLightFactor(float z) {
-        float tZ = Math.max(0, Math.min(1, (z + VOXEL_RANGE) / (float)(VOXEL_RANGE * 2)));
+        float tZ = Math.max(0, Math.min(1, (z + VOXEL_RANGE) / (float) (VOXEL_RANGE * 2)));
         return 0.35f + (0.65f * (1.0f - tZ));
     }
 
@@ -80,33 +81,39 @@ public class VoxelRenderer {
         float cosX = (float) Math.cos(rxRad), sinX = (float) Math.sin(rxRad);
         float y2 = y * cosX - z1 * sinX;
         float z2 = y * sinX + z1 * cosX;
-        return new float[]{x1, y2, z2};
+        return new float[] { x1, y2, z2 };
     }
 
     private static float[] project(float x, float y, float z, int cx, int cy, float scale) {
         float fov = 18.0f;
         float d = fov / (fov + z);
-        return new float[]{cx + x * scale * d, cy - y * scale * d, z};
+        return new float[] { cx + x * scale * d, cy - y * scale * d, z };
     }
 
     private static int lerpColor(int a, int b, float t) {
         int aa = (a >> 24) & 0xFF, ra = (a >> 16) & 0xFF, ga = (a >> 8) & 0xFF, ba = a & 0xFF;
         int ab = (b >> 24) & 0xFF, rb = (b >> 16) & 0xFF, gb = (b >> 8) & 0xFF, bb = b & 0xFF;
-        return ((int)(aa + (ab - aa) * t) << 24) | ((int)(ra + (rb - ra) * t) << 16)
-                | ((int)(ga + (gb - ga) * t) << 8)  | (int)(ba + (bb - ba) * t);
+        return ((int) (aa + (ab - aa) * t) << 24) | ((int) (ra + (rb - ra) * t) << 16)
+                | ((int) (ga + (gb - ga) * t) << 8) | (int) (ba + (bb - ba) * t);
     }
 
     private static int darken(int color, float factor) {
         return ((color >> 24) & 0xFF) << 24
-                | (int)(((color >> 16) & 0xFF) * factor) << 16
-                | (int)(((color >>  8) & 0xFF) * factor) << 8
-                | (int)((color & 0xFF) * factor);
+                | (int) (((color >> 16) & 0xFF) * factor) << 16
+                | (int) (((color >> 8) & 0xFF) * factor) << 8
+                | (int) ((color & 0xFF) * factor);
     }
 
     private static class Dot3D {
-        float x, y, depth; int color, size;
+        float x, y, depth;
+        int color, size;
+
         Dot3D(float x, float y, float depth, int color, int size) {
-            this.x = x; this.y = y; this.depth = depth; this.color = color; this.size = size;
+            this.x = x;
+            this.y = y;
+            this.depth = depth;
+            this.color = color;
+            this.size = size;
         }
     }
 }

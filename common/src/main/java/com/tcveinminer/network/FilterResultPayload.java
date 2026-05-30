@@ -1,14 +1,14 @@
 package com.tcveinminer.network;
 
-import net.minecraft.network.RegistryByteBuf;
-import net.minecraft.network.codec.PacketCodec;
-import net.minecraft.network.codec.PacketCodecs;
-import net.minecraft.network.packet.CustomPayload;
-import net.minecraft.util.Identifier;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 
 public record FilterResultPayload(boolean allowHighlight) implements CustomPayload {
     public static final Id<FilterResultPayload> ID =
-        new Id<>(Identifier.of("tc_veinminer", "filter_result"));
+        new Id<>(ResourceLocation.parse("tc_veinminer", "filter_result"));
 
     public static final PacketCodec<RegistryByteBuf, FilterResultPayload> CODEC = PacketCodec.tuple(
             PacketCodecs.BOOL, FilterResultPayload::allowHighlight,

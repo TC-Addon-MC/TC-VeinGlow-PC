@@ -2,14 +2,14 @@ package com.tcveinminer.engine.action.impl;
 
 import com.tcveinminer.engine.action.ActionContext;
 import com.tcveinminer.engine.action.BlockAction;
-import net.minecraft.block.BlockState;
-import net.minecraft.item.BlockItem;
-import net.minecraft.item.ItemStack;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.util.Hand;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.core.BlockPos;
 
 public final class PlantAction implements BlockAction {
 
@@ -27,11 +27,11 @@ public final class PlantAction implements BlockAction {
         if (seedStack.isEmpty()) return false;
 
         if (seedStack.getItem() instanceof BlockItem blockItem) {
-            BlockState plantState = blockItem.getBlock().getDefaultState();
-            world.setBlockState(plantPos, plantState, 3);
+            BlockState plantState = blockItem.getBlock().defaultBlockState();
+            world.setBlock(plantPos, plantState, 3);
             world.playSound(null, plantPos, plantState.getSoundGroup().getPlaceSound(), SoundCategory.BLOCKS, 1.0F, 1.0F);
             if (!player.isCreative()) {
-                seedStack.decrement(1);
+                seedStack.shrink(1);
             }
             return true;
         }

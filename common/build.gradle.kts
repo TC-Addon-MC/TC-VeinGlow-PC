@@ -4,8 +4,8 @@ plugins {
     id("architectury-plugin")
 }
 val minecraft_version: String by project
-val yarn_mappings: String by project
-val loader_version: String by project
+val parchment_version: String by project
+val parchment_mc_version: String by project
 val mod_version: String by project
 version = mod_version
 base { archivesName = "tc-veinglow-common" }
@@ -13,12 +13,15 @@ architectury {
     common("fabric", "neoforge", "forge")
 }
 loom {
+    silentMojangMappingsLicense()
     accessWidenerPath = file("src/main/resources/tc_veinminer.accesswidener")
 }
 dependencies {
     minecraft("com.mojang:minecraft:${minecraft_version}")
-    mappings("net.fabricmc:yarn:${yarn_mappings}:v2")
-    compileOnly("net.fabricmc:fabric-loader:${loader_version}")
+    mappings(loom.layered {
+        officialMojangMappings()
+        parchment("org.parchmentmc.data:parchment-${parchment_mc_version}:${parchment_version}@zip")
+    })
     implementation("com.google.code.gson:gson:2.10.1")
 }
 configurations.create("commonJava") {
@@ -26,4 +29,3 @@ configurations.create("commonJava") {
     isCanBeConsumed = true
 }
 tasks.jar { archiveClassifier = "dev" }
-

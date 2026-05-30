@@ -6,10 +6,10 @@ import com.tcveinminer.config.ConfigManager;
 import com.tcveinminer.config.ModConfig;
 import com.tcveinminer.network.NetworkManager;
 import com.tcveinminer.network.payload.ConfigSyncData;
-import net.minecraft.server.command.CommandManager;
-import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
+import net.minecraft.commands.Commands;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +24,7 @@ public final class VeinMinerCommand {
                     .executes(ctx -> {
                         ConfigManager.load();
                         broadcastConfigSync(ctx.getSource().getServer().getPlayerManager().getPlayerList());
-                        ctx.getSource().sendFeedback(() -> Text.literal("[TC VeinGlow] Config reloaded!"), false);
+                        ctx.getSource().sendFeedback(() -> Component.literal("[TC VeinGlow] Config reloaded!"), false);
                         return 1;
                     })
                 )
@@ -37,7 +37,7 @@ public final class VeinMinerCommand {
                                     fields.add(f.getName());
                                 }
                             }
-                            return net.minecraft.command.CommandSource.suggestMatching(fields, builder);
+                            return net.minecraft.commands.SharedSuggestionProvider.suggestMatching(fields, builder);
                         })
                         .then(CommandManager.argument("value", StringArgumentType.string())
                             .suggests((ctx, builder) -> {
@@ -45,7 +45,7 @@ public final class VeinMinerCommand {
                                     String prop = StringArgumentType.getString(ctx, "property");
                                     var field = ModConfig.class.getField(prop);
                                     if (field.getType() == boolean.class) {
-                                        return net.minecraft.command.CommandSource.suggestMatching(
+                                        return net.minecraft.commands.SharedSuggestionProvider.suggestMatching(
                                                 List.of("true", "false"), builder);
                                     }
                                 } catch (Exception ignored) {}
@@ -63,18 +63,18 @@ public final class VeinMinerCommand {
                                     } else if (field.getType() == String.class) {
                                         field.set(ConfigManager.get(), val);
                                     } else {
-                                        ctx.getSource().sendError(Text.literal("Unsupported property type."));
+                                        ctx.getSource().sendError(Component.literal("Unsupported property type."));
                                         return 0;
                                     }
                                     ConfigManager.save();
                                     broadcastConfigSync(ctx.getSource().getServer().getPlayerManager().getPlayerList());
                                     ctx.getSource().sendFeedback(
-                                            () -> Text.literal("[TC VeinGlow] Set " + prop + " = " + val), true);
+                                            () -> Component.literal("[TC VeinGlow] Set " + prop + " = " + val), true);
                                     return 1;
                                 } catch (NoSuchFieldException e) {
-                                    ctx.getSource().sendError(Text.literal("Property not found: " + prop));
+                                    ctx.getSource().sendError(Component.literal("Property not found: " + prop));
                                 } catch (Exception e) {
-                                    ctx.getSource().sendError(Text.literal("Error setting property: " + e.getMessage()));
+                                    ctx.getSource().sendError(Component.literal("Error setting property: " + e.getMessage()));
                                 }
                                 return 0;
                             })

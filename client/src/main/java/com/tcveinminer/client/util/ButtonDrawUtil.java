@@ -1,27 +1,27 @@
 package com.tcveinminer.client.util;
 
-import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.GuiGraphics;
 
 public final class ButtonDrawUtil {
 
     // ── Primitive shapes ────────────────────────────────────────────────────
 
     /** Nền màu trơn bo góc 1px */
-    private static void fillRounded(DrawContext ctx, int x, int y, int w, int h, int color) {
+    private static void fillRounded(GuiGraphics ctx, int x, int y, int w, int h, int color) {
         ctx.fill(x + 1, y,         x + w - 1, y + h,     color); // thân chính
         ctx.fill(x,     y + 1,     x + 1,     y + h - 1, color); // cạnh trái
         ctx.fill(x + w - 1, y + 1, x + w,     y + h - 1, color); // cạnh phải
     }
 
     /** Nền gradient bo góc 1px */
-    private static void fillRoundedGradient(DrawContext ctx, int x, int y, int w, int h, int cTop, int cBot) {
+    private static void fillRoundedGradient(GuiGraphics ctx, int x, int y, int w, int h, int cTop, int cBot) {
         ctx.fillGradient(x + 1,     y,     x + w - 1, y + h,     cTop, cBot);
         ctx.fillGradient(x,         y + 1, x + 1,     y + h - 1, cTop, cBot);
         ctx.fillGradient(x + w - 1, y + 1, x + w,     y + h - 1, cTop, cBot);
     }
 
     /** Viền ngoài bo góc 1px */
-    private static void drawRoundedBorder(DrawContext ctx, int x, int y, int w, int h, int c) {
+    private static void drawRoundedBorder(GuiGraphics ctx, int x, int y, int w, int h, int c) {
         ctx.fill(x + 1,     y,         x + w - 1, y + 1,     c); // trên
         ctx.fill(x + 1,     y + h - 1, x + w - 1, y + h,     c); // dưới
         ctx.fill(x,         y + 1,     x + 1,     y + h - 1, c); // trái
@@ -32,7 +32,7 @@ public final class ButtonDrawUtil {
      * Highlight sáng ở hàng pixel thứ 2 từ top — tạo cảm giác nổi 3D pixel-art.
      * Vẽ bên trong viền (x+2 … x+w-2) để không đè lên góc bo.
      */
-    private static void drawTopHighlight(DrawContext ctx, int x, int y, int w, int color) {
+    private static void drawTopHighlight(GuiGraphics ctx, int x, int y, int w, int color) {
         ctx.fill(x + 2, y + 1, x + w - 2, y + 2, color);
     }
 
@@ -56,7 +56,7 @@ public final class ButtonDrawUtil {
      * Nền xanh navy tối sâu, viền xanh sáng để nổi bật trên nền menu,
      * viền vàng khi selected với glow hiệu ứng.
      */
-    public static void drawPrimary(DrawContext ctx, int x, int y, int w, int h,
+    public static void drawPrimary(GuiGraphics ctx, int x, int y, int w, int h,
                                    boolean hovered, float selectProgress) {
         int bgTop  = hovered ? 0xFF1E2D45 : 0xFF16243A;
         int bgBot  = hovered ? 0xFF0E1926 : 0xFF08111E;
@@ -87,7 +87,7 @@ public final class ButtonDrawUtil {
      * Nền amber tối sâu (không vàng đặc), viền vàng sáng nổi bật.
      * Chữ phải là TRẮNG để đọc rõ trên nền tối này.
      */
-    public static void drawAmber(DrawContext ctx, int x, int y, int w, int h,
+    public static void drawAmber(GuiGraphics ctx, int x, int y, int w, int h,
                                   boolean hovered, boolean pressed) {
         int bgTop, bgBot, border;
         if (pressed) {
@@ -113,7 +113,7 @@ public final class ButtonDrawUtil {
      * PURPLE — custom / magic actions.
      * Nền tím tối, viền tím sáng.
      */
-    public static void drawPurple(DrawContext ctx, int x, int y, int w, int h, boolean hovered) {
+    public static void drawPurple(GuiGraphics ctx, int x, int y, int w, int h, boolean hovered) {
         int bgTop  = hovered ? 0xFF4C2FA0 : 0xFF3B2284;
         int bgBot  = hovered ? 0xFF2A1A70 : 0xFF1C1158;
         int border = hovered ? 0xFFCEAAFF : 0xFF9E7AF2;
@@ -127,7 +127,7 @@ public final class ButtonDrawUtil {
      * DANGER — xóa, reset nguy hiểm.
      * Nền đỏ tối sâu, viền đỏ rõ.
      */
-    public static void drawDanger(DrawContext ctx, int x, int y, int w, int h, boolean hovered) {
+    public static void drawDanger(GuiGraphics ctx, int x, int y, int w, int h, boolean hovered) {
         int bgTop  = hovered ? 0xFF5E1212 : 0xFF440E0E;
         int bgBot  = hovered ? 0xFF340808 : 0xFF220404;
         int border = hovered ? 0xFFFF6868 : 0xFFCC3636;
@@ -140,7 +140,7 @@ public final class ButtonDrawUtil {
     /**
      * LIST BUTTON — dùng trong danh sách cuộn, trạng thái selected/hover.
      */
-    public static void drawListButton(DrawContext ctx, int x, int y, int w, int h,
+    public static void drawListButton(GuiGraphics ctx, int x, int y, int w, int h,
                                        boolean hovered, boolean selected) {
         int bg     = (hovered || selected) ? ThemeColors.BTN_LIST_HOVER_BG : ThemeColors.BTN_LIST_BG;
         int border = selected ? ThemeColors.BTN_PRIMARY_SELECTED_BORDER

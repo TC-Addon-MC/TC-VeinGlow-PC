@@ -3,8 +3,8 @@ package com.tcveinminer.network.handlers;
 import com.tcveinminer.engine.MiningEngine;
 import com.tcveinminer.engine.state.PlayerStateRegistry;
 import com.tcveinminer.network.payload.ActivationRequestData;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.core.BlockPos;
 
 import java.util.UUID;
 
@@ -13,7 +13,8 @@ import java.util.UUID;
  * All loaders call {@link #handle(ServerPlayerEntity, ActivationRequestData)} after decoding.
  */
 public final class ActivationRequestHandler {
-    public static void handleRaw(Object player, ActivationRequestData data) {
+
+    public static void handleRaw(Object player, ActivationRequestData data) {
         handle((ServerPlayerEntity) player, data);
     }
 

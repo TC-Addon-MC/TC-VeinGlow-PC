@@ -1,12 +1,12 @@
 package com.tcveinminer.client;
 
 import com.tcveinminer.client.logic.BlockHighlighter;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.render.Camera;
-import net.minecraft.client.render.RenderTickCounter;
-import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.Camera;
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.renderer.MultiBufferSource;
+import com.mojang.blaze3d.vertex.PoseStack;
 
 public final class ClientApi {
     public static void openRadialMenuRaw() {
@@ -15,7 +15,7 @@ public final class ClientApi {
 
     public static void onHudRenderRaw(Object drawContext, Object tickCounter) {
         new com.tcveinminer.client.hud.VeinMinerHudOverlay().onHudRender(
-                (DrawContext) drawContext,
+                (GuiGraphics) drawContext,
                 (RenderTickCounter) tickCounter);
     }
 

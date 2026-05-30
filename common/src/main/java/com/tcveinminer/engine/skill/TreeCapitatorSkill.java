@@ -1,14 +1,14 @@
 package com.tcveinminer.engine.skill;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.registry.Registries;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 
 import java.util.List;
 
@@ -37,7 +37,7 @@ public final class TreeCapitatorSkill {
     private static void placeSapling(ServerWorld sw, BlockPos start, BlockState saplingState) {
         BlockPos groundPos = findGround(sw, start);
         if (groundPos != null && saplingState.canPlaceAt(sw, groundPos)) {
-            sw.setBlockState(groundPos, saplingState, 3);
+            sw.setBlock(groundPos, saplingState, 3);
         }
     }
 
@@ -75,16 +75,16 @@ public final class TreeCapitatorSkill {
     }
 
     public static BlockState getSaplingForBlock(Block block) {
-        Identifier id = Registries.BLOCK.getId(block);
+        Identifier id = BuiltInRegistries.BLOCK.getKey(block);
         String path = id.getPath();
-        if (path.contains("oak") && !path.contains("dark_oak")) return Blocks.OAK_SAPLING.getDefaultState();
-        if (path.contains("spruce")) return Blocks.SPRUCE_SAPLING.getDefaultState();
-        if (path.contains("birch")) return Blocks.BIRCH_SAPLING.getDefaultState();
-        if (path.contains("jungle")) return Blocks.JUNGLE_SAPLING.getDefaultState();
-        if (path.contains("acacia")) return Blocks.ACACIA_SAPLING.getDefaultState();
-        if (path.contains("dark_oak")) return Blocks.DARK_OAK_SAPLING.getDefaultState();
-        if (path.contains("mangrove")) return Blocks.MANGROVE_PROPAGULE.getDefaultState();
-        if (path.contains("cherry")) return Blocks.CHERRY_SAPLING.getDefaultState();
+        if (path.contains("oak") && !path.contains("dark_oak")) return Blocks.OAK_SAPLING.defaultBlockState();
+        if (path.contains("spruce")) return Blocks.SPRUCE_SAPLING.defaultBlockState();
+        if (path.contains("birch")) return Blocks.BIRCH_SAPLING.defaultBlockState();
+        if (path.contains("jungle")) return Blocks.JUNGLE_SAPLING.defaultBlockState();
+        if (path.contains("acacia")) return Blocks.ACACIA_SAPLING.defaultBlockState();
+        if (path.contains("dark_oak")) return Blocks.DARK_OAK_SAPLING.defaultBlockState();
+        if (path.contains("mangrove")) return Blocks.MANGROVE_PROPAGULE.defaultBlockState();
+        if (path.contains("cherry")) return Blocks.CHERRY_SAPLING.defaultBlockState();
         return null;
     }
 }

@@ -2,11 +2,11 @@ package com.tcveinminer.engine.strategy;
 
 import com.tcveinminer.engine.traversal.OrientationContext;
 import com.tcveinminer.engine.traversal.TraversalUtils;
-import net.minecraft.block.BlockState;
-import net.minecraft.registry.tag.BlockTags;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.item.Item;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.item.Item;
 import com.tcveinminer.engine.state.EngineState;
 
 import java.util.*;

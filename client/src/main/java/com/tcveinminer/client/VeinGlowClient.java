@@ -6,11 +6,11 @@ import com.tcveinminer.config.ModConfig;
 import com.tcveinminer.client.logic.BlockHighlighter;
 import com.tcveinminer.client.network.ClientNetworkManager;
 import com.tcveinminer.network.payload.*;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.text.Text;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.core.BlockPos;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,7 +22,7 @@ import java.util.List;
  */
 public final class VeinGlowClient {
 
-    public static net.minecraft.client.option.KeyBinding KEY_MINE;
+    public static net.minecraft.client.KeyMapping KEY_MINE;
     public static boolean holdKeyDown = false;
     public static boolean isMining = false;
     public static boolean isRadialMenuOpen = false;
@@ -36,7 +36,7 @@ public final class VeinGlowClient {
     private static boolean lastKeyPressed = false;
 
     private static BlockPos lastTargetPos = null;
-    private static net.minecraft.block.BlockState lastTargetState = null;
+    private static net.minecraft.world.level.block.state.BlockState lastTargetState = null;
     private static boolean forceUpdateNextTick = false;
     private static boolean lastHoldStateForActivation = false;
     private static long lastActivationSendTime = 0;
@@ -85,7 +85,7 @@ public final class VeinGlowClient {
         ClientConfigManager.save();
 
         if (client.player != null) {
-            client.player.sendMessage(Text.translatable("hud.tcveinminer.cycle_notification", getShapeDisplayName(newShape)), true);
+            minecraft.player.sendMessage(Component.translatable("hud.tcveinminer.cycle_notification", getShapeDisplayName(newShape)), true);
         }
     }
 
@@ -98,7 +98,7 @@ public final class VeinGlowClient {
             ClientConfigManager.save();
 
             if (client.player != null) {
-                client.player.sendMessage(Text.translatable("hud.tcveinminer.cycle_notification", getShapeDisplayName(newShape)), true);
+                minecraft.player.sendMessage(Component.translatable("hud.tcveinminer.cycle_notification", getShapeDisplayName(newShape)), true);
             }
         }
     }
@@ -151,8 +151,8 @@ public final class VeinGlowClient {
         
         isRadialMenuOpen = menuKeyPressed;
 
-        if (client.currentScreen == null && client.getWindow() != null) {
-            boolean sneaking = client.player.isSneaking();
+        if (client.screen == null && minecraft.getWindow() != null) {
+            boolean sneaking = minecraft.player.isShiftKeyDown();
             boolean justPressed = keyMinePressed && !lastKeyPressed;
             lastKeyPressed = keyMinePressed;
 
@@ -197,21 +197,21 @@ public final class VeinGlowClient {
                     currentEquation(currentShapeId), currentBlacklist));
         }
 
-        if (client.world != null) {
+        if (client.level != null) {
             BlockPos currentTarget = null;
-            net.minecraft.block.BlockState currentState = null;
-            HitResult hit = client.crosshairTarget;
+            net.minecraft.world.level.block.state.BlockState currentState = null;
+            HitResult hit = minecraft.hitResult;
 
-            if (client.player.getMainHandStack().getItem() == net.minecraft.item.Items.BUCKET) {
-                HitResult fluidHit = client.world.raycast(new net.minecraft.world.RaycastContext(
-                        client.player.getCameraPosVec(1.0F),
-                        client.player.getCameraPosVec(1.0F).add(client.player.getRotationVec(1.0F).multiply(5.0)),
-                        net.minecraft.world.RaycastContext.ShapeType.OUTLINE,
-                        net.minecraft.world.RaycastContext.FluidHandling.SOURCE_ONLY,
-                        client.player));
+            if (client.player.getMainHandItem().getItem() == net.minecraft.world.item.Items.BUCKET) {
+                HitResult fluidHit = minecraft.level.clip(new net.minecraft.world.level.ClipContext(
+                        minecraft.player.getCameraPosVec(1.0F),
+                        minecraft.player.getCameraPosVec(1.0F).add(client.player.getRotationVec(1.0F).multiply(5.0)),
+                        net.minecraft.world.level.ClipContext.Block.OUTLINE,
+                        net.minecraft.world.level.ClipContext.Fluid.SOURCE_ONLY,
+                        minecraft.player));
                 if (fluidHit != null && fluidHit.getType() == HitResult.Type.BLOCK) {
-                    net.minecraft.block.BlockState fluidState = client.world.getBlockState(((BlockHitResult) fluidHit).getBlockPos());
-                    if (fluidState.getBlock() instanceof net.minecraft.block.FluidBlock && fluidState.getFluidState().isStill()) {
+                    net.minecraft.world.level.block.state.BlockState fluidState = minecraft.level.getBlockState(((BlockHitResult) fluidHit).getBlockPos());
+                    if (fluidState.getBlock() instanceof net.minecraft.world.level.block.LiquidBlock && fluidState.getFluidState().isSource()) {
                         hit = fluidHit;
                     }
                 }
@@ -219,7 +219,7 @@ public final class VeinGlowClient {
 
             if (hit != null && hit.getType() == HitResult.Type.BLOCK) {
                 currentTarget = ((BlockHitResult) hit).getBlockPos();
-                currentState = client.world.getBlockState(currentTarget);
+                currentState = minecraft.level.getBlockState(currentTarget);
             }
 
             boolean targetPosChanged = (currentTarget == null && lastTargetPos != null)
@@ -249,13 +249,13 @@ public final class VeinGlowClient {
     public static Text getShapeDisplayName(String shapeId) {
         try {
             ModConfig.MiningShape shape = ModConfig.MiningShape.valueOf(shapeId);
-            return Text.translatable("tc_veinminer.mode." + shape.name());
+            return Component.translatable("tc_veinminer.mode." + shape.name());
         } catch (IllegalArgumentException | NullPointerException ignored) {
             return ClientConfigManager.instance.customShapes.stream()
                     .filter(entry -> shapeId.equals(entry.strategyId))
-                    .map(entry -> Text.literal(entry.name))
+                    .map(entry -> Component.literal(entry.name))
                     .findFirst()
-                    .orElse(Text.literal(shapeId));
+                    .orElse(Component.literal(shapeId));
         }
     }
 

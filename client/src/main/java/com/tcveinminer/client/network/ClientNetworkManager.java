@@ -11,7 +11,7 @@ public final class ClientNetworkManager {
     private static ClientPacketChannel channel;
 
     /**
-     * Set the networking backend for the client.
+     * Set the networking backend for the minecraft.
      */
     public static void setChannel(ClientPacketChannel impl) {
         ClientNetworkManager.channel = impl;

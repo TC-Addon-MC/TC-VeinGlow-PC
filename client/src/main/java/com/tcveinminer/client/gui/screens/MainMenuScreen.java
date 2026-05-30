@@ -8,19 +8,19 @@ import com.tcveinminer.client.gui.screens.tabs.*;
 import com.tcveinminer.client.gui.widgets.AmberButton;
 import com.tcveinminer.client.util.DrawHelper;
 import com.tcveinminer.client.util.ThemeColors;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.Element;
-import net.minecraft.client.gui.Drawable;
-import net.minecraft.client.gui.Selectable;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.components.Renderable;
+import net.minecraft.client.gui.components.TabOrderedElement;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.Font;
+import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 public class MainMenuScreen extends Screen {
 
@@ -53,7 +53,7 @@ public class MainMenuScreen extends Screen {
     private long saveHideAt;
 
     public MainMenuScreen(Screen parent) {
-        super(Text.literal("TC-VeinMiner Config"));
+        super(Component.literal("TC-VeinMiner Config"));
         this.parent = parent;
     }
 
@@ -109,7 +109,7 @@ public class MainMenuScreen extends Screen {
             state.maxBlocks = Math.min(ccfg.clientMaxBlocks, ccfg.serverMaxBlocks);
             state.enabledShapes = new LinkedHashSet<>(ccfg.enabledShapes);
             state.blacklist = new LinkedHashSet<>(ccfg.personalBlacklist.stream()
-                    .map(Identifier::of).toList());
+                    .map(ResourceLocation::parse).toList());
             state.requireCorrectTool = ccfg.requireCorrectTool;
             state.customShapeEquation = ccfg.customShapeEquation;
             state.customShapes = new ArrayList<>(ccfg.customShapes);
@@ -121,28 +121,28 @@ public class MainMenuScreen extends Screen {
     }
 
     private void rebuild() {
-        clearChildren();
+        clearWidgets();
         int cx = px + PAD_X, cw = W - PAD_X * 2;
         int cy = py + HDR_H + PAD_Y;
         int ch = H - HDR_H - TAB_H - FOOTER_H - PAD_Y * 2;
 
-        addDrawableChild(new AmberButton(px + 10, py + H - 28, 80, 20, Text.literal("Report Bug"), btn -> {
+        addRenderableWidget(new AmberButton(px + 10, py + H - 28, 80, 20, Component.literal("Report Bug"), btn -> {
             String link = "https://docs.google.com/forms/d/e/1FAIpQLScSBVjy7EBTdKZnfd0wf9AbAebhwi9SBnnY7-_uN9sIGzx5mQ/viewform?usp=dialog";
-            client.setScreen(new net.minecraft.client.gui.screen.ConfirmLinkScreen(confirmed -> {
+            minecraft.setScreen(new net.minecraft.client.gui.screens.ConfirmLinkScreen(confirmed -> {
                 if (confirmed) {
-                    net.minecraft.util.Util.getOperatingSystem().open(link);
+                    net.minecraft.Util.getPlatform().openUri(link);
                 }
-                client.setScreen(MainMenuScreen.this);
+                minecraft.setScreen(MainMenuScreen.this);
             }, link, true));
         }));
 
-        addDrawableChild(new AmberButton(px + W - 90, py + H - 28, 80, 20,
-                Text.translatable("gui.tcveinminer.button.save_config"), btn -> {
+        addRenderableWidget(new AmberButton(px + W - 90, py + H - 28, 80, 20,
+                Component.translatable("gui.tcveinminer.button.save_config"), btn -> {
                     save();
                     triggerSave();
                 }));
-        addDrawableChild(new AmberButton(px + W - 20, py + 2, 18, 16, Text.translatable("gui.tcveinminer.button.close"),
-                btn -> client.setScreen(parent)));
+        addRenderableWidget(new AmberButton(px + W - 20, py + 2, 18, 16, Component.translatable("gui.tcveinminer.button.close"),
+                btn -> minecraft.setScreen(parent)));
 
         tabInstances[currentTabIndex].init(this, cx, cy, cw, ch);
     }
@@ -195,16 +195,16 @@ public class MainMenuScreen extends Screen {
         }
     }
 
-    public <T extends Element & Drawable & Selectable> T addUIElement(T element) {
-        return this.addDrawableChild(element);
+    public <T extends GuiEventListener & Renderable & net.minecraft.client.gui.narration.NarratableEntry> T addUIElement(T element) {
+        return this.addRenderableWidget(element);
     }
 
     public MenuState getState() {
         return state;
     }
 
-    public TextRenderer getTextRenderer() {
-        return this.textRenderer;
+    public Font getTextRenderer() {
+        return this.font;
     }
 
     public int getPx() {
@@ -224,16 +224,16 @@ public class MainMenuScreen extends Screen {
     }
 
     @Override
-    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphics ctx, int mouseX, int mouseY, float delta) {
         DrawHelper.drawPanel(ctx, px, py, W, H);
 
-        String title = Text.translatable("gui.tcveinminer.title").getString();
-        int titleW = textRenderer.getWidth(title);
+        String title = Component.translatable("gui.tcveinminer.title").getString();
+        int titleW = font.width(title);
         int titleX = px + W / 2 - titleW / 2;
         int titleY = py + 6;
 
         // Vẽ shadow tạo chiều sâu
-        ctx.drawText(textRenderer, title, titleX + 2, titleY + 2, 0xAA000000, false);
+        ctx.drawString(font, Component.literal(title), titleX + 2, titleY + 2, 0xAA000000, false);
 
         int currentX = titleX;
         int color1 = ThemeColors.TEXT_TITLE; // Vàng nhạt
@@ -252,8 +252,8 @@ public class MainMenuScreen extends Screen {
             int g = (int) (g1 + (g2 - g1) * ratio);
             int b = (int) (b1 + (b2 - b1) * ratio);
             int color = 0xFF000000 | (r << 16) | (g << 8) | b;
-            ctx.drawTextWithShadow(textRenderer, s, currentX, titleY, color);
-            currentX += textRenderer.getWidth(s);
+            ctx.drawString(font, Component.literal(s), currentX, titleY, color, true);
+            currentX += font.width(s);
         }
 
         // --- VẼ TAB BAR VỚI HIỆU ỨNG TRƯỢT MƯỢT (LERP) ---
@@ -285,10 +285,10 @@ public class MainMenuScreen extends Screen {
             int tx = px + 2 + i * tabW;
             boolean isActive = (i == currentTabIndex);
             int tc = isActive ? ThemeColors.GOLD : ThemeColors.TEXT_DIM;
-            String tabLabel = Text.translatable(TAB_KEYS[i]).getString();
-            int tw = textRenderer.getWidth(tabLabel);
+            String tabLabel = Component.translatable(TAB_KEYS[i]).getString();
+            int tw = font.width(tabLabel);
             // Nếu không được chọn, vẽ không bóng để làm chìm đi, nếu chọn vẽ có bóng
-            ctx.drawText(textRenderer, tabLabel, tx + (tabW - tw) / 2, tabBarY + (TAB_H - 8) / 2, tc, isActive);
+            ctx.drawString(font, Component.literal(tabLabel), tx + (tabW - tw) / 2, tabBarY + (TAB_H - 8) / 2, tc, isActive);
         }
 
         // --- VẼ FOOTER ---
@@ -320,7 +320,7 @@ public class MainMenuScreen extends Screen {
         // Thông báo lưu thành công
         // Thông báo lưu
         if (saveNotify && System.currentTimeMillis() < saveHideAt) {
-            String msg = Text.translatable("gui.tcveinminer.notify.saved").getString();
+            String msg = Component.translatable("gui.tcveinminer.notify.saved").getString();
 
             // Tính toán thời gian đã trôi qua kể từ lúc nhấn nút Lưu (hiển thị trong
             // 2500ms)
@@ -329,14 +329,14 @@ public class MainMenuScreen extends Screen {
             int charsToShow = (int) (elapsed2 / 50); // Cứ 50ms hiển thị thêm 1 ký tự
             String animatedMsg = msg.substring(0, Math.min(msg.length(), Math.max(0, charsToShow)));
 
-            int mw = textRenderer.getWidth(msg) + 24, mh = 18, mx = (width - mw) / 2, my = py - 22;
+            int mw = font.width(msg) + 24, mh = 18, mx = (width - mw) / 2, my = py - 22;
             ctx.fill(mx, my, mx + mw, my + mh, 0xE6091410);
             DrawHelper.drawSolidBorder(ctx, mx, my, mw, mh, ThemeColors.EMERALD_BORDER);
 
             // Sử dụng animatedMsg để vẽ chữ, nhưng căn lề theo độ dài msg gốc để chữ không
             // bị lệch tâm khi chạy
-            int textX = mx + (mw - textRenderer.getWidth(msg)) / 2;
-            ctx.drawTextWithShadow(textRenderer, animatedMsg, textX, my + (mh - 8) / 2, ThemeColors.EMERALD_TEXT);
+            int textX = mx + (mw - font.width(msg)) / 2;
+            ctx.drawString(font, Component.literal(animatedMsg), textX, my + (mh - 8) / 2, ThemeColors.EMERALD_TEXT, true);
         } else
             saveNotify = false;
     }
@@ -387,7 +387,7 @@ public class MainMenuScreen extends Screen {
     @Override
     public boolean keyPressed(int kc, int sc, int mod) {
         if (kc == 256) {
-            client.setScreen(parent);
+            minecraft.setScreen(parent);
             return true;
         }
         return super.keyPressed(kc, sc, mod);
@@ -435,7 +435,7 @@ public class MainMenuScreen extends Screen {
         ccfg.currentShape = state.selectedShapeId;
         ccfg.enabledShapes = state.enabledShapes;
         ccfg.personalBlacklist = new ArrayList<>(state.blacklist.stream()
-                .map(Identifier::toString).toList());
+                .map(ResourceLocation::toString).toList());
         ccfg.requireCorrectTool = state.requireCorrectTool;
         ccfg.customShapeEquation = state.customShapeEquation;
         ccfg.customShapes = new ArrayList<>(state.customShapes);
@@ -448,11 +448,11 @@ public class MainMenuScreen extends Screen {
     }
 
     @Override
-    public boolean shouldPause() {
+    public boolean isPauseScreen() {
         return false;
     }
 
     @Override
-    public void renderBackground(DrawContext c, int mx, int my, float d) {
+    public void renderBackground(GuiGraphics c, int mx, int my, float d) {
     }
 }

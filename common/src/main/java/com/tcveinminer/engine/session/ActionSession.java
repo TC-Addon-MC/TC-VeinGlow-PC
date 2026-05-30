@@ -3,8 +3,8 @@ package com.tcveinminer.engine.session;
 import com.tcveinminer.engine.action.ActionContext;
 import com.tcveinminer.engine.action.ActionType;
 import com.tcveinminer.engine.queue.BlockActionQueue;
-import net.minecraft.item.Item;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.item.Item;
+import net.minecraft.core.BlockPos;
 
 import java.util.Collections;
 import java.util.HashSet;

@@ -4,12 +4,12 @@ import com.tcveinminer.client.VeinGlowClient;
 import com.tcveinminer.client.config.ClientConfig;
 import com.tcveinminer.client.config.ClientConfigManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.render.*;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
-import net.minecraft.util.math.Vec3d;
+import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 
 import java.util.*;
@@ -33,14 +33,14 @@ public class BlockHighlighter {
             return;
 
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client.world == null || client.player == null)
+        if (client.level == null || minecraft.player == null)
             return;
-        if (client.player.getMainHandStack().getItem() != net.minecraft.item.Items.BUCKET)
+        if (client.player.getMainHandItem().getItem() != net.minecraft.world.item.Items.BUCKET)
             return;
         if (lookedAtBlock == null)
             return;
 
-        var fluidState = client.world.getFluidState(lookedAtBlock);
+        var fluidState = minecraft.level.getFluidState(lookedAtBlock);
         if (fluidState.isEmpty() || !fluidState.isStill())
             return;
 
@@ -62,7 +62,7 @@ public class BlockHighlighter {
             return true;
 
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client.world == null || client.player == null)
+        if (client.level == null || minecraft.player == null)
             return true;
 
         Set<BlockPos> toHighlight = new HashSet<>();
@@ -84,12 +84,12 @@ public class BlockHighlighter {
             MinecraftClient client, Set<BlockPos> blockSet, boolean isTargetInvalid) {
         Map<Long, EdgeData> edgeCount = new HashMap<>();
         for (BlockPos pos : blockSet) {
-            var state = client.world.getBlockState(pos);
-            var shape = state.getOutlineShape(client.world, pos);
+            var state = minecraft.level.getBlockState(pos);
+            var shape = state.getOutlineShape(client.level, pos);
             if (shape.isEmpty()) {
-                var fluidState = client.world.getFluidState(pos);
+                var fluidState = minecraft.level.getFluidState(pos);
                 if (!fluidState.isEmpty()) {
-                    shape = fluidState.getShape(client.world, pos);
+                    shape = fluidState.getShape(client.level, pos);
                 }
             }
             if (shape.isEmpty())
@@ -239,7 +239,7 @@ public class BlockHighlighter {
             float camX, float camY, float camZ,
             float r, float g, float b, float alpha) {
         for (BlockPos pos : blockSet) {
-            var shape = client.world.getBlockState(pos).getOutlineShape(client.world, pos);
+            var shape = minecraft.level.getBlockState(pos).getOutlineShape(client.level, pos);
             if (shape.isEmpty())
                 continue;
             Box box = shape.getBoundingBox();

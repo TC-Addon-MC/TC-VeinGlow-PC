@@ -23,7 +23,7 @@ public final class VeinMineEvents {
 
     /**
      * Result type for cancellable events.
-     * Replaces {@code net.minecraft.util.ActionResult} in event callbacks
+     * Replaces {@code net.minecraft.world.InteractionResult} in event callbacks
      * so the API is 100% loader-agnostic.
      */
     public enum EventResult { PASS, DENY }

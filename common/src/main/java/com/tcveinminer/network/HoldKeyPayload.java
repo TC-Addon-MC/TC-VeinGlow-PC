@@ -1,16 +1,16 @@
 package com.tcveinminer.network;
 
-import net.minecraft.network.RegistryByteBuf;
-import net.minecraft.network.codec.PacketCodec;
-import net.minecraft.network.codec.PacketCodecs;
-import net.minecraft.network.packet.CustomPayload;
-import net.minecraft.util.Identifier;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import java.util.List;
 import java.util.Map;
 
 public record HoldKeyPayload(boolean isHolding, String shapeId, int maxBlocks, String equation, List<String> blacklist) implements CustomPayload {
     public static final Id<HoldKeyPayload> ID =
-        new Id<>(Identifier.of("tc_veinminer", "hold_key"));
+        new Id<>(ResourceLocation.parse("tc_veinminer", "hold_key"));
 
     public static final PacketCodec<RegistryByteBuf, HoldKeyPayload> CODEC = PacketCodec.tuple(
             PacketCodecs.BOOL,    HoldKeyPayload::isHolding,

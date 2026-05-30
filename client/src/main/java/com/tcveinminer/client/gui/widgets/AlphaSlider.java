@@ -1,9 +1,9 @@
 package com.tcveinminer.client.gui.widgets;
 
 import com.tcveinminer.client.gui.screens.MenuState;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.widget.SliderWidget;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractSliderButton;
+import net.minecraft.network.chat.Component;
 
 /**
  * AlphaSlider — Thanh trượt điều chỉnh độ trong suốt của outline.
@@ -16,7 +16,7 @@ public class AlphaSlider extends SliderWidget {
 
     public AlphaSlider(int x, int y, int w, int h, MenuState state) {
         super(x, y, w, h,
-                Text.literal(String.valueOf(state.outlineAlpha)),
+                Component.literal(String.valueOf(state.outlineAlpha)),
                 state.outlineAlpha / 255.0);
         this.state = state;
     }
@@ -25,7 +25,7 @@ public class AlphaSlider extends SliderWidget {
     protected void updateMessage() {
         int v = (int) (value * 255);
         state.outlineAlpha = v;
-        setMessage(Text.literal(String.valueOf(v)));
+        setMessage(Component.literal(String.valueOf(v)));
     }
 
     @Override
@@ -35,7 +35,7 @@ public class AlphaSlider extends SliderWidget {
 
     /** Vẽ gradient nền checkered (ô vuông cờ vua) để thể hiện độ trong suốt. */
     @Override
-    public void renderWidget(DrawContext ctx, int mouseX, int mouseY, float delta) {
+    public void renderWidget(GuiGraphics ctx, int mouseX, int mouseY, float delta) {
         // Vẽ nền checker (2 màu xen kẽ) để biểu diễn alpha
         int bx = getX() + 1, by = getY() + 1;
         int bw = getWidth() - 2, bh = getHeight() - 2;

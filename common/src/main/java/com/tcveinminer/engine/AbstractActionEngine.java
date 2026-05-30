@@ -24,15 +24,15 @@ import com.tcveinminer.network.payload.HighlightDeltaData;
 import com.tcveinminer.network.payload.MiningStateData;
 import com.tcveinminer.util.ExpressionEvaluator;
 import com.tcveinminer.util.SessionStats;
-import net.minecraft.block.BlockState;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.Item;
-import net.minecraft.item.Items;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.tag.BlockTags;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.core.BlockPos;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -148,8 +148,8 @@ public abstract class AbstractActionEngine {
         // để handleToolState xử lý việc tìm & đổi tool thay thế.
         // Nếu không bỏ qua, stop() sẽ được gọi trước khi handleToolState kịp chạy.
         if (!c.allowHeldItemChange && session.getInitialItem() != null
-                && player.getMainHandStack().getItem() != session.getInitialItem()) {
-            boolean toolJustBroke = player.getMainHandStack().isEmpty();
+                && player.getMainHandItem().getItem() != session.getInitialItem()) {
+            boolean toolJustBroke = player.getMainHandItem().isEmpty();
             boolean swapWillHandle = c.enableToolSwapSkill && c.requireHarvestCapability;
             if (!(toolJustBroke && swapWillHandle)) {
                 stop(player);
@@ -236,7 +236,7 @@ public abstract class AbstractActionEngine {
                 BlockBreakEvent preEvent = new BlockBreakEvent(player, world, e.pos(), currentState,
                         session.getActionType());
                 if (TCVeinMinerEvents.BLOCK_BREAK_PRE.invoker()
-                        .onBlockBreakPre(preEvent) != net.minecraft.util.ActionResult.PASS) {
+                        .onBlockBreakPre(preEvent) != net.minecraft.world.InteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION) {
                     session.removeFromSnapshot(e.pos());
                     removed.add(e.pos());
                     continue;
@@ -252,7 +252,7 @@ public abstract class AbstractActionEngine {
 
                 TCVeinMinerEvents.BLOCK_BREAK_POST.invoker().onBlockBreakPost(preEvent);
 
-                String blockId = Registries.BLOCK.getId(currentState.getBlock()).toString();
+                String blockId = BuiltInRegistries.BLOCK.getKey(currentState.getBlock()).toString();
                 SessionStats.onBlockBroken(blockId);
                 session.incrementProcessed();
 
@@ -300,7 +300,7 @@ public abstract class AbstractActionEngine {
 
         if (session != null) {
             TCVeinMinerEvents.SESSION_END.invoker().onSessionEnd(new SessionEndEvent(
-                    player, player.getWorld(), session.getActionType(),
+                    player, player.level(), session.getActionType(),
                     session.getProcessedCount(), session.getTargetCount(), true));
             session.clear();
         }
@@ -346,7 +346,7 @@ public abstract class AbstractActionEngine {
     }
 
     /**
-     * Send highlight update packet to the client.
+     * Send highlight update packet to the minecraft.
      */
     protected void sendHighlightUpdate(PlayerEntity player, List<BlockPos> removedBlocks) {
         if (session != null && player instanceof ServerPlayerEntity spe) {
@@ -456,7 +456,7 @@ public abstract class AbstractActionEngine {
     }
 
     protected static String blockId(BlockState state) {
-        return Registries.BLOCK.getId(state.getBlock()).toString();
+        return BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
     }
 
     protected static Set<String> mergeBlacklists(Set<String> configBlacklist, Set<String> playerBlacklist) {

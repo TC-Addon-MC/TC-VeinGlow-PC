@@ -9,7 +9,7 @@ import com.tcveinminer.engine.capability.CapabilityRegistry;
 import com.tcveinminer.engine.capability.ItemActionCapability;
 import com.tcveinminer.engine.strategy.MiningStrategy;
 import com.tcveinminer.engine.strategy.StrategyRegistry;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.world.entity.player.Player;
 
 import java.util.UUID;
 

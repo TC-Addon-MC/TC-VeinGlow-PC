@@ -8,9 +8,9 @@ import com.tcveinminer.client.gui.widgets.TransitionTimeSlider;
 import com.tcveinminer.client.util.ColorManager;
 import com.tcveinminer.client.util.DrawHelper;
 import com.tcveinminer.client.util.ThemeColors;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
 
@@ -24,7 +24,7 @@ public class ColorTab implements MenuTab {
         private static final int PRESET_COLS = 8;
 
         private boolean colorPanelOpen = true;
-        private TextFieldWidget hexInput;
+        private EditBox hexInput;
         private String colorError = "";
 
         @Override
@@ -35,7 +35,7 @@ public class ColorTab implements MenuTab {
                         int btnX = cx + PREVIEW_SIZE + 8;
 
                         CustomButton colorButton = new CustomButton(btnX, cy + 2, 70, 18,
-                                        Text.literal("Color"), btn -> {
+                                        Component.literal("Color"), btn -> {
                                                 colorPanelOpen = !colorPanelOpen;
                                                 colorError = "";
                                                 screen.rebuildMenu();
@@ -44,7 +44,7 @@ public class ColorTab implements MenuTab {
                         screen.addUIElement(colorButton);
 
                         CustomButton btnRainbow = new CustomButton(btnX, cy + 22, 70, 18,
-                                        Text.translatable("gui.tcveinminer.color.rainbow"),
+                                        Component.translatable("gui.tcveinminer.color.rainbow"),
                                         btn -> {
                                                 screen.getState().colorList.clear();
                                                 screen.getState().colorList.add(new int[]{255, 0, 0});     // Red
@@ -66,7 +66,7 @@ public class ColorTab implements MenuTab {
                         screen.addUIElement(btnRainbow);
 
                         CustomButton btnDisable = new CustomButton(btnX, cy + 42, 70, 18,
-                                        Text.translatable("gui.tcveinminer.color.disable"),
+                                        Component.translatable("gui.tcveinminer.color.disable"),
                                         btn -> {
                                                 screen.getState().colorDisabled = true;
                                                 screen.getState().colorRainbow = false;
@@ -76,7 +76,7 @@ public class ColorTab implements MenuTab {
                         screen.addUIElement(btnDisable);
 
                         CustomButton flowBtn = new CustomButton(btnX + 76, cy + 2, 70, 18,
-                                        Text.literal("Flow: " + (screen.getState().enableFlowAnimation ? "ON" : "OFF")),
+                                        Component.literal("Flow: " + (screen.getState().enableFlowAnimation ? "ON" : "OFF")),
                                         btn -> {
                                                 screen.getState().enableFlowAnimation = !screen.getState().enableFlowAnimation;
                                                 screen.rebuildMenu();
@@ -88,7 +88,7 @@ public class ColorTab implements MenuTab {
                         int topY = cy + 2;
 
                         CustomButton colorButton = new CustomButton(topX, topY, 70, 18,
-                                        Text.literal("Color"), btn -> {
+                                        Component.literal("Color"), btn -> {
                                                 colorPanelOpen = !colorPanelOpen;
                                                 colorError = "";
                                                 screen.rebuildMenu();
@@ -97,7 +97,7 @@ public class ColorTab implements MenuTab {
                         screen.addUIElement(colorButton);
 
                         CustomButton btnRainbow = new CustomButton(topX + 76, topY, 70, 18,
-                                        Text.translatable("gui.tcveinminer.color.rainbow"),
+                                        Component.translatable("gui.tcveinminer.color.rainbow"),
                                         btn -> {
                                                 screen.getState().colorList.clear();
                                                 screen.getState().colorList.add(new int[]{255, 0, 0});     // Red
@@ -119,7 +119,7 @@ public class ColorTab implements MenuTab {
                         screen.addUIElement(btnRainbow);
 
                         CustomButton btnDisable = new CustomButton(topX + 152, topY, 70, 18,
-                                        Text.translatable("gui.tcveinminer.color.disable"),
+                                        Component.translatable("gui.tcveinminer.color.disable"),
                                         btn -> {
                                                 screen.getState().colorDisabled = true;
                                                 screen.getState().colorRainbow = false;
@@ -129,7 +129,7 @@ public class ColorTab implements MenuTab {
                         screen.addUIElement(btnDisable);
 
                         CustomButton flowBtn = new CustomButton(topX + 228, topY, 70, 18,
-                                        Text.literal("Flow: " + (screen.getState().enableFlowAnimation ? "ON" : "OFF")),
+                                        Component.literal("Flow: " + (screen.getState().enableFlowAnimation ? "ON" : "OFF")),
                                         btn -> {
                                                 screen.getState().enableFlowAnimation = !screen.getState().enableFlowAnimation;
                                                 screen.rebuildMenu();
@@ -154,25 +154,25 @@ public class ColorTab implements MenuTab {
                                 screen.getState(), screen.getState().colorTransitionTime));
 
                 int segmentSliderY = timeSliderY + 20;
-                screen.addUIElement(new net.minecraft.client.gui.widget.SliderWidget(cx + labelW, segmentSliderY, leftW - labelW, 14,
-                                Text.literal(String.format("%.1f", screen.getState().segmentLength)),
+                screen.addUIElement(new net.minecraft.client.gui.components.AbstractSliderButton(cx + labelW, segmentSliderY, leftW - labelW, 14,
+                                Component.literal(String.format("%.1f", screen.getState().segmentLength)),
                                 (screen.getState().segmentLength - 0.1) / 9.9) {
                         @Override protected void updateMessage() {
                                 float t = 0.1f + (float) (value * 9.9);
                                 screen.getState().segmentLength = t;
-                                setMessage(Text.literal(String.format("%.1f", t)));
+                                setMessage(Component.literal(String.format("%.1f", t)));
                         }
                         @Override protected void applyValue() { updateMessage(); }
                 });
 
                 int smoothSliderY = segmentSliderY + 20;
-                screen.addUIElement(new net.minecraft.client.gui.widget.SliderWidget(cx + labelW, smoothSliderY, leftW - labelW, 14,
-                                Text.literal(String.format("%.2f", screen.getState().flowSmoothness)),
+                screen.addUIElement(new net.minecraft.client.gui.components.AbstractSliderButton(cx + labelW, smoothSliderY, leftW - labelW, 14,
+                                Component.literal(String.format("%.2f", screen.getState().flowSmoothness)),
                                 screen.getState().flowSmoothness) {
                         @Override protected void updateMessage() {
                                 float t = (float) value;
                                 screen.getState().flowSmoothness = t;
-                                setMessage(Text.literal(String.format("%.2f", t)));
+                                setMessage(Component.literal(String.format("%.2f", t)));
                         }
                         @Override protected void applyValue() { updateMessage(); }
                 });
@@ -187,8 +187,8 @@ public class ColorTab implements MenuTab {
                                 screen.getState().colorB);
 
                 if (hexInput == null) {
-                        hexInput = new TextFieldWidget(screen.getTextRenderer(),
-                                        panelX + 8, panelY + 20, 80, 16, Text.literal("Hex"));
+                        hexInput = new EditBox(screen.getTextRenderer(),
+                                        panelX + 8, panelY + 20, 80, 16, Component.literal("Hex"));
                         hexInput.setMaxLength(7);
                 }
                 hexInput.setX(panelX + 8);
@@ -201,11 +201,11 @@ public class ColorTab implements MenuTab {
 
                 // Add button to add to colorList
                 screen.addUIElement(new AmberButton(panelX + 92, panelY + 20, 80, 16,
-                                Text.literal("Add"), btn -> addHex(screen)));
+                                Component.literal("Add"), btn -> addHex(screen)));
 
                 // Clear button to clear colorList
                 screen.addUIElement(new AmberButton(panelX + 172, panelY + 90, 48, 12,
-                                Text.literal("Clear"), btn -> {
+                                Component.literal("Clear"), btn -> {
                                         screen.getState().colorList.clear();
                                         screen.rebuildMenu();
                                 }));
@@ -223,14 +223,14 @@ public class ColorTab implements MenuTab {
                         int by = gridY + row * (PRESET_CELL + PRESET_GAP);
 
                         screen.addUIElement(new CustomButton(bx, by, PRESET_CELL, PRESET_CELL,
-                                        Text.empty(), btn -> {
+                                        Component.empty(), btn -> {
                                                 setColor(screen, ri, gi, bi);
                                                 if (hexInput != null) {
                                                         hexInput.setText("#" + ColorManager.toHex(ri, gi, bi));
                                                 }
                                         }) {
                                 @Override
-                                public void renderWidget(DrawContext ctx, int mx, int my, float delta) {
+                                public void renderWidget(GuiGraphics ctx, int mx, int my, float delta) {
                                         boolean selected = !screen.getState().colorRainbow
                                                          && !screen.getState().colorDisabled
                                                          && screen.getState().colorR == ri
@@ -269,12 +269,12 @@ public class ColorTab implements MenuTab {
                         int by = listY + row * (PRESET_CELL + PRESET_GAP);
 
                         screen.addUIElement(new CustomButton(bx, by, PRESET_CELL, PRESET_CELL,
-                                        Text.empty(), btn -> {
+                                        Component.empty(), btn -> {
                                                 screen.getState().colorList.remove(index);
                                                 screen.rebuildMenu();
                                         }) {
                                 @Override
-                                public void renderWidget(DrawContext ctx, int mx, int my, float delta) {
+                                public void renderWidget(GuiGraphics ctx, int mx, int my, float delta) {
                                         boolean hov = isHovered();
                                         int border = hov ? 0xFFFF0000 : 0xFF334155;
                                         ctx.fill(getX(), getY(), getX() + width, getY() + height, 0xFF000000 | (ri << 16) | (gi << 8) | bi);
@@ -315,7 +315,7 @@ public class ColorTab implements MenuTab {
         }
 
         @Override
-        public void render(DrawContext ctx, MainMenuScreen screen, int cx, int cy,
+        public void render(GuiGraphics ctx, MainMenuScreen screen, int cx, int cy,
                         int cw, int ch, int mouseX, int mouseY, float delta) {
                 renderPreview(ctx, screen, cx, cy);
 
@@ -409,7 +409,7 @@ public class ColorTab implements MenuTab {
                 ctx.drawTextWithShadow(screen.getTextRenderer(), smoothValue, cx + 80 - smw, smoothSliderY + 3, 0xFFFFFFFF);
         }
 
-        private void renderColorPanel(DrawContext ctx, MainMenuScreen screen, int panelX, int panelY) {
+        private void renderColorPanel(GuiGraphics ctx, MainMenuScreen screen, int panelX, int panelY) {
                 DrawHelper.drawCard(ctx, panelX, panelY, PANEL_W, PANEL_H);
                 ctx.drawTextWithShadow(screen.getTextRenderer(), "Enter color", panelX + 8, panelY + 8, 0xFFFFFFFF);
                 ctx.drawTextWithShadow(screen.getTextRenderer(), "Basic colors", panelX + 8, panelY + 38,
@@ -434,7 +434,7 @@ public class ColorTab implements MenuTab {
                 }
         }
 
-        private void renderPreview(DrawContext ctx, MainMenuScreen screen, int bpX, int bpY) {
+        private void renderPreview(GuiGraphics ctx, MainMenuScreen screen, int bpX, int bpY) {
                 int s = PREVIEW_SIZE;
                 DrawHelper.drawCard(ctx, bpX, bpY, s, s);
 

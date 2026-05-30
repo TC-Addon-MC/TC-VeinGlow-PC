@@ -4,26 +4,26 @@ import com.tcveinminer.TCVeinMinerMod;
 import com.tcveinminer.config.ConfigManager;
 import com.tcveinminer.config.ModConfig;
 import com.tcveinminer.util.SessionStats;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.FluidBlock;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.BucketItem;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.registry.Registries;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.Hand;
-import net.minecraft.util.TypedActionResult;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.RaycastContext;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LiquidBlock;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BucketItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.sounds.SoundEvents;
 
 import java.util.*;
 
@@ -31,7 +31,7 @@ public final class BucketSkill {
 
     private BucketSkill() {}
 
-    public static TypedActionResult<ItemStack> onUseItem(PlayerEntity player, net.minecraft.world.World world, Hand hand) {
+    public static TypedActionResult<ItemStack> onUseItem(PlayerEntity player, net.minecraft.world.level.Level world, Hand hand) {
         if (world.isClient) return TypedActionResult.pass(player.getStackInHand(hand));
 
         ModConfig c = ConfigManager.get();
@@ -50,7 +50,7 @@ public final class BucketSkill {
         }
 
         // Thực hiện Raycast để tìm khối chất lỏng
-        BlockHitResult hitResult = world.raycast(new RaycastContext(
+        BlockHitResult hitResult = world.clip(new RaycastContext(
                 player.getCameraPosVec(1.0F),
                 player.getCameraPosVec(1.0F).add(player.getRotationVec(1.0F).multiply(5.0)),
                 RaycastContext.ShapeType.OUTLINE,
@@ -67,7 +67,7 @@ public final class BucketSkill {
 
         // Kiểm tra xem có phải chất lỏng nguồn (Source) không
         if (originState.getBlock() instanceof FluidBlock fluidBlock) {
-            if (originState.getFluidState().isStill()) {
+            if (originState.getFluidState().isSource()) {
                 return handleScoopFluid(spe, (ServerWorld) world, hand, hitResult);
             }
         } else if (originState.getBlock() == Blocks.WATER_CAULDRON || originState.getBlock() == Blocks.LAVA_CAULDRON) {
@@ -107,7 +107,7 @@ public final class BucketSkill {
             ItemStack stack = player.getInventory().getStack(i);
             if (!stack.isEmpty() && stack.getItem() == item) {
                 int toTake = Math.min(stack.getCount(), remaining);
-                stack.decrement(toTake);
+                stack.shrink(toTake);
                 remaining -= toTake;
             }
         }

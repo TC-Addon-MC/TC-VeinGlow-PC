@@ -5,13 +5,19 @@ import com.tcveinminer.client.config.ClientConfig;
 import com.tcveinminer.client.config.ClientConfigManager;
 import com.tcveinminer.config.ModConfig;
 import com.tcveinminer.client.util.ThemeColors;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.render.*;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.text.Text;
-import net.minecraft.util.Util;
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.renderer.GameRenderer;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.BufferUploader;
+import net.minecraft.client.renderer.RenderType;
+import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.network.chat.Component;
+import net.minecraft.Util;
+import net.minecraft.util.Mth;
 import org.joml.Matrix4f;
 
 import java.util.ArrayList;
@@ -53,7 +59,7 @@ public class RadialMenuScreen extends Screen {
     private static final long KEY_REPEAT_DELAY = 100; // ms
 
     public RadialMenuScreen(Screen parent) {
-        super(Text.literal("TC VeinMiner"));
+        super(Component.literal("TC VeinMiner"));
         this.parent = parent;
     }
 
@@ -103,7 +109,7 @@ public class RadialMenuScreen extends Screen {
     }
 
     @Override
-    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphics ctx, int mouseX, int mouseY, float delta) {
 
         if (isClosing) {
             clickProgress += delta * 0.15f;
@@ -113,7 +119,7 @@ public class RadialMenuScreen extends Screen {
             }
         } else {
             // Smoothly approach 1.0 but clamp when very close to avoid asymptotic behavior
-            animOpen = MathHelper.lerp(delta * 0.3f, animOpen, 1.0f);
+            animOpen = Mth.lerp(delta * 0.3f, animOpen, 1.0f);
             if (1.0f - animOpen < 0.001f) animOpen = 1.0f;
             hoveredSlice = getHoveredSlice(mouseX, mouseY);
         }
@@ -123,8 +129,8 @@ public class RadialMenuScreen extends Screen {
         if (currentActiveId == null || currentActiveId.isBlank())
             currentActiveId = ModConfig.MiningShape.FACE.name();
 
-        MatrixStack matrices = ctx.getMatrices();
-        matrices.push();
+        PoseStack matrices = ctx.pose();
+        matrices.pushPose();
         matrices.translate(cx, cy, 0);
 
         float t = animOpen;
@@ -134,28 +140,28 @@ public class RadialMenuScreen extends Screen {
         }
         matrices.scale(scale, scale, 1.0f);
 
-        Matrix4f mat = matrices.peek().getPositionMatrix();
+        Matrix4f mat = matrices.last().pose();
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
         RenderSystem.disableCull();
 
         int n = activeShapes.size();
         float angleStep = 360f / n;
 
-        Tessellator tess = Tessellator.getInstance();
-        BufferBuilder buf = tess.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
+        Tesselator tess = Tesselator.getInstance();
+        BufferBuilder buf = tess.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
 
         for (int i = 0; i < n; i++) {
             boolean isHov = (!isClosing && (hoveredSlice == i || (keyboardSelectedIndex >= 0 && keyboardSelectedIndex == i)));
             boolean isAct = activeShapes.get(i).id().equals(currentActiveId);
 
-            sliceHoverProgress[i] = MathHelper.lerp(delta * 0.3f, sliceHoverProgress[i], isHov ? 1.0f : 0.0f);
+            sliceHoverProgress[i] = Mth.lerp(delta * 0.3f, sliceHoverProgress[i], isHov ? 1.0f : 0.0f);
             float hovP = sliceHoverProgress[i];
 
             float delay = i * 0.05f;
-            float sliceT = MathHelper.clamp((animOpen - delay) * 1.5f, 0f, 1f);
+            float sliceT = Mth.clamp((animOpen - delay) * 1.5f, 0f, 1f);
             float slicePop = 1.0f - (float)Math.pow(1.0f - sliceT, 3);
 
             int color = isAct ? COLOR_SLICE_ACTIVE : lerpColor(COLOR_SLICE_NORMAL, COLOR_SLICE_HOVER, hovP);
@@ -175,7 +181,7 @@ public class RadialMenuScreen extends Screen {
 
             if (isClosing && clickedAction == i) {
                 float waveR = INNER_R + (clickProgress * (OUTER_R - INNER_R + 20));
-                float splitR = MathHelper.clamp(waveR, currentInnerR, currentOuterR);
+                float splitR = Mth.clamp(waveR, currentInnerR, currentOuterR);
 
                 RadialDrawingUtils.fillArc(buf, mat, currentInnerR, splitR, startRad, endRad, COLOR_SLICE_ACTIVE);
 
@@ -189,19 +195,19 @@ public class RadialMenuScreen extends Screen {
 
         int centerIdx = n;
         boolean centerHov = (!isClosing && hoveredSlice == -2);
-        sliceHoverProgress[centerIdx] = MathHelper.lerp(delta * 0.3f, sliceHoverProgress[centerIdx], centerHov ? 1.0f : 0.0f);
+        sliceHoverProgress[centerIdx] = Mth.lerp(delta * 0.3f, sliceHoverProgress[centerIdx], centerHov ? 1.0f : 0.0f);
         int centerColor = lerpColor(COLOR_CENTER_NORMAL, COLOR_CENTER_HOVER, sliceHoverProgress[centerIdx]);
 
-        float pulse = 1.0f + MathHelper.sin((float)(Util.getMeasuringTimeMs() / 200.0)) * 0.03f;
+        float pulse = 1.0f + Mth.sin((float)(Util.getMeasuringTimeMs() / 200.0)) * 0.03f;
         float currentCenterR = CENTER_R * animOpen * pulse;
 
         RadialDrawingUtils.fillCircle(buf, mat, currentCenterR, centerColor);
 
-        BufferRenderer.drawWithGlobalProgram(buf.end());
+        BufferUploader.drawWithShader(buf.buildOrThrow());
 
         RenderSystem.enableCull();
         RenderSystem.disableBlend();
-        matrices.pop();
+        matrices.popPose();
 
         renderLabels(ctx, n, angleStep, currentActiveId);
 
@@ -214,7 +220,7 @@ public class RadialMenuScreen extends Screen {
 
         if (clickedAction == -2) {
             // Open settings; pass parent as the parent screen to avoid navigation loop
-            client.setScreen(new MainMenuScreen(parent));
+            minecraft.setScreen(new MainMenuScreen(parent));
 
         } else if (clickedAction >= 0) {
 
@@ -223,11 +229,11 @@ public class RadialMenuScreen extends Screen {
 
             ClientConfigManager.save();
 
-            client.setScreen(parent);
+            minecraft.setScreen(parent);
         }
     }
 
-    private void renderLabels(DrawContext ctx, int n, float angleStep, String currentActiveId) {
+    private void renderLabels(GuiGraphics ctx, int n, float angleStep, String currentActiveId) {
         for (int i = 0; i < n; i++) {
             SliceEntry entry = activeShapes.get(i);
             boolean isAct = entry.id().equals(currentActiveId);
@@ -236,7 +242,7 @@ public class RadialMenuScreen extends Screen {
             float hovP = sliceHoverProgress[i];
             int baseLabelR = (INNER_R + OUTER_R) / 2;
 
-            float sliceT = MathHelper.clamp((animOpen - (i * 0.05f)) * 1.5f, 0f, 1f);
+            float sliceT = Mth.clamp((animOpen - (i * 0.05f)) * 1.5f, 0f, 1f);
             float slicePop = 1.0f - (float)Math.pow(1.0f - sliceT, 3);
 
             float labelR = baseLabelR * slicePop;
@@ -255,26 +261,26 @@ public class RadialMenuScreen extends Screen {
             int textColor = applyAlpha(isAct ? ThemeColors.TOGGLE_ON_TEXT : ThemeColors.TEXT_LABEL, alpha);
 
             String icon = entry.icon();
-            ctx.drawTextWithShadow(textRenderer, icon, lx - textRenderer.getWidth(icon) / 2, ly - 10, iconColor);
+            ctx.drawString(font, Component.literal(icon), lx - font.width(icon) / 2, ly - 10, iconColor, true);
 
             // Tính max width dựa trên vị trí label và khung màn hình
             int maxWidth = calculateMaxWidthForLabel(lx);
             String name = shortenLabel(entry.label(), maxWidth);
-            ctx.drawTextWithShadow(textRenderer, name, lx - textRenderer.getWidth(name) / 2, ly + 1, textColor);
+            ctx.drawString(font, Component.literal(name), lx - font.width(name) / 2, ly + 1, textColor, true);
         }
 
         int centerAlpha = (int)(animOpen * 255);
         if (centerAlpha > 10) {
-            ctx.drawTextWithShadow(textRenderer, "⚙", cx - textRenderer.getWidth("⚙") / 2, cy - 9, applyAlpha(ThemeColors.BTN_TEXT, centerAlpha));
-            ctx.drawTextWithShadow(textRenderer, "Settings", cx - textRenderer.getWidth("Settings") / 2, cy + 1, applyAlpha(ThemeColors.TEXT_LABEL, centerAlpha));
+            ctx.drawString(font, Component.literal("⚙"), cx - font.width("⚙") / 2, cy - 9, applyAlpha(ThemeColors.BTN_TEXT, centerAlpha), true);
+            ctx.drawString(font, Component.literal("Settings"), cx - font.width("Settings") / 2, cy + 1, applyAlpha(ThemeColors.TEXT_LABEL, centerAlpha), true);
         }
     }
 
     private int applyAlpha(int color, int alpha) {
-        return (color & 0x00FFFFFF) | (MathHelper.clamp(alpha, 0, 255) << 24);
+        return (color & 0x00FFFFFF) | (Mth.clamp(alpha, 0, 255) << 24);
     }
 
-    private void renderTooltip(DrawContext ctx, int mouseX, int mouseY) {
+    private void renderTooltip(GuiGraphics ctx, int mouseX, int mouseY) {
         int idx = (keyboardSelectedIndex >= 0 && keyboardSelectedIndex < activeShapes.size())
                 ? keyboardSelectedIndex
                 : (hoveredSlice >= 0 && hoveredSlice < activeShapes.size() ? hoveredSlice : -1);
@@ -282,16 +288,16 @@ public class RadialMenuScreen extends Screen {
         if (idx < 0) return;
 
         String fullName = activeShapes.get(idx).label();
-        int tw = textRenderer.getWidth(fullName) + 8;
+        int tw = font.width(fullName) + 8;
         ctx.fill(mouseX + 6, mouseY - 14, mouseX + 6 + tw, mouseY, 0xCC000000);
-        ctx.drawTextWithShadow(textRenderer, fullName, mouseX + 10, mouseY - 11, 0xFFFFFFFF);
+        ctx.drawString(font, Component.literal(fullName), mouseX + 10, mouseY - 11, 0xFFFFFFFF, true);
     }
 
     private int lerpColor(int c1, int c2, float p) {
-        int a = (int) MathHelper.lerp(p, (c1 >> 24) & 0xFF, (c2 >> 24) & 0xFF);
-        int r = (int) MathHelper.lerp(p, (c1 >> 16) & 0xFF, (c2 >> 16) & 0xFF);
-        int g = (int) MathHelper.lerp(p, (c1 >> 8) & 0xFF, (c2 >> 8) & 0xFF);
-        int b = (int) MathHelper.lerp(p, c1 & 0xFF, c2 & 0xFF);
+        int a = (int) Mth.lerp(p, (c1 >> 24) & 0xFF, (c2 >> 24) & 0xFF);
+        int r = (int) Mth.lerp(p, (c1 >> 16) & 0xFF, (c2 >> 16) & 0xFF);
+        int g = (int) Mth.lerp(p, (c1 >> 8) & 0xFF, (c2 >> 8) & 0xFF);
+        int b = (int) Mth.lerp(p, c1 & 0xFF, c2 & 0xFF);
         return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
@@ -316,7 +322,7 @@ public class RadialMenuScreen extends Screen {
             return true;
         }
 
-        client.setScreen(parent);
+        minecraft.setScreen(parent);
         return true;
     }
 
@@ -324,7 +330,7 @@ public class RadialMenuScreen extends Screen {
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         // ESC to close
         if (keyCode == 256) {
-            client.setScreen(parent);
+            minecraft.setScreen(parent);
             return true;
         }
 
@@ -376,7 +382,7 @@ public class RadialMenuScreen extends Screen {
     }
 
     @Override
-    public boolean shouldPause() { return false; }
+    public boolean isPauseScreen() { return false; }
 
     private int getHoveredSlice(int mx, int my) {
         float dx = mx - cx, dy = my - cy;
@@ -408,20 +414,20 @@ public class RadialMenuScreen extends Screen {
         if (label == null || label.isEmpty()) return "";
 
         // Nếu text vừa vặn, return nguyên bản
-        if (textRenderer.getWidth(label) <= maxWidth) {
+        if (font.width(label) <= maxWidth) {
             return label;
         }
 
         // Cắt từng chữ cái từ từ
         String result = label;
-        while (textRenderer.getWidth(result) > maxWidth && result.length() > 0) {
+        while (font.width(result) > maxWidth && result.length() > 0) {
             result = result.substring(0, result.length() - 1);
         }
 
         // Thêm ".." nếu cắt ngắn
         if (result.length() < label.length()) {
             // Đảm bảo ".." vừa vặn trong max width
-            while (textRenderer.getWidth(result + "..") > maxWidth && result.length() > 0) {
+            while (font.width(result + "..") > maxWidth && result.length() > 0) {
                 result = result.substring(0, result.length() - 1);
             }
             result = result + "..";

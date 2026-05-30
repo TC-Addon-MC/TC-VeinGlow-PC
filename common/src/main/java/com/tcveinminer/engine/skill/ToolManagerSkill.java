@@ -3,15 +3,15 @@ package com.tcveinminer.engine.skill;
 import com.tcveinminer.config.ModConfig;
 import com.tcveinminer.engine.session.ActionSession;
 import com.tcveinminer.logic.HudNotifier;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.ItemEnchantmentsComponent;
-import net.minecraft.enchantment.Enchantment;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.registry.entry.RegistryEntry;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.Holder;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.Component;
 
 public final class ToolManagerSkill {
 
@@ -149,7 +149,7 @@ public final class ToolManagerSkill {
             ServerPlayerEntity player, ModConfig config,
             Item initialItem, ActionSession session) {
 
-        ItemStack mainHand = player.getMainHandStack();
+        ItemStack mainHand = player.getMainHandItem();
         String enchantSig = session.getInitialEnchantSig();
 
         int thresholdForSwap = config.enableToolProtectSkill ? config.toolProtectThreshold : -1;
@@ -160,16 +160,16 @@ public final class ToolManagerSkill {
                 int newSlot = findReplacementTool(player, initialItem, enchantSig, thresholdForSwap);
                 if (newSlot != -1) {
                     equipToolFromSlot(player, newSlot);
-                    Item newItem = player.getMainHandStack().getItem();
-                    String newSig = getSpecialEnchantSig(player.getMainHandStack());
+                    Item newItem = player.getMainHandItem().getItem();
+                    String newSig = getSpecialEnchantSig(player.getMainHandItem());
                     session.setInitialItem(newItem);
                     session.setInitialEnchantSig(newSig);
                     HudNotifier.notifyAt = System.currentTimeMillis() + 2500;
-                    player.sendMessage(Text.translatable("msg.tcveinminer.tool_swap_broken", newItem.getName().getString()), true);
+                    player.sendMessage(Component.translatable("msg.tcveinminer.tool_swap_broken", newItem.getName().getString()), true);
                     return ToolAction.SWAPPED;
                 } else {
                     HudNotifier.notifyAt = System.currentTimeMillis() + 2500;
-                    player.sendMessage(Text.translatable("msg.tcveinminer.tool_swap_no_tool_broken"), true);
+                    player.sendMessage(Component.translatable("msg.tcveinminer.tool_swap_no_tool_broken"), true);
                     return ToolAction.STOP;
                 }
             }
@@ -183,24 +183,24 @@ public final class ToolManagerSkill {
                 int newSlot = findReplacementTool(player, initialItem, enchantSig, thresholdForSwap);
                 if (newSlot != -1) {
                     equipToolFromSlot(player, newSlot);
-                    Item newItem = player.getMainHandStack().getItem();
-                    String newSig = getSpecialEnchantSig(player.getMainHandStack());
+                    Item newItem = player.getMainHandItem().getItem();
+                    String newSig = getSpecialEnchantSig(player.getMainHandItem());
                     session.setInitialItem(newItem);
                     session.setInitialEnchantSig(newSig);
                     HudNotifier.notifyAt = System.currentTimeMillis() + 2500;
-                    player.sendMessage(Text.translatable("msg.tcveinminer.tool_swap_protected", newItem.getName().getString()), true);
+                    player.sendMessage(Component.translatable("msg.tcveinminer.tool_swap_protected", newItem.getName().getString()), true);
                     return ToolAction.SWAPPED;
                 } else if (config.enableToolProtectSkill) {
                     // Swap bật nhưng không có tool phù hợp, protect bật → dừng bảo vệ tool
                     HudNotifier.notifyAt = System.currentTimeMillis() + 2500;
-                    player.sendMessage(Text.translatable("msg.tcveinminer.tool_swap_no_tool_protected"), true);
+                    player.sendMessage(Component.translatable("msg.tcveinminer.tool_swap_no_tool_protected"), true);
                     return ToolAction.STOP;
                 }
                 // Swap bật, không có tool thay thế, protect tắt → tiếp tục đến khi vỡ hẳn
             } else if (config.enableToolProtectSkill) {
                 // Chỉ protect, không swap → dừng
                 HudNotifier.notifyAt = System.currentTimeMillis() + 2500;
-                player.sendMessage(Text.translatable("msg.tcveinminer.tool_protected"), true);
+                player.sendMessage(Component.translatable("msg.tcveinminer.tool_protected"), true);
                 return ToolAction.STOP;
             }
             // Cả 2 tắt → tiếp tục bình thường

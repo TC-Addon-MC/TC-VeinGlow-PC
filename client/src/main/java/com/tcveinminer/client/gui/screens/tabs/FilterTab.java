@@ -6,16 +6,16 @@ import com.tcveinminer.client.gui.widgets.AmberButton;
 import com.tcveinminer.engine.strategy.FilterModeManager;
 import com.tcveinminer.client.util.DrawHelper;
 import com.tcveinminer.client.util.ThemeColors;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class FilterTab implements MenuTab {
-    private TextFieldWidget blockInput;
+    private EditBox blockInput;
     private int blScroll = 0;
     private int searchScroll = 0;
     private String blError = "";
@@ -29,7 +29,7 @@ public class FilterTab implements MenuTab {
         int inputW = (cw / 2) - 60;
 
         if (blockInput == null) {
-            blockInput = new TextFieldWidget(screen.getTextRenderer(), cx + 6, splitY + 22, inputW, 16, Text.empty());
+            blockInput = new EditBox(screen.getTextRenderer(), cx + 6, splitY + 22, inputW, 16, Component.empty());
             blockInput.setMaxLength(100);
             FilterModeManager.updateBlockSearch("");
             blockInput.setChangedListener(text -> {
@@ -43,7 +43,7 @@ public class FilterTab implements MenuTab {
         }
         screen.addUIElement(blockInput);
 
-        screen.addUIElement(new AmberButton(cx + (cw / 2) - 50, splitY + 22, 44, 16, Text.translatable("gui.tcveinminer.button.add"), btn -> {
+        screen.addUIElement(new AmberButton(cx + (cw / 2) - 50, splitY + 22, 44, 16, Component.translatable("gui.tcveinminer.button.add"), btn -> {
             addBlock(screen);
         }));
     }
@@ -53,13 +53,13 @@ public class FilterTab implements MenuTab {
         Identifier validId = FilterModeManager.validateAndParseBlock(input);
 
         if (validId == null) {
-            blError = Text.translatable("gui.tcveinminer.error.unknown_block").getString();
+            blError = Component.translatable("gui.tcveinminer.error.unknown_block").getString();
             errorTime = System.currentTimeMillis();
             return;
         }
 
         if (screen.getState().blacklist.contains(validId)) {
-            blError = Text.translatable("gui.tcveinminer.error.duplicate_block").getString();
+            blError = Component.translatable("gui.tcveinminer.error.duplicate_block").getString();
             errorTime = System.currentTimeMillis();
             return;
         }
@@ -71,7 +71,7 @@ public class FilterTab implements MenuTab {
     }
 
     @Override
-    public void render(DrawContext ctx, MainMenuScreen screen, int cx, int cy, int cw, int ch, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphics ctx, MainMenuScreen screen, int cx, int cy, int cw, int ch, int mouseX, int mouseY, float delta) {
         this.lastCx = cx; this.lastCy = cy; this.lastCw = cw; this.lastCh = ch;
 
         int splitY = cy + 10;
@@ -84,14 +84,14 @@ public class FilterTab implements MenuTab {
 
         // VẼ KHUNG GỢI Ý TĨNH (BÊN TRÁI)
         DrawHelper.drawCard(ctx, cx, splitY, halfW, splitH);
-        ctx.drawTextWithShadow(screen.getTextRenderer(), Text.translatable("gui.tcveinminer.filter.suggestion_title").getString(), cx + 8, splitY + 8, 0xFFFFFFFF);
+        ctx.drawTextWithShadow(screen.getTextRenderer(), Component.translatable("gui.tcveinminer.filter.suggestion_title").getString(), cx + 8, splitY + 8, 0xFFFFFFFF);
         if (blockInput.getText().isEmpty()) {
-            ctx.drawTextWithShadow(screen.getTextRenderer(), Text.translatable("gui.tcveinminer.filter.search_prompt").getString(), cx + 8, listY + 5, 0xFF6B7280);
+            ctx.drawTextWithShadow(screen.getTextRenderer(), Component.translatable("gui.tcveinminer.filter.search_prompt").getString(), cx + 8, listY + 5, 0xFF6B7280);
         }
 
         // VẼ KHUNG BLACKLIST TĨNH (BÊN PHẢI)
         DrawHelper.drawCard(ctx, rightX, splitY, halfW, splitH);
-        String rightTitle = Text.translatable("gui.tcveinminer.filter.blacklist_title").getString() + " (" + screen.getState().blacklist.size() + ")";
+        String rightTitle = Component.translatable("gui.tcveinminer.filter.blacklist_title").getString() + " (" + screen.getState().blacklist.size() + ")";
         ctx.drawTextWithShadow(screen.getTextRenderer(), rightTitle, rightX + 8, splitY + 8, 0xFFFFFFFF);
         if (!blError.isEmpty()) {
             long elapsed = (errorTime == 0) ? 0 : (System.currentTimeMillis() - errorTime);
@@ -106,7 +106,7 @@ public class FilterTab implements MenuTab {
 
         List<Identifier> bl = new ArrayList<>(screen.getState().blacklist);
         if (bl.isEmpty()) {
-            ctx.drawTextWithShadow(screen.getTextRenderer(), Text.translatable("gui.tcveinminer.filter.empty").getString(), rightX + 8, listY + 6, 0xFF6B7280);
+            ctx.drawTextWithShadow(screen.getTextRenderer(), Component.translatable("gui.tcveinminer.filter.empty").getString(), rightX + 8, listY + 6, 0xFF6B7280);
         } else {
             int startBl = Math.max(0, Math.min(blScroll, bl.size() - maxItems));
             for (int i = startBl; i < Math.min(bl.size(), startBl + maxItems); i++) {
@@ -122,7 +122,7 @@ public class FilterTab implements MenuTab {
     }
 
     // HÀM VẼ OVERLAY LỚP TRÊN CÙNG (Được gọi từ MainMenuScreen)
-    public void renderOverlay(DrawContext ctx, MainMenuScreen screen, int mouseX, int mouseY) {
+    public void renderOverlay(GuiGraphics ctx, MainMenuScreen screen, int mouseX, int mouseY) {
         int px = screen.getPx();
         int py = screen.getPy();
         int W = screen.getW();
@@ -151,10 +151,10 @@ public class FilterTab implements MenuTab {
 
             ctx.fill(ovX, ovY, ovX + ovW, ovY + ovH, 0xFF12121A);
             DrawHelper.drawSolidBorder(ctx, ovX, ovY, ovW, ovH, 0xFF6366F1);
-            ctx.drawTextWithShadow(screen.getTextRenderer(), Text.translatable("gui.tcveinminer.filter.suggestion_title").getString() + " (" + suggestions.size() + ")", ovX + 6, ovY + 4, 0xFF6366F1);
+            ctx.drawTextWithShadow(screen.getTextRenderer(), Component.translatable("gui.tcveinminer.filter.suggestion_title").getString() + " (" + suggestions.size() + ")", ovX + 6, ovY + 4, 0xFF6366F1);
 
             if (suggestions.isEmpty()) {
-                ctx.drawTextWithShadow(screen.getTextRenderer(), Text.translatable("gui.tcveinminer.filter.empty_dots").getString(), ovX + 6, ovY + ovPad + 4, 0xFF6B7280);
+                ctx.drawTextWithShadow(screen.getTextRenderer(), Component.translatable("gui.tcveinminer.filter.empty_dots").getString(), ovX + 6, ovY + ovPad + 4, 0xFF6B7280);
             } else {
                 int startIdx = Math.max(0, Math.min(searchScroll, suggestions.size() - visibleCount));
                 for (int i = 0; i < visibleCount; i++) {

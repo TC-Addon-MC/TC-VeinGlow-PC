@@ -2,18 +2,18 @@ package com.tcveinminer.engine.action.impl;
 
 import com.tcveinminer.engine.action.ActionContext;
 import com.tcveinminer.engine.action.BlockAction;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.item.AxeItem;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.ShovelItem;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.AxeItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ShovelItem;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
 
-import net.minecraft.state.property.Property;
-import net.minecraft.util.Hand;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.level.block.state.properties.Property;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.core.BlockPos;
 
 import java.util.Map;
 import java.util.Optional;
@@ -38,15 +38,15 @@ public final class InteractBlockAction implements BlockAction {
         if (stack.isEmpty())
             return false;
 
-        EquipmentSlot slot = (hand == Hand.MAIN_HAND) ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND;
+        EquipmentSlot slot = (hand == InteractionHand.MAIN_HAND) ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND;
 
         // 1. AXE & SHOVEL INTERACTIONS
         if (stack.getItem() instanceof AxeItem || stack.getItem() instanceof ShovelItem) {
-            net.minecraft.util.hit.BlockHitResult hitResult = new net.minecraft.util.hit.BlockHitResult(
-                    net.minecraft.util.math.Vec3d.ofCenter(pos), net.minecraft.util.math.Direction.UP, pos, false);
-            net.minecraft.item.ItemUsageContext usageCtx = new net.minecraft.item.ItemUsageContext(player, hand,
+            net.minecraft.world.phys.BlockHitResult hitResult = new net.minecraft.world.phys.BlockHitResult(
+                    net.minecraft.world.phys.Vec3.ofCenter(pos), net.minecraft.core.Direction.UP, pos, false);
+            net.minecraft.world.item.context.UseOnContext usageCtx = new net.minecraft.world.item.context.UseOnContext(player, hand,
                     hitResult);
-            net.minecraft.util.ActionResult result = stack.useOnBlock(usageCtx);
+            net.minecraft.world.InteractionResult result = stack.useOnBlock(usageCtx);
             if (result.isAccepted()) {
                 return true;
             }

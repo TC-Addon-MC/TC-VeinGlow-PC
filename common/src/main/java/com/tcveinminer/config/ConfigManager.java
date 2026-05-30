@@ -2,7 +2,7 @@ package com.tcveinminer.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import net.fabricmc.loader.api.FabricLoader;
+import com.tcveinminer.platform.Services;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,8 +13,7 @@ public class ConfigManager {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("tc_veinminer");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path CONFIG_PATH = FabricLoader.getInstance()
-            .getConfigDir().resolve("tc_veinminer.json");
+    private static final Path CONFIG_PATH = Services.PLATFORM().getConfigDir().resolve("tc_veinminer.json");
 
     private static ModConfig instance = new ModConfig();
 
@@ -31,7 +30,8 @@ public class ConfigManager {
             ModConfig loaded = GSON.fromJson(reader, ModConfig.class);
             if (loaded != null) {
                 instance = loaded;
-                // [FIX] Cập nhật các giá trị mặc định cho version mới nếu bị Gson set false do thiếu field
+                // [FIX] Cập nhật các giá trị mặc định cho version mới nếu bị Gson set false do
+                // thiếu field
                 boolean needsSave = false;
                 if (!instance.enableBreakSkill && !instance.enableInteractSkill) {
                     instance.enableBreakSkill = true;
@@ -41,14 +41,15 @@ public class ConfigManager {
                     instance.enableBucketSkill = true;
                     needsSave = true;
                 }
-                
+
                 // [AUTO-UPDATE VERSION]
                 if (instance.version == null || !instance.version.equals(ModConfig.CURRENT_VERSION)) {
                     instance.version = ModConfig.CURRENT_VERSION;
                     needsSave = true;
                 }
 
-                if (needsSave) save();
+                if (needsSave)
+                    save();
             }
         } catch (Exception e) {
             LOGGER.error("Failed to load tc_veinminer config, using defaults", e);

@@ -1,7 +1,7 @@
 package com.tcveinminer.engine.preview;
 
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.core.BlockPos;
 import com.tcveinminer.network.NetworkManager;
 import com.tcveinminer.network.payload.HighlightBlockListData;
 
@@ -12,7 +12,7 @@ import java.util.*;
  * <p>
  * This is a rendering concern, separated from the action engines.
  * Manages left and right preview snapshots independently and sends
- * merged highlight packets to the client.
+ * merged highlight packets to the minecraft.
  */
 public final class PreviewManager {
 
@@ -64,7 +64,7 @@ public final class PreviewManager {
     public Set<BlockPos> getRightPreview() { return rightPreview; }
 
     /**
-     * Send highlight update for the given source to the client.
+     * Send highlight update for the given source to the minecraft.
      */
     public void sendHighlight(ServerPlayerEntity spe, String source, Set<BlockPos> blocks, String style) {
         updatePreview(source, blocks, style);
