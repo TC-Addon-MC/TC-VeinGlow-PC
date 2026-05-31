@@ -1,6 +1,8 @@
 package com.tcveinminer.client.gui.screens;
 
 import com.tcveinminer.client.config.ClientConfig;
+import com.tcveinminer.client.hud.style.HudStyle;
+import com.tcveinminer.client.hud.style.HudAnchor;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.ArrayList;
@@ -22,6 +24,8 @@ public class MenuState {
     public boolean enableToolProtectSkill;
     public int toolProtectThreshold = 10;
     public boolean showHud;
+    public HudStyle hudStyle = HudStyle.PILL;
+    public HudAnchor hudAnchor = HudAnchor.TOP_LEFT;
     public boolean showOutline;
     public boolean preventMiningNearFluids;
     public float outlineThickness;

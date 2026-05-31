@@ -39,13 +39,14 @@ public class MainMenuScreen extends Screen {
             "gui.tcveinminer.tab.shapes",
             "gui.tcveinminer.tab.filter",
             "gui.tcveinminer.tab.color",
-            "gui.tcveinminer.tab.skills"
+            "gui.tcveinminer.tab.skills",
+            "gui.tcveinminer.tab.hud"
     };
 
     private final Screen parent;
     private final MenuState state = new MenuState();
     private final MenuTab[] tabInstances = new MenuTab[] {
-            new DashTab(), new GeneralTab(), new ShapesTab(), new FilterTab(), new ColorTab(), new SkillsTab()
+            new DashTab(), new GeneralTab(), new ShapesTab(), new FilterTab(), new ColorTab(), new SkillsTab(), new HudTab()
     };
     private boolean stateLoaded;
 
@@ -105,6 +106,8 @@ public class MainMenuScreen extends Screen {
             state.flowSmoothness = ccfg.flowSmoothness;
             state.colorTransitionTime = ccfg.colorTransitionTime;
             state.showHud = ccfg.showHud;
+            state.hudStyle = ccfg.hudStyle;
+            state.hudAnchor = ccfg.hudAnchor;
             state.activationMode = ccfg.activationMode;
             state.maxBlocks = Math.min(ccfg.clientMaxBlocks, ccfg.serverMaxBlocks);
             state.enabledShapes = new LinkedHashSet<>(ccfg.enabledShapes);
@@ -439,6 +442,8 @@ public class MainMenuScreen extends Screen {
         ccfg.flowSmoothness = state.flowSmoothness;
         ccfg.colorTransitionTime = state.colorTransitionTime;
         ccfg.showHud = state.showHud;
+        ccfg.hudStyle = state.hudStyle;
+        ccfg.hudAnchor = state.hudAnchor;
         ccfg.activationMode = state.activationMode;
         ccfg.clientMaxBlocks = state.maxBlocks;
         ccfg.currentShape = state.selectedShapeId;

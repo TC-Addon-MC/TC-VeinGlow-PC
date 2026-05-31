@@ -24,6 +24,7 @@ loom {
     forge {
         convertAccessWideners = true
         extraAccessWideners.add(loom.accessWidenerPath.get().asFile.name)
+        mixinConfig("tc_veinminer.forge.mixins.json")
     }
 }
 

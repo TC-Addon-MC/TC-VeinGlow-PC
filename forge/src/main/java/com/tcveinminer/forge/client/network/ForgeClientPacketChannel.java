@@ -8,7 +8,7 @@ public class ForgeClientPacketChannel implements ClientPacketChannel {
 
     @Override
     public void sendToServer(NetworkPacket packet) {
-        net.minecraft.client.Minecraft.getInstance().getConnection().send(new net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket(ForgePacketChannel.toForgePayload(packet)));
+        ForgePacketChannel.CHANNEL.send(ForgePacketChannel.toForgePayload(packet), net.minecraftforge.network.PacketDistributor.SERVER.noArg());
     }
 
     @Override

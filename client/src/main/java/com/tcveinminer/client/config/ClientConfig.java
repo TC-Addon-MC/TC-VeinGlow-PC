@@ -11,6 +11,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.tcveinminer.client.hud.style.HudStyle;
+import com.tcveinminer.client.hud.style.HudAnchor;
+
 public class ClientConfig {
 
     /** Một chế độ đào tùy chỉnh do người chơi tạo. */
@@ -84,6 +87,8 @@ public class ClientConfig {
     public float colorTransitionTime = 1.0f;
 
     public boolean showHud = false; // Đổi từ enableHud → showHud cho khớp MenuState
+    public HudStyle hudStyle = HudStyle.PILL;
+    public HudAnchor hudAnchor = HudAnchor.TOP_LEFT;
     public int hudPositionX = 10;
     public int hudPositionY = 10;
 
@@ -164,6 +169,10 @@ public class ClientConfig {
             enabledShapes = new LinkedHashSet<>(List.of("FACE", "custom:heart"));
         if (currentShape == null || currentShape.isBlank())
             currentShape = "FACE";
+        if (hudStyle == null)
+            hudStyle = HudStyle.PILL;
+        if (hudAnchor == null)
+            hudAnchor = HudAnchor.TOP_LEFT;
         if (personalBlacklist == null)
             personalBlacklist = new ArrayList<>();
         if (serverDisabledShapes == null)

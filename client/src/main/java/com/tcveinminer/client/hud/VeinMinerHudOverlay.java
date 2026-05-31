@@ -2,10 +2,8 @@ package com.tcveinminer.client.hud;
 
 import com.tcveinminer.client.VeinGlowClient;
 import com.tcveinminer.client.config.ClientConfigManager;
+import com.tcveinminer.client.hud.style.*;
 import com.tcveinminer.config.ModConfig;
-import com.tcveinminer.logic.HudNotifier;
-import com.tcveinminer.client.util.DrawHelper;
-import com.tcveinminer.client.util.ThemeColors;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.DeltaTracker;
@@ -13,26 +11,33 @@ import net.minecraft.network.chat.Component;
 
 public class VeinMinerHudOverlay {
 
+    private final IHudRenderer pillRenderer = new PillHudRenderer();
+    private final IHudRenderer arcRenderer = new ArcHudRenderer();
+    private final IHudRenderer minimalRenderer = new MinimalHudRenderer();
+    private final IHudRenderer sideBadgeRenderer = new SideBadgeHudRenderer();
+    private final IHudRenderer iconOnlyRenderer = new IconOnlyHudRenderer();
+
     public void onHudRender(GuiGraphics ctx, DeltaTracker tickCounter) {
         Minecraft client = Minecraft.getInstance();
         if (client == null || client.options == null) return;
-        if (!ClientConfigManager.instance.showHud) return;
+        
         if (client.options.hideGui) return;
         if (client.screen != null) return;
 
+        // Render toasts independent of HUD display toggle
+        ToastRenderer.render(ctx);
+
+        if (!ClientConfigManager.instance.showHud) return;
+
         boolean holding = VeinGlowClient.holdKeyDown;
 
-        // Resolve label chế độ đào hiện tại
         String currentShapeId = ClientConfigManager.instance.currentShape;
         String modeLabel = currentShapeId;
         try {
             ModConfig.MiningShape shape = ModConfig.MiningShape.valueOf(currentShapeId);
             modeLabel = Component.translatable("tc_veinminer.mode." + shape.name()).getString();
-        } catch (IllegalArgumentException | NullPointerException ignored) {
-            // custom shape hoặc chưa set: hiện raw id
-        }
+        } catch (IllegalArgumentException | NullPointerException ignored) {}
 
-        // Tên phím (giữ nguyên case từ Minecraft, không toUpperCase)
         int actMode = ClientConfigManager.instance.activationMode;
         String keyName = VeinGlowClient.KEY_MINE == null ? "V" : VeinGlowClient.KEY_MINE.getTranslatedKeyMessage().getString();
 
@@ -43,51 +48,40 @@ public class VeinMinerHudOverlay {
             default -> Component.translatable("hud.tcveinminer.hint.hold",       keyName).getString();
         };
 
-        String statusText;
-        if (VeinGlowClient.isMining) {
-            statusText = Component.translatable("hud.tcveinminer.mining",
-                    String.valueOf(HudNotifier.lastMined),
-                    String.valueOf(HudNotifier.lastMax),
-                    modeLabel).getString();
-        } else if (holding) {
-            statusText = Component.translatable("hud.tcveinminer.ready",   keyHint, modeLabel).getString();
-        } else {
-            statusText = Component.translatable("hud.tcveinminer.waiting", keyHint, modeLabel).getString();
+        HudAnchor anchor = ClientConfigManager.instance.hudAnchor;
+        int customX = ClientConfigManager.instance.hudPositionX;
+        int customY = ClientConfigManager.instance.hudPositionY;
+        
+        int w = ctx.guiWidth();
+        int h = ctx.guiHeight();
+        
+        int x = 0;
+        int y = 0;
+        
+        switch (anchor) {
+            case TOP_LEFT -> { x = 10; y = 10; }
+            case TOP_CENTER -> { x = w / 2; y = 10; }
+            case TOP_RIGHT -> { x = w - 10; y = 10; }
+            case MIDDLE_LEFT -> { x = 10; y = h / 2; }
+            case MIDDLE_RIGHT -> { x = w - 10; y = h / 2; }
+            case BOTTOM_LEFT -> { x = 10; y = h - 24; }
+            case BOTTOM_RIGHT -> { x = w - 10; y = h - 24; }
+            case CUSTOM -> { x = customX; y = customY; }
+        }
+        
+        if (anchor != HudAnchor.CUSTOM) {
+            x += customX;
+            y += customY;
         }
 
-        int textW  = client.font.width(statusText);
-        int pillW  = textW + 16;
-        int x      = ClientConfigManager.instance.hudPositionX;
-        int y      = ClientConfigManager.instance.hudPositionY;
+        IHudRenderer renderer = switch (ClientConfigManager.instance.hudStyle) {
+            case ARC -> arcRenderer;
+            case MINIMAL -> minimalRenderer;
+            case SIDE_BADGE -> sideBadgeRenderer;
+            case ICON_ONLY -> iconOnlyRenderer;
+            default -> pillRenderer;
+        };
 
-        DrawHelper.drawHudPill(ctx, x, y, pillW, 14, holding);
-        int textColor = holding ? ThemeColors.HUD_ON_TEXT : ThemeColors.HUD_OFF_TEXT;
-        ctx.drawString(client.font, statusText, x + 8, y + 3, textColor);
-
-        // Dòng 2: thông báo kết quả đào (hiện trong 2.5s sau khi đào xong)
-        if (System.currentTimeMillis() < HudNotifier.notifyAt) {
-            long remaining = HudNotifier.notifyAt - System.currentTimeMillis();
-            float alpha    = Math.min(1f, remaining / 500f);
-            int alphaInt   = (int)(alpha * 255) << 24;
-
-            String msg;
-            if (HudNotifier.lastCancelled) {
-                msg = Component.translatable("hud.tcveinminer.cancelled",
-                        String.valueOf(HudNotifier.lastMined),
-                        String.valueOf(HudNotifier.lastMax)).getString();
-            } else {
-                msg = Component.translatable("hud.tcveinminer.done",
-                        String.valueOf(HudNotifier.lastMined),
-                        String.valueOf(HudNotifier.lastMax)).getString();
-            }
-
-            int msgW     = client.font.width(msg);
-            int msgPillW = msgW + 16;
-            int msgY     = y + 18;
-
-            DrawHelper.drawHudPill(ctx, x, msgY, msgPillW, 14, true);
-            ctx.drawString(client.font, msg, x + 8, msgY + 3,
-                    (ThemeColors.TEXT_VALUE & 0x00FFFFFF) | alphaInt);
-        }
+        renderer.render(ctx, x, y, anchor, VeinGlowClient.isMining, holding, modeLabel, keyHint);
     }
 }

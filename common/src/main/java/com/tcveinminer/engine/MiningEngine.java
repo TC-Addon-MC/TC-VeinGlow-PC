@@ -132,11 +132,18 @@ public final class MiningEngine implements EngineQuery {
      * Computes preview highlight for the left-click engine.
      */
     public void handleActivationRequest(ServerPlayer spe, boolean active, BlockPos targetPos) {
-        // Ignore dynamic updates if already processing
-        if (leftEngine.getState() == EngineState.PROCESSING
-                || leftEngine.getState() == EngineState.FINISHED
-                || leftEngine.getState() == EngineState.CANCELLED) {
+        // Ignore dynamic updates if actively processing a vein mine session.
+        // FINISHED/CANCELLED are terminal but transient — they will be reset to IDLE
+        // on the next server tick. Blocking activation on those states causes highlight
+        // to never refresh when the client sends its post-mining activation request,
+        // because that request arrives before the server tick that resets the state.
+        if (leftEngine.getState() == EngineState.PROCESSING) {
             return;
+        }
+        // Eagerly clear terminal states so activation can proceed immediately.
+        if (leftEngine.getState() == EngineState.FINISHED
+                || leftEngine.getState() == EngineState.CANCELLED) {
+            leftEngine.forceState(EngineState.IDLE);
         }
 
         if (!active || targetPos == null) {
@@ -204,7 +211,8 @@ public final class MiningEngine implements EngineQuery {
         int maxBlocksToMine = this.playerMaxBlocks - 1;
         FilterModeManager.BlockFilter filter;
 
-        ActionType rightAction = CapabilityRegistry.resolve(spe, spe.getMainHandItem(), targetState, InteractionHand.MAIN_HAND);
+        ActionType rightAction = CapabilityRegistry.resolve(spe, spe.getMainHandItem(), targetState,
+                InteractionHand.MAIN_HAND);
 
         if (rightAction != ActionType.VANILLA_FALLBACK && rightAction != ActionType.USE_ITEM) {
             strategy = (customStrategy != null) ? customStrategy : StrategyRegistry.get(this.playerShape);
