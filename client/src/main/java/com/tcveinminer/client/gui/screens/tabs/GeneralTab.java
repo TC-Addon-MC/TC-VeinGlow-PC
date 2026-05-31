@@ -31,12 +31,16 @@ public class GeneralTab implements MenuTab {
         }
         // dY phải khớp chính xác với render(): card cao 66 (cy..cy+66), toggle rows bắt đầu tại cy+70
         int dY = cy + 70;
-        CustomButton btnHud = new CustomButton(cx, dY, cw, 20, Component.empty(), btn -> {
+        CustomButton btnHud = new CustomButton(cx, dY, cw - 26, 20, Component.empty(), btn -> {
             screen.getState().showHud = !screen.getState().showHud;
             screen.rebuildMenu();
         });
         btnHud.setSelectedInstant(screen.getState().showHud);
         screen.addUIElement(btnHud);
+        
+        screen.addUIElement(new com.tcveinminer.client.gui.widgets.AmberButton(cx + cw - 24, dY, 24, 20, Component.literal("⚙"), btn -> {
+            screen.getMinecraft().setScreen(new com.tcveinminer.client.gui.screens.HudConfigScreen(screen));
+        }));
 
         CustomButton btnOutline = new CustomButton(cx, dY + 24, cw, 20, Component.empty(), btn -> {
             screen.getState().showOutline = !screen.getState().showOutline;
@@ -54,7 +58,7 @@ public class GeneralTab implements MenuTab {
         ctx.drawString(screen.getMinecraft().font, Component.translatable("gui.tcveinminer.general.activation_mode").getString(), cx + 8, cy + 5, ThemeColors.TEXT_LABEL);
 
         int dY = cy + 70;
-        drawCheckRow(ctx, screen, cx, dY, cw, Component.translatable("gui.tcveinminer.general.floating_hud").getString(), screen.getState().showHud);
+        drawCheckRow(ctx, screen, cx, dY, cw - 26, Component.translatable("gui.tcveinminer.general.floating_hud").getString(), screen.getState().showHud);
         drawCheckRow(ctx, screen, cx, dY + 24, cw, Component.translatable("gui.tcveinminer.general.outline").getString(), screen.getState().showOutline);
         // Removed require_tool rendering
     }

@@ -24,8 +24,18 @@ public class MenuState {
     public boolean enableToolProtectSkill;
     public int toolProtectThreshold = 10;
     public boolean showHud;
-    public HudStyle hudStyle = HudStyle.PILL;
+    public HudStyle hudStyle = HudStyle.CHAT_LINE;
     public HudAnchor hudAnchor = HudAnchor.TOP_LEFT;
+    public int hudPositionX = 10;
+    public int hudPositionY = 10;
+    public float hudScale = 1.0f;
+    public float hudOpacity = 1.0f;
+    
+    public boolean showToast = true;
+    public HudAnchor toastAnchor = HudAnchor.BOTTOM_CENTER;
+    public int toastPositionX = 0;
+    public int toastPositionY = -40;
+
     public boolean showOutline;
     public boolean preventMiningNearFluids;
     public float outlineThickness;

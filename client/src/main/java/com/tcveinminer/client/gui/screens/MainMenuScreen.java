@@ -39,14 +39,13 @@ public class MainMenuScreen extends Screen {
             "gui.tcveinminer.tab.shapes",
             "gui.tcveinminer.tab.filter",
             "gui.tcveinminer.tab.color",
-            "gui.tcveinminer.tab.skills",
-            "gui.tcveinminer.tab.hud"
+            "gui.tcveinminer.tab.skills"
     };
 
     private final Screen parent;
     private final MenuState state = new MenuState();
     private final MenuTab[] tabInstances = new MenuTab[] {
-            new DashTab(), new GeneralTab(), new ShapesTab(), new FilterTab(), new ColorTab(), new SkillsTab(), new HudTab()
+            new DashTab(), new GeneralTab(), new ShapesTab(), new FilterTab(), new ColorTab(), new SkillsTab()
     };
     private boolean stateLoaded;
 
@@ -108,6 +107,14 @@ public class MainMenuScreen extends Screen {
             state.showHud = ccfg.showHud;
             state.hudStyle = ccfg.hudStyle;
             state.hudAnchor = ccfg.hudAnchor;
+            state.hudPositionX = ccfg.hudPositionX;
+            state.hudPositionY = ccfg.hudPositionY;
+            state.hudScale = ccfg.hudScale;
+            state.hudOpacity = ccfg.hudOpacity;
+            state.showToast = ccfg.showToast;
+            state.toastAnchor = ccfg.toastAnchor;
+            state.toastPositionX = ccfg.toastPositionX;
+            state.toastPositionY = ccfg.toastPositionY;
             state.activationMode = ccfg.activationMode;
             state.maxBlocks = Math.min(ccfg.clientMaxBlocks, ccfg.serverMaxBlocks);
             state.enabledShapes = new LinkedHashSet<>(ccfg.enabledShapes);
@@ -444,6 +451,14 @@ public class MainMenuScreen extends Screen {
         ccfg.showHud = state.showHud;
         ccfg.hudStyle = state.hudStyle;
         ccfg.hudAnchor = state.hudAnchor;
+        ccfg.hudPositionX = state.hudPositionX;
+        ccfg.hudPositionY = state.hudPositionY;
+        ccfg.hudScale = state.hudScale;
+        ccfg.hudOpacity = state.hudOpacity;
+        ccfg.showToast = state.showToast;
+        ccfg.toastAnchor = state.toastAnchor;
+        ccfg.toastPositionX = state.toastPositionX;
+        ccfg.toastPositionY = state.toastPositionY;
         ccfg.activationMode = state.activationMode;
         ccfg.clientMaxBlocks = state.maxBlocks;
         ccfg.currentShape = state.selectedShapeId;

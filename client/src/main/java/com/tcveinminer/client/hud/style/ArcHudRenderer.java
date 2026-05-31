@@ -7,6 +7,7 @@ import net.minecraft.client.gui.GuiGraphics;
 public class ArcHudRenderer implements IHudRenderer {
     @Override
     public void render(GuiGraphics ctx, int x, int y, HudAnchor anchor, boolean isMining, boolean holding, String modeLabel, String keyHint) {
+        if (!holding && !isMining) return;
         Minecraft client = Minecraft.getInstance();
         if (client == null) return;
         

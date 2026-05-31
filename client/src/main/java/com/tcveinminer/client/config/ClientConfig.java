@@ -87,10 +87,17 @@ public class ClientConfig {
     public float colorTransitionTime = 1.0f;
 
     public boolean showHud = false; // Đổi từ enableHud → showHud cho khớp MenuState
-    public HudStyle hudStyle = HudStyle.PILL;
+    public HudStyle hudStyle = HudStyle.CHAT_LINE;
     public HudAnchor hudAnchor = HudAnchor.TOP_LEFT;
     public int hudPositionX = 10;
     public int hudPositionY = 10;
+    public float hudScale = 1.0f;
+    public float hudOpacity = 1.0f;
+
+    public boolean showToast = true;
+    public HudAnchor toastAnchor = HudAnchor.BOTTOM_CENTER;
+    public int toastPositionX = 0;
+    public int toastPositionY = -40;
 
     // ==========================================
     // NHÓM ĐIỀU KHIỂN & CHẾ ĐỘ ĐÀO - LƯU VÀO JSON
@@ -170,9 +177,11 @@ public class ClientConfig {
         if (currentShape == null || currentShape.isBlank())
             currentShape = "FACE";
         if (hudStyle == null)
-            hudStyle = HudStyle.PILL;
+            hudStyle = HudStyle.CHAT_LINE;
         if (hudAnchor == null)
             hudAnchor = HudAnchor.TOP_LEFT;
+        if (toastAnchor == null)
+            toastAnchor = HudAnchor.BOTTOM_CENTER;
         if (personalBlacklist == null)
             personalBlacklist = new ArrayList<>();
         if (serverDisabledShapes == null)

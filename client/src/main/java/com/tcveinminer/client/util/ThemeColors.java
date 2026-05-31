@@ -223,6 +223,15 @@ public final class ThemeColors {
     public static final int BTN_LIST_HOVER_BORDER          = 0x88738AA3;
 
     // ─────────────────────────────────────────────────────────────
+    // NEW CONSTANTS
+    // ─────────────────────────────────────────────────────────────
+
+    public static final int HUD_TEXT          = TEXT_BRIGHT;
+    public static final int HUD_TEXT_DIM      = TEXT_LABEL;
+    public static final int HUD_BG            = 0xCC0B1120;
+    public static final int SUCCESS           = EMERALD;
+
+    // ─────────────────────────────────────────────────────────────
     // CONSTRUCTOR
     // ─────────────────────────────────────────────────────────────
 

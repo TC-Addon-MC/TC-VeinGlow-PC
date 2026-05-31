@@ -8,5 +8,6 @@ public enum HudAnchor {
     MIDDLE_RIGHT,
     BOTTOM_LEFT,
     BOTTOM_RIGHT,
+    BOTTOM_CENTER,
     CUSTOM
 }
