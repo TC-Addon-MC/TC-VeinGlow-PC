@@ -44,3 +44,21 @@ subprojects {
         }
     }
 }
+
+val copyToDownloads by tasks.registering(Copy::class) {
+    // Only copy from the platform projects, avoiding intermediate jars from common/client
+    val platformProjects = subprojects.filter { it.name in listOf("fabric", "forge", "neoforge") }
+    platformProjects.forEach { sub ->
+        from(sub.layout.buildDirectory.dir("libs")) {
+            include("*.jar")
+            exclude("*-dev.jar", "*-sources.jar", "*-slim.jar")
+        }
+    }
+    into(rootProject.file("download"))
+}
+
+subprojects {
+    tasks.matching { it.name == "build" }.configureEach {
+        finalizedBy(copyToDownloads)
+    }
+}
