@@ -12,7 +12,7 @@ public class ActionBarHudRenderer implements IHudRenderer {
         int cx = ctx.guiWidth() / 2;
         int cy = ctx.guiHeight() - 60; // Vanilla Action bar area
 
-        String text = isMining ? "Mining: " + modeName : "Mode: " + modeName;
+        String text = isMining ? net.minecraft.network.chat.Component.translatable("hud.tcveinminer.style.mining", modeName).getString() : net.minecraft.network.chat.Component.translatable("hud.tcveinminer.style.mode", modeName).getString();
         int color = isMining ? ThemeColors.GOLD : ThemeColors.HUD_TEXT;
         
         ctx.drawCenteredString(mc.font, text, cx, cy, color);

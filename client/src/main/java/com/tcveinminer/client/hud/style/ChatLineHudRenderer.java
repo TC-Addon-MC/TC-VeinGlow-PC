@@ -39,10 +39,10 @@ public class ChatLineHudRenderer implements IHudRenderer {
         String line2 = "";
         int color2 = 0xFFAAAAAA;
         if (isMining) {
-            line2 = com.tcveinminer.logic.HudNotifier.lastMined + " / " + com.tcveinminer.logic.HudNotifier.lastMax + " blocks";
+            line2 = net.minecraft.network.chat.Component.translatable("hud.tcveinminer.style.blocks_progress", com.tcveinminer.logic.HudNotifier.lastMined, com.tcveinminer.logic.HudNotifier.lastMax).getString();
             color2 = 0xFFFFAA00;
         } else if (isDone) {
-            line2 = com.tcveinminer.logic.HudNotifier.lastMined + " / " + com.tcveinminer.logic.HudNotifier.lastMax + " blocks";
+            line2 = net.minecraft.network.chat.Component.translatable("hud.tcveinminer.style.blocks_progress", com.tcveinminer.logic.HudNotifier.lastMined, com.tcveinminer.logic.HudNotifier.lastMax).getString();
             color2 = 0xFF55FF55;
         } else if (holding) {
             line2 = keyHint; 

@@ -16,8 +16,8 @@ public class TooltipHudRenderer implements IHudRenderer {
         int tx = cx + 15;
         int ty = cy + 15;
         
-        String title = "VeinMiner";
-        String status = isMining ? "Active" : "Ready";
+        String title = net.minecraft.network.chat.Component.translatable("hud.tcveinminer.style.title").getString();
+        String status = isMining ? net.minecraft.network.chat.Component.translatable("hud.tcveinminer.style.active").getString() : net.minecraft.network.chat.Component.translatable("hud.tcveinminer.style.ready_short").getString();
         
         int w = Math.max(mc.font.width(modeName), mc.font.width(status)) + 12;
         int h = 30;

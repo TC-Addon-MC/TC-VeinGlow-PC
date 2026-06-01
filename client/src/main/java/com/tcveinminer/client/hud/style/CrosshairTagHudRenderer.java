@@ -12,7 +12,7 @@ public class CrosshairTagHudRenderer implements IHudRenderer {
         int cx = ctx.guiWidth() / 2;
         int cy = ctx.guiHeight() / 2;
 
-        String text = isMining ? "[" + modeName + "]" : modeName;
+        String text = isMining ? "[" + net.minecraft.network.chat.Component.translatable("hud.tcveinminer.style.active").getString() + "]" : modeName;
         int color = isMining ? ThemeColors.GOLD : ThemeColors.HUD_TEXT_DIM;
         
         ctx.drawString(mc.font, text, cx + 8, cy + 6, color, true);

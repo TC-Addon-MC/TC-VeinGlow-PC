@@ -156,5 +156,12 @@
   "msg.tcveinminer.tool_swap_no_tool_broken": "§c⚠ No replacement tool found — mining stopped",
   "msg.tcveinminer.tool_swap_protected": "§b🛡 Tool near breaking — switched to %s",
   "msg.tcveinminer.tool_swap_no_tool_protected": "§c⚠ No replacement tool found — mining stopped to protect",
-  "msg.tcveinminer.tool_protected": "§b🛡 Mining stopped to protect your tool"
+  "msg.tcveinminer.tool_protected": "§b🛡 Mining stopped to protect your tool",
+  "hud.tcveinminer.style.title": "VeinMiner",
+  "hud.tcveinminer.style.active": "Active",
+  "hud.tcveinminer.style.ready_short": "Ready",
+  "hud.tcveinminer.style.mining": "Mining: %s",
+  "hud.tcveinminer.style.mode": "Mode: %s",
+  "hud.tcveinminer.style.mode_active": "%s Active",
+  "hud.tcveinminer.style.blocks_progress": "%s / %s blocks"
 }

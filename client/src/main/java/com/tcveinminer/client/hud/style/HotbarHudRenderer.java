@@ -14,7 +14,7 @@ public class HotbarHudRenderer implements IHudRenderer {
 
         int lx = cx + 95; // To the right of the hotbar
         
-        String text = isMining ? modeName + " Active" : modeName;
+        String text = isMining ? net.minecraft.network.chat.Component.translatable("hud.tcveinminer.style.mode_active", modeName).getString() : modeName;
         int color = isMining ? ThemeColors.GOLD : ThemeColors.HUD_TEXT;
         
         ctx.drawString(mc.font, text, lx, cy, color, true);

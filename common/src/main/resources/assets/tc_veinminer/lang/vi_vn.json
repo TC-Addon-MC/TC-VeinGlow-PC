@@ -156,5 +156,12 @@
   "msg.tcveinminer.tool_swap_no_tool_broken": "§c⚠ Không tìm thấy dụng cụ thay thế — dừng đào",
   "msg.tcveinminer.tool_swap_protected": "§b🛡 Dụng cụ sắp vỡ — đổi sang %s",
   "msg.tcveinminer.tool_swap_no_tool_protected": "§c⚠ Không tìm thấy dụng cụ thay thế — dừng để bảo vệ",
-  "msg.tcveinminer.tool_protected": "§b🛡 Đã dừng đào để bảo vệ dụng cụ"
+  "msg.tcveinminer.tool_protected": "§b🛡 Đã dừng đào để bảo vệ dụng cụ",
+  "hud.tcveinminer.style.title": "VeinMiner",
+  "hud.tcveinminer.style.active": "Hoạt động",
+  "hud.tcveinminer.style.ready_short": "Sẵn sàng",
+  "hud.tcveinminer.style.mining": "Đang đào: %s",
+  "hud.tcveinminer.style.mode": "Chế độ: %s",
+  "hud.tcveinminer.style.mode_active": "%s (Hoạt động)",
+  "hud.tcveinminer.style.blocks_progress": "%s / %s khối"
 }
