@@ -35,6 +35,7 @@ public class TCVeinMinerFabricClient implements ClientModInitializer {
                 "key.tc_veinminer.mine", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, "key.categories.tc_veinminer"));
         KEY_MENU = KeyBindingHelper.registerKeyBinding(new KeyMapping(
                 "key.tc_veinminer.menu", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, "key.categories.tc_veinminer"));
+        VeinGlowClient.KEY_MENU = KEY_MENU;
         KEY_NEXT_SHAPE = KeyBindingHelper.registerKeyBinding(new KeyMapping(
                 "key.tc_veinminer.next_shape", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT,
                 "key.categories.tc_veinminer"));

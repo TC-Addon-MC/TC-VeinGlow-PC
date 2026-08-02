@@ -33,6 +33,7 @@ public class TCVeinMinerNeoForgeClient {
         NeoForgeClientPacketChannel channel = new NeoForgeClientPacketChannel();
         ClientNetworkManager.setChannel(channel);
         VeinGlowClient.init();
+        VeinGlowClient.KEY_MENU = KEY_MENU;
 
         NeoForge.EVENT_BUS.addListener(TCVeinMinerNeoForgeClient::onClientTick);
         NeoForge.EVENT_BUS.addListener(TCVeinMinerNeoForgeClient::onClientPlayerLoggingIn);
@@ -83,14 +84,14 @@ public class TCVeinMinerNeoForgeClient {
 
         boolean menuKeyPressed = InputConstants.isKeyDown(
                 client.getWindow().getWindow(),
-                KEY_MENU.getDefaultKey().getValue());
+                KEY_MENU.getKey().getValue());
         if (menuKeyPressed && client.screen == null && client.player != null) {
             com.tcveinminer.client.ClientApi.openRadialMenuRaw();
         }
 
         boolean mineKeyPressed = InputConstants.isKeyDown(
                 client.getWindow().getWindow(),
-                KEY_MINE.getDefaultKey().getValue());
+                KEY_MINE.getKey().getValue());
         VeinGlowClient.onClientTick(mineKeyPressed, menuKeyPressed);
     }
 

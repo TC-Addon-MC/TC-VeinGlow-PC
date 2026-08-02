@@ -22,6 +22,7 @@ import java.util.List;
 public final class VeinGlowClient {
 
     public static KeyMapping KEY_MINE;
+    public static KeyMapping KEY_MENU;
     public static boolean holdKeyDown = false;
     public static boolean isMining = false;
     public static boolean isRadialMenuOpen = false;
